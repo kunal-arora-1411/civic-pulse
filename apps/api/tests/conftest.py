@@ -49,6 +49,8 @@ os.environ.update(
         "DEV_FIXED_OTP": "false",
         "REQUIRE_STAFF_MFA": "false",
         "REFRESH_REUSE_GRACE_SECONDS": "0",
+        # Every test request comes from 127.0.0.1.
+        "OTP_MAX_PER_IP_PER_HOUR": "100000",
     }
 )
 
@@ -60,6 +62,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E40
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.redis import get_redis  # noqa: E402
+from tests.helpers import RecordingSms  # noqa: E402
 
 
 def _dsn(url: URL) -> str:
@@ -119,16 +122,28 @@ async def owner_engine(database: None) -> AsyncIterator[AsyncEngine]:
 
 
 @pytest.fixture(scope="session")
-async def app(database: None) -> AsyncIterator[FastAPI]:
+def sms() -> RecordingSms:
+    return RecordingSms()
+
+
+@pytest.fixture(scope="session")
+async def app(database: None, sms: RecordingSms) -> AsyncIterator[FastAPI]:
     from app.core.db import get_engine
+    from app.domains.auth.sms import get_sms_provider
     from app.main import create_app
 
     redis = get_redis()
     await redis.flushdb()
     application = create_app()
+    application.dependency_overrides[get_sms_provider] = lambda: sms
     yield application
     await get_engine().dispose()
     await redis.aclose()
+
+
+@pytest.fixture
+def redis():
+    return get_redis()
 
 
 @pytest.fixture

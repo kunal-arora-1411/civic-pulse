@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     otp_resend_seconds: int = 30
     otp_max_attempts: int = 5
     otp_max_per_hour: int = 5
+    otp_max_per_ip_per_hour: int = 30
     dev_fixed_otp: bool = False
     dev_fixed_otp_code: str = "000000"
     sms_provider: str = "console"
