@@ -4,12 +4,19 @@ import {
   type LucideIcon,
   Map as MapIcon,
   ScrollText,
+  Tags,
   UsersRound,
 } from "lucide-react";
 import type { CurrentUser } from "@/lib/api";
 import { hasPermission } from "@/lib/auth/access";
 
-export type AdminNavKey = "overview" | "issues" | "map" | "users" | "audit";
+export type AdminNavKey =
+  | "overview"
+  | "issues"
+  | "map"
+  | "categories"
+  | "users"
+  | "audit";
 
 export type AdminNavItem = {
   key: AdminNavKey;
@@ -17,6 +24,7 @@ export type AdminNavItem = {
     | "/admin"
     | "/admin/issues"
     | "/admin/map"
+    | "/admin/categories"
     | "/admin/users"
     | "/admin/audit";
   icon: LucideIcon;
@@ -33,6 +41,12 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     permission: "issue:read",
   },
   { key: "map", href: "/admin/map", icon: MapIcon, permission: "issue:read" },
+  {
+    key: "categories",
+    href: "/admin/categories",
+    icon: Tags,
+    permission: "config:read",
+  },
   {
     key: "users",
     href: "/admin/users",
