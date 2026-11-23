@@ -553,6 +553,7 @@ async def test_tenants_current(client: httpx.AsyncClient, tenant: TenantRow) -> 
         "name": "Test City",
         "default_locale": "en",
         "supported_locales": ["en", "hi"],
+        "map": None,  # no jurisdictions, so no map view (see test_geo.py)
     }
     missing = await client.get("/api/v1/tenants/current")
     assert missing.status_code == 422

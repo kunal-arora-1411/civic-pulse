@@ -12,7 +12,7 @@ import binascii
 import json
 from enum import StrEnum
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -106,6 +106,17 @@ class Settings(BaseSettings):
     media_upload_url_ttl_seconds: int = 600
     media_download_url_ttl_seconds: int = 600
     media_max_pending_uploads: int = 20
+
+    # Reverse geocoding (address text only; wards and zones come from PostGIS).
+    # Nominatim's usage policy allows one request per second per application
+    # and asks for an identifying User-Agent; the default here is generic.
+    geocoder: Literal["none", "nominatim"] = "none"
+    nominatim_url: str = "https://nominatim.openstreetmap.org"
+    geocoder_user_agent: str = "CivicPulse-API/0.1 (civic issue reporting)"
+    geocoder_timeout_seconds: float = 4.0
+    geocoder_cache_ttl_seconds: int = 7 * 24 * 3600
+    # Failures are cached briefly so an outage doesn't turn into a retry storm.
+    geocoder_failure_ttl_seconds: int = 60
 
     # Naive local times (EXIF capture times, date filters) are read in this
     # zone. Every Phase 1 deployment is in India.

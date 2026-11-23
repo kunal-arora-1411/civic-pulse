@@ -7,12 +7,20 @@ from fastapi import APIRouter, Query, status
 from app.core.db import DbSession
 from app.core.errors import error_responses
 from app.core.pagination import PageParamsDep
+from app.domains.geo import service as geo
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 from app.domains.tenants import service
 from app.domains.tenants.dependencies import HeaderTenant
-from app.domains.tenants.schemas import PlatformTenant, PlatformTenantPage, TenantCreate, TenantOut
+from app.domains.tenants.schemas import (
+    MapConfig,
+    PlatformTenant,
+    PlatformTenantPage,
+    TenantCreate,
+    TenantCurrent,
+    TenantOut,
+)
 
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 platform_router = APIRouter(prefix="/platform/tenants", tags=["platform"])
@@ -23,11 +31,15 @@ TenantManager = Annotated[Principal, require(Permission.TENANT_MANAGE)]
 @router.get(
     "/current",
     operation_id="tenants_get_current",
-    response_model=TenantOut,
+    response_model=TenantCurrent,
     responses=error_responses(404, 422),
 )
-async def get_current_tenant(tenant: HeaderTenant) -> TenantOut:
-    return TenantOut.model_validate(tenant)
+async def get_current_tenant(tenant: HeaderTenant, db: DbSession) -> TenantCurrent:
+    view = await geo.map_view(db)
+    return TenantCurrent(
+        **TenantOut.model_validate(tenant).model_dump(),
+        map=MapConfig(center=view.center, zoom=view.zoom, bounds=view.bounds) if view else None,
+    )
 
 
 @platform_router.get(
