@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { PageLoading } from "@/components/page-loading";
 import { canUseAdmin, canUseField, hasPermission } from "@/lib/auth/access";
 import { RequireSession } from "./require-session";
 
@@ -13,24 +14,34 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   return <RequireSession>{children}</RequireSession>;
 }
 
-export function RequireAdminAccess({ children }: { children: ReactNode }) {
-  return <RequireSession allow={canUseAdmin}>{children}</RequireSession>;
-}
-
-export function RequireFieldAccess({ children }: { children: ReactNode }) {
-  return <RequireSession allow={canUseField}>{children}</RequireSession>;
-}
-
-/** For pages inside a shell that has already checked the session. */
-export function RequirePermission({
+/**
+ * Wraps the body of every admin page: staff with console access only, and
+ * optionally a specific permission. The guard sits in the page rather than
+ * the admin layout so the layout always renders its children (see
+ * AdminShell).
+ */
+export function RequireAdminAccess({
   permission,
   children,
 }: {
-  permission: string;
+  permission?: string;
   children: ReactNode;
 }) {
   return (
-    <RequireSession allow={(user) => hasPermission(user, permission)}>
+    <RequireSession
+      fallback={<PageLoading />}
+      allow={(user) =>
+        canUseAdmin(user) && (!permission || hasPermission(user, permission))
+      }
+    >
+      {children}
+    </RequireSession>
+  );
+}
+
+export function RequireFieldAccess({ children }: { children: ReactNode }) {
+  return (
+    <RequireSession allow={canUseField} fallback={<PageLoading />}>
       {children}
     </RequireSession>
   );

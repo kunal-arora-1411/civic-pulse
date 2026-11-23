@@ -1,6 +1,5 @@
 import { useTranslations } from "next-intl";
 import { AccountMenu } from "@/components/account-menu";
-import { RequireFieldAccess } from "@/components/auth/guards";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +24,7 @@ export default function FieldLayout({
         </div>
       </header>
       <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-        <RequireFieldAccess>{children}</RequireFieldAccess>
+        {children}
       </main>
     </div>
   );

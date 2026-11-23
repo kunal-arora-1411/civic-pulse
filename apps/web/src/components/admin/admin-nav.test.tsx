@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RequirePermission } from "@/components/auth/guards";
+import { RequireAdminAccess } from "@/components/auth/guards";
 import { session } from "@/lib/api";
 import { makeAdmin, makeUser } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
@@ -89,13 +89,13 @@ describe("AdminNav", () => {
   });
 });
 
-describe("RequirePermission", () => {
+describe("RequireAdminAccess", () => {
   it("shows a not-authorised state when the permission is missing", () => {
     session.setAuthenticated("token", operator);
     renderWithProviders(
-      <RequirePermission permission="user:manage">
+      <RequireAdminAccess permission="user:manage">
         <p>Secret staff list</p>
-      </RequirePermission>,
+      </RequireAdminAccess>,
     );
 
     expect(
@@ -109,9 +109,9 @@ describe("RequirePermission", () => {
   it("renders the page when the permission is present", () => {
     session.setAuthenticated("token", makeAdmin());
     renderWithProviders(
-      <RequirePermission permission="user:manage">
+      <RequireAdminAccess permission="user:manage">
         <p>Staff list</p>
-      </RequirePermission>,
+      </RequireAdminAccess>,
     );
     expect(screen.getByText("Staff list")).toBeInTheDocument();
   });
@@ -119,9 +119,9 @@ describe("RequirePermission", () => {
   it("sends signed-out visitors to the login page", () => {
     session.clear();
     renderWithProviders(
-      <RequirePermission permission="user:manage">
+      <RequireAdminAccess permission="user:manage">
         <p>Staff list</p>
-      </RequirePermission>,
+      </RequireAdminAccess>,
     );
     expect(navigation.router.replace).toHaveBeenCalledWith(
       "/login?next=%2Fadmin%2Fusers",

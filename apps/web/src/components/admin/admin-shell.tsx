@@ -4,10 +4,8 @@ import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useLayoutEffect, useState } from "react";
 import { AccountMenu } from "@/components/account-menu";
-import { RequireSession } from "@/components/auth/require-session";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { PageLoading } from "@/components/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -113,55 +111,50 @@ function SidebarFooter({ user }: { user: CurrentUser }) {
   );
 }
 
-function ShellSkeleton() {
+function SidebarSkeleton() {
   return (
-    <Frame
-      sidebar={
-        <div className="grid gap-2">
-          <Skeleton className="h-9" />
-          <Skeleton className="h-9" />
-          <Skeleton className="h-9" />
-        </div>
-      }
-    >
-      <PageLoading />
-    </Frame>
+    <div className="grid gap-2">
+      <Skeleton className="h-9" />
+      <Skeleton className="h-9" />
+      <Skeleton className="h-9" />
+    </div>
   );
 }
 
 /**
  * Admin console chrome: sidebar on large screens, a disclosure menu on
- * small ones. Navigation is filtered by the user's permissions; each page
- * still checks its own permission, and the API enforces it.
+ * small ones. Navigation is filtered by the user's permissions.
+ *
+ * The shell always renders `children`, even before the session is known.
+ * Access checks live in each page (RequireAdminAccess) instead of here: a
+ * layout that swaps its children for a fallback drops the page segment
+ * from the prerender, and Next can then no longer validate that
+ * navigations into it are instant (instant-unrendered-segment). The page
+ * guards render the same loading state, so nothing changes for users.
  */
 export function AdminShell({ children }: { children: ReactNode }) {
-  return (
-    <RequireSession allow={canUseAdmin} fallback={<ShellSkeleton />} standalone>
-      <AdminFrame>{children}</AdminFrame>
-    </RequireSession>
-  );
-}
+  const { status, user } = useSession();
+  const admin = user && canUseAdmin(user) ? user : null;
 
-function AdminFrame({ children }: { children: ReactNode }) {
-  // RequireSession only renders this once the user is known.
-  const user = useSessionUser();
   return (
     <Frame
       sidebar={
-        <>
-          <AdminNav user={user} />
-          <SidebarFooter user={user} />
-        </>
+        admin ? (
+          <>
+            <AdminNav user={admin} />
+            <SidebarFooter user={admin} />
+          </>
+        ) : status === "unknown" ? (
+          <SidebarSkeleton />
+        ) : null
       }
-      mobileNav={(close) => <AdminNav user={user} onNavigate={close} />}
+      mobileNav={
+        admin
+          ? (close) => <AdminNav user={admin} onNavigate={close} />
+          : undefined
+      }
     >
       {children}
     </Frame>
   );
-}
-
-function useSessionUser(): CurrentUser {
-  const { user } = useSession();
-  if (!user) throw new Error("AdminFrame rendered without a user");
-  return user;
 }
