@@ -242,6 +242,25 @@
       "retry": "Try again"
     }
   },
+  "profile": {
+    "title": "Your profile",
+    "description": "How CivicPulse addresses you and how we contact you.",
+    "accountTitle": "Account",
+    "phoneLabel": "Mobile number",
+    "phoneHelp": "Used to sign in. To change it, contact your municipality.",
+    "detailsTitle": "Your details",
+    "nameLabel": "Display name",
+    "nameRequired": "Enter a name with at least 2 characters.",
+    "nameTooLong": "Keep the name under 100 characters.",
+    "emailLabel": "Email",
+    "emailHelp": "Optional. Only used for updates you ask for; never shown publicly.",
+    "emailInvalid": "Enter a valid email address, or leave it empty.",
+    "languageLabel": "Language",
+    "languageHelp": "Used for this site and for SMS updates about your reports.",
+    "save": "Save changes",
+    "discard": "Discard",
+    "saved": "Profile saved"
+  },
   "pagination": {
     "range": "{from}–{to} of {total}",
     "previous": "Previous",

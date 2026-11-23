@@ -8,7 +8,7 @@ import {
   MessageSquareText,
   Smartphone,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { hasLocale, useLocale, useTranslations } from "next-intl";
 import {
   type ReactNode,
   useEffect,
@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { formatSeconds, useCountdown } from "@/hooks/use-countdown";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useRouter } from "@/i18n/navigation";
+import { locales } from "@/i18n/routing";
 import {
   completeLogin,
   isApiError,
@@ -76,6 +77,7 @@ function nextPathFromLocation(): string | null {
 export function LoginFlow() {
   const t = useTranslations("login");
   const router = useRouter();
+  const locale = useLocale();
   const { status, user } = useSession();
   const [step, setStep] = useState<Step>({ kind: "phone" });
 
@@ -83,12 +85,17 @@ export function LoginFlow() {
   // navigate away. Reset on hide so returning after sign-out starts fresh.
   useLayoutEffect(() => () => setStep({ kind: "phone" }), []);
 
-  // Already signed in (or just finished): leave the login page.
+  // Already signed in (or just finished): leave the login page, switching
+  // to the language saved on the account if it differs from the current one.
   useEffect(() => {
-    if (status === "authenticated" && user) {
-      router.replace(nextPathFromLocation() ?? homePathFor(user));
+    if (status !== "authenticated" || !user) return;
+    const target = nextPathFromLocation() ?? homePathFor(user);
+    if (user.locale !== locale && hasLocale(locales, user.locale)) {
+      router.replace(target, { locale: user.locale });
+    } else {
+      router.replace(target);
     }
-  }, [status, user, router]);
+  }, [status, user, router, locale]);
 
   const finish = (tokens: TokenResponse) => {
     setStep({ kind: "done" });
