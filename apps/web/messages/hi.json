@@ -284,7 +284,9 @@
         "from": "इस तारीख़ से",
         "to": "इस तारीख़ तक",
         "rangeInvalid": "अंतिम तारीख़ शुरुआती तारीख़ से पहले है।",
-        "clear": "फ़िल्टर हटाएँ ({count})"
+        "clear": "फ़िल्टर हटाएँ ({count})",
+        "moreFilters": "फ़िल्टर",
+        "moreFiltersCount": "फ़िल्टर ({count})"
       }
     },
     "issueDetail": {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Search, X } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/issues/category-icon";
@@ -90,6 +90,11 @@ export function IssueFiltersBar({
 
   const inverted = isRangeInverted(filters);
   const count = activeFilterCount(filters);
+  // On phones only the search box shows until the filters are opened;
+  // five stacked controls would push the results off the first screen.
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = expanded ? undefined : "max-sm:hidden";
+  const extraCount = count - (filters.q ? 1 : 0);
   const selectedLabel = (n: number) => t("selected", { count: n });
 
   return (
@@ -116,8 +121,25 @@ export function IssueFiltersBar({
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-1 justify-self-start sm:hidden"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            <SlidersHorizontal aria-hidden="true" />
+            {extraCount > 0
+              ? t("moreFiltersCount", { count: extraCount })
+              : t("moreFilters")}
+            <ChevronDown
+              aria-hidden="true"
+              className={cn("transition-transform", expanded && "rotate-180")}
+            />
+          </Button>
         </div>
         <MultiSelect
+          className={collapsible}
           label={t("status")}
           allLabel={t("allStatuses")}
           selectedLabel={selectedLabel}
@@ -140,6 +162,7 @@ export function IssueFiltersBar({
           })}
         />
         <MultiSelect
+          className={collapsible}
           label={t("category")}
           allLabel={t("allCategories")}
           selectedLabel={selectedLabel}
@@ -157,6 +180,7 @@ export function IssueFiltersBar({
           }))}
         />
         <MultiSelect
+          className={collapsible}
           label={t("ward")}
           allLabel={t("allWards")}
           selectedLabel={selectedLabel}
@@ -168,7 +192,7 @@ export function IssueFiltersBar({
           }))}
         />
       </div>
-      <div className="flex flex-wrap items-end gap-3">
+      <div className={cn("flex flex-wrap items-end gap-3", collapsible)}>
         <Field label={t("from")} className="w-40">
           {(control) => (
             <Input

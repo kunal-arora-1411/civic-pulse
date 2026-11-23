@@ -284,7 +284,9 @@
         "from": "Reported from",
         "to": "Reported to",
         "rangeInvalid": "The end date is before the start date.",
-        "clear": "Clear filters ({count})"
+        "clear": "Clear filters ({count})",
+        "moreFilters": "Filters",
+        "moreFiltersCount": "Filters ({count})"
       }
     },
     "issueDetail": {

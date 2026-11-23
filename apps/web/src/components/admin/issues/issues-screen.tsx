@@ -141,15 +141,17 @@ export function IssuesScreen() {
         <p aria-live="polite" className="text-sm text-muted-foreground">
           {issues.data ? t("resultCount", { count: issues.data.total }) : ""}
         </p>
-        <div className="flex items-center gap-2">
-          <Label htmlFor={sortId}>{t("sortLabel")}</Label>
+        <div className="flex items-center gap-2 max-sm:w-full">
+          <Label htmlFor={sortId} className="shrink-0">
+            {t("sortLabel")}
+          </Label>
           <Select
             id={sortId}
             value={filters.sort}
             onChange={(event) =>
               setFilters({ sort: event.target.value as IssueSort })
             }
-            className="w-52"
+            className="flex-1 sm:w-52 sm:flex-none"
           >
             {ISSUE_SORTS.map((sort) => (
               <option key={sort} value={sort}>
