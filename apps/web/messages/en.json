@@ -14,8 +14,51 @@
     "label": "Language",
     "switching": "Switching language…"
   },
-  "home": {
-    "intro": "Potholes, overflowing bins, broken streetlights, blocked drains: tell your municipality what needs fixing and follow it until it's done."
+  "citizen": {
+    "headline": "Tell your city what needs <accent>fixing</accent>.",
+    "intro": "Potholes, overflowing bins, broken streetlights, blocked drains: report them to your municipality and follow each one until it's done.",
+    "reportCta": "Report an issue",
+    "reportComingSoon": "Coming soon: reporting opens in the next release.",
+    "myReports": "My reports",
+    "loadingReports": "Loading your reports…",
+    "signInToSeeTitle": "Sign in to see your reports",
+    "signInToSeeBody": "All you need is your mobile number. No password.",
+    "signIn": "Sign in",
+    "noReportsTitle": "No reports yet",
+    "noReportsBody": "When you report an issue, you'll be able to follow its progress here.",
+    "staffShortcut": "Go to the admin console",
+    "howItWorks": "How it works",
+    "step1Title": "Report",
+    "step1Body": "Take a photo, drop a pin and choose what kind of problem it is.",
+    "step2Title": "Routed",
+    "step2Body": "Your report reaches the department and ward responsible for it.",
+    "step3Title": "Fixed",
+    "step3Body": "Follow each update, and confirm when the work is actually done.",
+    "footer": "CivicPulse never shows your name or phone number publicly."
+  },
+  "account": {
+    "signIn": "Sign in",
+    "menuLabel": "Account menu",
+    "adminConsole": "Admin console",
+    "fieldApp": "Field work",
+    "profile": "Profile",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…"
+  },
+  "access": {
+    "title": "You don't have access to this page",
+    "body": "You're signed in as {name}, and this account's role doesn't include this area. If you think it should, ask your municipal administrator.",
+    "goHome": "Go to my home page",
+    "switchAccount": "Sign in with another account"
+  },
+  "field": {
+    "badge": "Field",
+    "title": "My work orders",
+    "subtitle": "Jobs assigned to you will appear here.",
+    "emptyTitle": "No work orders yet",
+    "emptyBody": "When a supervisor assigns you a job, you'll see the location, details and photos here.",
+    "offlineTitle": "Working without signal",
+    "offlineBody": "Offline updates will be supported in a later release. For now, keep this page open on a connection."
   },
   "notFound": {
     "title": "We couldn't find that page",
