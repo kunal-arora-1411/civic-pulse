@@ -160,7 +160,9 @@ async def complete_upload(
     asset.height = height
     asset.exif = exif or None
     captured = exif.get("captured_at")
-    asset.captured_at = datetime.fromisoformat(captured) if captured else None
+    # Stored and returned in UTC like every other timestamp; the offset the
+    # photo was taken at is kept in the private EXIF copy.
+    asset.captured_at = datetime.fromisoformat(captured).astimezone(UTC) if captured else None
     asset.verified_at = datetime.now(UTC)
     await db.flush()
     return asset

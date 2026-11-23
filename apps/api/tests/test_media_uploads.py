@@ -75,8 +75,9 @@ async def test_upload_happy_path(
     assert asset["content_type"] == "image/jpeg"
     assert (asset["width"], asset["height"]) == (640, 480)
     assert asset["variants"] == {"thumb": None, "display": None}
-    # The EXIF time has no offset, so it is read as Asia/Kolkata.
-    assert asset["captured_at"] == "2026-11-20T09:30:00+05:30"
+    # The EXIF time has no offset, so it is read as Asia/Kolkata (09:30 IST),
+    # and returned in UTC like every timestamp.
+    assert asset["captured_at"] == "2026-11-20T04:00:00Z"
 
     row = await _asset_row(owner_engine, asset["id"])
     assert row.status == "processing"
