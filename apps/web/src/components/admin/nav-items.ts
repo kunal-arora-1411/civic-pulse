@@ -1,4 +1,5 @@
 import {
+  Inbox,
   LayoutDashboard,
   type LucideIcon,
   ScrollText,
@@ -7,11 +8,11 @@ import {
 import type { CurrentUser } from "@/lib/api";
 import { hasPermission } from "@/lib/auth/access";
 
-export type AdminNavKey = "overview" | "users" | "audit";
+export type AdminNavKey = "overview" | "issues" | "users" | "audit";
 
 export type AdminNavItem = {
   key: AdminNavKey;
-  href: "/admin" | "/admin/users" | "/admin/audit";
+  href: "/admin" | "/admin/issues" | "/admin/users" | "/admin/audit";
   icon: LucideIcon;
   /** Hidden unless the user has this permission. No value: any staff. */
   permission?: string;
@@ -19,6 +20,12 @@ export type AdminNavItem = {
 
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { key: "overview", href: "/admin", icon: LayoutDashboard },
+  {
+    key: "issues",
+    href: "/admin/issues",
+    icon: Inbox,
+    permission: "issue:read",
+  },
   {
     key: "users",
     href: "/admin/users",

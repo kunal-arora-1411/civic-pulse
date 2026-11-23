@@ -55,6 +55,15 @@ describe("visibleNavItems", () => {
     ]);
   });
 
+  it("shows the work queue to staff with issue:read", () => {
+    const reader = makeUser({
+      is_staff: true,
+      roles: [{ role: "operator", department_id: null, jurisdiction_id: null }],
+      permissions: ["issue:read"],
+    });
+    expect(visibleNavItems(reader).map((item) => item.key)).toContain("issues");
+  });
+
   it("filters each entry by its own permission", () => {
     expect(visibleNavItems(auditor).map((item) => item.key)).toEqual([
       "overview",

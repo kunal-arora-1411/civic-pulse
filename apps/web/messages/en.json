@@ -118,21 +118,17 @@
       "label": "Admin sections",
       "overview": "Overview",
       "users": "Users",
-      "audit": "Audit log"
+      "audit": "Audit log",
+      "issues": "Work queue"
     },
     "overview": {
       "title": "Welcome back",
       "greeting": "Welcome back, {name}",
-      "description": "Manage who can work in CivicPulse and review what has changed.",
+      "description": "Triage citizen reports, keep categories up to date, and manage who works in CivicPulse.",
       "manage": "Manage",
       "usersBody": "Add staff, assign roles and departments, and deactivate accounts.",
       "auditBody": "See who changed what, and when, with before and after values.",
-      "upcoming": "Coming next",
-      "queueTitle": "Issue work queue",
-      "queueBody": "Triage, assign and track citizen reports with SLA timers.",
-      "mapTitle": "Ward map",
-      "mapBody": "See open issues on a map, in sync with the queue.",
-      "phase1": "Phase 1"
+      "issuesBody": "Every reported issue in your area, with filters you can share as a link."
     },
     "users": {
       "title": "Users",
@@ -240,6 +236,52 @@
       "emptyFiltered": "No events match these filters",
       "loadError": "Couldn't load the audit log",
       "retry": "Try again"
+    },
+    "issues": {
+      "title": "Work queue",
+      "description": "Issues in your jurisdiction. Filters are kept in the address bar, so you can bookmark or share a view.",
+      "viewOnMap": "View on map",
+      "tableLabel": "Issues",
+      "paginationLabel": "Work queue pages",
+      "resultCount": "{count, plural, =0 {No issues match} one {# issue} other {# issues}}",
+      "sortLabel": "Sort",
+      "sortBy": "Sort by this column",
+      "sortedBy": {
+        "ascending": "sorted oldest first",
+        "descending": "sorted newest or highest first"
+      },
+      "sort": {
+        "-created_at": "Newest first",
+        "created_at": "Oldest first",
+        "-updated_at": "Recently updated",
+        "-report_count": "Most reports"
+      },
+      "colPhoto": "Photo",
+      "colReference": "Reference",
+      "colCategory": "Category",
+      "colWard": "Ward",
+      "colReports": "Reports",
+      "colStatus": "Status",
+      "colAge": "Age",
+      "empty": "No issues yet",
+      "emptyFiltered": "No issues match these filters",
+      "loadError": "Couldn't load the work queue",
+      "retry": "Try again",
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Reference, address or description",
+        "status": "Status",
+        "allStatuses": "All statuses",
+        "category": "Category",
+        "allCategories": "All categories",
+        "ward": "Ward",
+        "allWards": "All wards",
+        "selected": "{count} selected",
+        "from": "Reported from",
+        "to": "Reported to",
+        "rangeInvalid": "The end date is before the start date.",
+        "clear": "Clear filters ({count})"
+      }
     }
   },
   "profile": {
