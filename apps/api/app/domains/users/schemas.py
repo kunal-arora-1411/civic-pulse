@@ -65,17 +65,10 @@ class RolesUpdate(BaseModel):
     roles: list[RoleAssignment] = Field(min_length=1, max_length=20)
 
 
-class AdminUser(BaseModel):
-    id: uuid.UUID
-    tenant_id: uuid.UUID | None
-    phone: str
-    email: str | None
-    display_name: str | None
-    locale: str
+class AdminUser(UserMe):
+    """The /users/me shape plus account status, as seen by administrators."""
+
     is_active: bool
-    is_staff: bool
-    mfa_enabled: bool
-    roles: list[RoleAssignment]
     created_at: datetime
     last_login_at: datetime | None
 

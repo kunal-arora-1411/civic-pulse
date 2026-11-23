@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from tests.factories import create_tenant, create_user, unique_slug
-from tests.helpers import RecordingSms, Session, login
+from tests.helpers import RecordingSms, Session, login, request_otp, verify_otp
 
 TENANTS = "/api/v1/platform/tenants"
 
@@ -93,3 +93,56 @@ async def test_platform_admins_have_no_tenant_data_access(
         "/api/v1/admin/users", headers={**platform_admin.headers, "X-Tenant": "demo-city"}
     )
     assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+
+
+async def test_x_tenant_is_ignored_for_platform_tokens(
+    client: httpx.AsyncClient, platform_admin: Session, owner_engine: AsyncEngine
+) -> None:
+    # The web app sends X-Tenant on every request; platform admins must still
+    # be able to use their tenant-less session.
+    async with owner_engine.begin() as conn:
+        tenant = await create_tenant(conn)
+    headers = {**platform_admin.headers, "X-Tenant": tenant.slug}
+    me = await client.get("/api/v1/users/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["tenant_id"] is None
+    assert (await client.get(TENANTS, headers=headers)).status_code == 200
+
+
+async def test_platform_admin_phone_is_never_auto_registered_in_a_tenant(
+    client: httpx.AsyncClient, sms: RecordingSms, owner_engine: AsyncEngine
+) -> None:
+    async with owner_engine.begin() as conn:
+        admin = await create_user(conn, None, "platform_admin")
+        tenant = await create_tenant(conn)
+
+    requested = await request_otp(client, admin.phone, tenant.slug)
+    assert requested.status_code == 200
+    verified = await verify_otp(
+        client, requested.json()["challenge_id"], sms.codes[admin.phone], tenant.slug
+    )
+    assert verified.status_code == 403
+    assert verified.json()["error"]["code"] == "platform_account"
+    async with owner_engine.connect() as conn:
+        count = (
+            await conn.execute(
+                text("SELECT count(*) FROM users WHERE phone = :p AND tenant_id = :t"),
+                {"p": admin.phone, "t": tenant.id},
+            )
+        ).scalar_one()
+    assert count == 0
+
+
+async def test_platform_admin_can_still_hold_a_real_tenant_account(
+    client: httpx.AsyncClient, sms: RecordingSms, owner_engine: AsyncEngine
+) -> None:
+    # The rule only blocks auto-registration; an account an admin created
+    # deliberately in the tenant works as normal.
+    async with owner_engine.begin() as conn:
+        admin = await create_user(conn, None, "platform_admin")
+        tenant = await create_tenant(conn)
+        await create_user(conn, tenant.id, "operator", phone=admin.phone)
+    session = await login(client, sms, admin.phone, tenant.slug)
+    assert session.user["tenant_id"] == str(tenant.id)
+    assert [r["role"] for r in session.user["roles"]] == ["operator"]

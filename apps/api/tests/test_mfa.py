@@ -181,7 +181,7 @@ async def test_login_with_mfa_enabled_requires_totp(
         json={"mfa_token": pending["mfa_token"], "code": enrolment.next_code()},
     )
     assert reused.status_code == 400
-    assert reused.json()["error"]["code"] == "challenge_expired"
+    assert reused.json()["error"]["code"] == "code_expired"
 
 
 async def test_mfa_attempts_are_limited(
@@ -225,8 +225,8 @@ async def test_expired_mfa_token(
         "/api/v1/auth/mfa/verify",
         json={"mfa_token": pending["mfa_token"], "code": enrolment.next_code()},
     )
-    assert response.status_code == 401
-    assert response.json()["error"]["code"] == "token_expired"
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "code_expired"
 
 
 # --- REQUIRE_STAFF_MFA ---------------------------------------------------------------

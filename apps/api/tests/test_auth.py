@@ -160,7 +160,7 @@ async def test_expired_challenge_is_rejected(
         )
     response = await verify_otp(client, challenge_id, sms.codes[phone])
     assert response.status_code == 400
-    assert response.json()["error"]["code"] == "challenge_expired"
+    assert response.json()["error"]["code"] == "code_expired"
 
 
 async def test_a_code_works_only_once(
@@ -171,7 +171,7 @@ async def test_a_code_works_only_once(
     assert (await verify_otp(client, challenge_id, sms.codes[phone])).status_code == 200
     again = await verify_otp(client, challenge_id, sms.codes[phone])
     assert again.status_code == 400
-    assert again.json()["error"]["code"] == "challenge_expired"
+    assert again.json()["error"]["code"] == "code_expired"
 
 
 async def test_challenge_cannot_be_redeemed_under_another_tenant(
@@ -183,7 +183,7 @@ async def test_challenge_cannot_be_redeemed_under_another_tenant(
     challenge_id = (await request_otp(client, phone, tenant.slug)).json()["challenge_id"]
     response = await verify_otp(client, challenge_id, sms.codes[phone], other.slug)
     assert response.status_code == 400
-    assert response.json()["error"]["code"] == "challenge_expired"
+    assert response.json()["error"]["code"] == "code_expired"
 
 
 async def test_otp_requests_are_rate_limited_per_phone(

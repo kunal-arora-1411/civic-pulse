@@ -29,7 +29,8 @@ async def get_principal(
         Header(
             alias="X-Tenant",
             max_length=63,
-            description="Optional. If sent, it must match the token's tenant.",
+            description="Optional. If sent with a tenant user's token it must match the "
+            "token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
         ),
     ] = None,
 ) -> Principal:
@@ -37,7 +38,11 @@ async def get_principal(
         raise Unauthenticated()
     claims = decode_access_token(credentials.credentials)
 
-    if x_tenant is not None:
+    # Platform tokens have no tenant, and the web app sends X-Tenant on every
+    # request, so the header is ignored for them. That's safe: the tenant
+    # context of an authenticated request always comes from the token, never
+    # from the header.
+    if x_tenant is not None and claims.tenant_id is not None:
         tenant = await tenants_service.get_active_by_slug(db, x_tenant)
         if tenant is None or tenant.id != claims.tenant_id:
             raise TenantMismatch()

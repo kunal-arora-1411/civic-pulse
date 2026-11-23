@@ -141,10 +141,7 @@ def encode_mfa_token(
 
 
 def decode_mfa_token(token: str) -> MfaClaims:
-    try:
-        payload = _decode(token, "mfa")
-    except TokenExpired as exc:
-        raise TokenExpired("The MFA step took too long. Sign in again.") from exc
+    payload = _decode(token, "mfa")
     try:
         return MfaClaims(
             user_id=uuid.UUID(payload["sub"]),

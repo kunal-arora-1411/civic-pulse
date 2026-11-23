@@ -45,16 +45,8 @@ def to_me(user: User) -> UserMe:
 
 def to_admin(user: User) -> AdminUser:
     return AdminUser(
-        id=user.id,
-        tenant_id=user.tenant_id,
-        phone=user.phone,
-        email=user.email,
-        display_name=user.display_name,
-        locale=user.locale,
+        **to_me(user).model_dump(),
         is_active=user.is_active,
-        is_staff=is_staff(user),
-        mfa_enabled=user.mfa_enabled,
-        roles=role_assignments(user),
         created_at=user.created_at,
         last_login_at=user.last_login_at,
     )

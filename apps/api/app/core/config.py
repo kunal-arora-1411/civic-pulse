@@ -47,7 +47,12 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     celery_broker_url: str | None = None
 
-    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
+    # Comma-separated in the environment: CORS_ORIGINS=http://a,http://b
+    # (3100 is the web app's alternate dev port.)
+    cors_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:3000",
+        "http://localhost:3100",
+    ]
 
     # Tokens
     jwt_secret: SecretStr

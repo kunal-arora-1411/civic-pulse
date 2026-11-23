@@ -16,7 +16,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import Conflict, Forbidden, Unauthenticated
+from app.core.errors import Conflict, Forbidden, TokenExpired, Unauthenticated
 from app.core.ratelimit import enforce_window
 from app.core.security import (
     constant_time_equals,
@@ -27,7 +27,7 @@ from app.core.security import (
 )
 from app.core.tenancy import acting_as
 from app.domains.audit import service as audit
-from app.domains.auth.errors import AccountDisabled, ChallengeExpired, InvalidCode, TooManyAttempts
+from app.domains.auth.errors import AccountDisabled, CodeExpired, InvalidCode, TooManyAttempts
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.auth.service import IssuedTokens, issue_session
 from app.domains.rbac.principal import Principal
@@ -106,7 +106,12 @@ async def enable(db: AsyncSession, redis: Redis, principal: Principal, code: str
 async def verify(db: AsyncSession, mfa_token: str, code: str) -> IssuedTokens:
     """Second step of login for users with TOTP enabled."""
     settings = get_settings()
-    claims = decode_mfa_token(mfa_token)
+    try:
+        claims = decode_mfa_token(mfa_token)
+    except TokenExpired as exc:
+        # An expired mfa_token is the same situation as an expired OTP:
+        # start the login again.
+        raise CodeExpired("The sign-in took too long. Request a new code.") from exc
 
     async with acting_as(db, claims.tenant_id, reason="platform admin MFA login"):
         challenge = await db.scalar(
@@ -115,7 +120,7 @@ async def verify(db: AsyncSession, mfa_token: str, code: str) -> IssuedTokens:
         if challenge is None or challenge.user_id != claims.user_id:
             raise Unauthenticated("The token is invalid.")
         if challenge.consumed_at is None or challenge.mfa_completed_at is not None:
-            raise ChallengeExpired()
+            raise CodeExpired()
         if challenge.mfa_attempts >= settings.totp_max_attempts:
             raise TooManyAttempts()
 

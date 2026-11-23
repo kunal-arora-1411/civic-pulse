@@ -43,7 +43,13 @@ from app.core.security import (
 from app.core.tenancy import acting_as, rls_bypass
 from app.domains.audit import service as audit
 from app.domains.auth.cookies import clear_refresh_cookie_headers
-from app.domains.auth.errors import AccountDisabled, ChallengeExpired, InvalidCode, TooManyAttempts
+from app.domains.auth.errors import (
+    AccountDisabled,
+    CodeExpired,
+    InvalidCode,
+    PlatformAccount,
+    TooManyAttempts,
+)
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.auth.sms import SmsProvider
 from app.domains.rbac.models import UserRole
@@ -211,12 +217,12 @@ async def verify_otp(
             select(OtpChallenge).where(OtpChallenge.id == challenge_id).with_for_update()
         )
     if challenge is None or (header_tenant is not None and challenge.tenant_id != header_tenant.id):
-        raise ChallengeExpired()
+        raise CodeExpired()
 
     async with acting_as(db, challenge.tenant_id, reason="platform admin OTP verify"):
         now = utcnow()
         if challenge.consumed_at is not None or challenge.expires_at <= now:
-            raise ChallengeExpired()
+            raise CodeExpired()
         if challenge.attempts >= settings.otp_max_attempts:
             raise TooManyAttempts()
 
@@ -234,6 +240,15 @@ async def verify_otp(
         challenge.consumed_at = now
         if user is None:
             assert challenge.tenant_id is not None
+            # A platform administrator's number is never auto-registered as a
+            # citizen: the web app always sends X-Tenant, and silently minting
+            # a tenant account for the platform admin would be surprising and
+            # hard to undo. Checked only after the code is proven, so it
+            # reveals nothing to someone who doesn't hold the phone.
+            async with rls_bypass(db, reason="platform admin phone check"):
+                is_platform_admin = await _find_user(db, None, challenge.phone) is not None
+            if is_platform_admin:
+                raise PlatformAccount()
             user = await _register_citizen(db, challenge.tenant_id, challenge.phone)
         if not user.is_active:
             raise AccountDisabled()

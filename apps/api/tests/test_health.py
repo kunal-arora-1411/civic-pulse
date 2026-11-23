@@ -60,17 +60,27 @@ async def test_security_headers(client: httpx.AsyncClient) -> None:
     assert response.headers["x-frame-options"] == "DENY"
 
 
-async def test_cors_allows_web_origin_with_credentials(client: httpx.AsyncClient) -> None:
+@pytest.mark.parametrize("origin", ["http://localhost:3000", "http://localhost:3100"])
+async def test_cors_allows_web_origins_with_credentials(
+    client: httpx.AsyncClient, origin: str
+) -> None:
     response = await client.options(
         "/api/v1/auth/otp/request",
         headers={
-            "Origin": "http://localhost:3000",
+            "Origin": origin,
             "Access-Control-Request-Method": "POST",
             "Access-Control-Request-Headers": "content-type,x-tenant",
         },
     )
-    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-origin"] == origin
     assert response.headers["access-control-allow-credentials"] == "true"
+
+
+def test_cors_origins_are_comma_separated(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import Settings
+
+    monkeypatch.setenv("CORS_ORIGINS", "https://a.example, https://b.example")
+    assert Settings().cors_origins == ["https://a.example", "https://b.example"]  # pyright: ignore[reportCallIssue]
 
 
 async def test_cors_rejects_unknown_origin(client: httpx.AsyncClient) -> None:

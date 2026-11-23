@@ -80,6 +80,13 @@ async def test_create_and_fetch_a_staff_user(client: httpx.AsyncClient, org: Org
     )
     assert response.status_code == 201, response.text
     user = response.json()
+    # The /users/me shape plus account status.
+    me_fields = {
+        "id", "tenant_id", "phone", "email", "display_name", "locale", "preferences",
+        "mfa_enabled", "is_staff", "roles", "permissions",
+    }  # fmt: skip
+    assert set(user) == me_fields | {"is_active", "created_at", "last_login_at"}
+    assert "issue:assign" in user["permissions"]
     assert user["phone"] == phone
     assert user["tenant_id"] == str(org.tenant.id)
     assert user["is_staff"] is True
