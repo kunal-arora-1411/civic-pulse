@@ -200,7 +200,7 @@ export function CategoryDialog({
           </Alert>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
           <Field label={t("nameEn")} required error={show(errors.nameEn)}>
             {(control) => (
               <Input
@@ -289,7 +289,7 @@ export function CategoryDialog({
 
         <fieldset className="grid gap-3">
           <legend className="mb-1 font-semibold">{t("evidence")}</legend>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid items-start gap-4 sm:grid-cols-3">
             <Field
               label={t("minPhotos")}
               required

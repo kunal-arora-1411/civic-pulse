@@ -190,7 +190,7 @@ function FieldCard({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid items-start gap-3 sm:grid-cols-2">
           <Field
             label={t("labelEn")}
             required
