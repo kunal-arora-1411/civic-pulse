@@ -10,6 +10,11 @@ afterEach(() => {
 });
 afterAll(() => server.close());
 
+// jsdom has no layout, so no scrolling either.
+if (typeof Element !== "undefined") {
+  Element.prototype.scrollIntoView ??= () => {};
+}
+
 // jsdom doesn't implement the modal half of <dialog>.
 if (typeof HTMLDialogElement !== "undefined") {
   HTMLDialogElement.prototype.showModal ??= function showModal(

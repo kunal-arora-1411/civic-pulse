@@ -233,3 +233,34 @@
   background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
   background-size: 22px 22px;
 }
+
+/*
+ * Leaflet, themed. Its own stylesheet is loaded with the map chunk; these
+ * rules only adapt it to our tokens.
+ */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--muted);
+}
+
+.leaflet-container:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.leaflet-control-attribution {
+  font-size: 0.6875rem;
+}
+
+.cp-pin {
+  --cp-pin-fill: var(--primary);
+  --cp-pin-stroke: var(--primary-foreground);
+  background: none;
+  border: 0;
+  filter: drop-shadow(0 2px 3px hsl(var(--shadow-color) / 0.35));
+}
+
+.cp-accuracy {
+  stroke: var(--primary);
+  fill: var(--primary);
+}
