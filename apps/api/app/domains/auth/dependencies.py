@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
 from fastapi import Depends, Header, Security
@@ -9,8 +10,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.context import user_id_var
 from app.core.db import DbSession
-from app.core.errors import TenantMismatch, Unauthenticated
+from app.core.errors import NotFound, TenantMismatch, Unauthenticated
 from app.core.security import decode_access_token
+from app.core.tenancy import set_tenant
 from app.domains.auth import service
 from app.domains.rbac.principal import Principal
 from app.domains.tenants import service as tenants_service
@@ -53,3 +55,37 @@ async def get_principal(
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
+
+
+async def get_request_tenant(
+    db: DbSession,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)],
+    x_tenant: Annotated[
+        str | None,
+        Header(
+            alias="X-Tenant",
+            max_length=63,
+            description="Tenant slug. Required when no bearer token is sent.",
+        ),
+    ] = None,
+) -> uuid.UUID:
+    """The tenant for endpoints that work signed in or not (`X-Tenant` or bearer).
+
+    A token wins: its tenant is used, and a mismatching header is still
+    `403 tenant_mismatch`. Platform administrators have no tenant of their
+    own, so for them (and for anonymous callers) the header decides.
+    """
+    if credentials is not None:
+        principal = await get_principal(db, credentials, x_tenant)
+        if principal.tenant_id is not None:
+            return principal.tenant_id
+    if x_tenant is None:
+        raise Unauthenticated("Send an X-Tenant header or a bearer token.")
+    tenant = await tenants_service.get_active_by_slug(db, x_tenant)
+    if tenant is None:
+        raise NotFound("Unknown tenant.")
+    await set_tenant(db, tenant.id)
+    return tenant.id
+
+
+RequestTenantId = Annotated[uuid.UUID, Depends(get_request_tenant)]

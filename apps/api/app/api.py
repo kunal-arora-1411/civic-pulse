@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
+from app.domains.categories.router import router as categories_router
 from app.domains.org.router import router as org_router
 from app.domains.tenants.router import platform_router
 from app.domains.tenants.router import router as tenants_router
@@ -22,3 +23,4 @@ api_router.include_router(org_router)
 api_router.include_router(audit_router)
 api_router.include_router(platform_router)
 api_router.include_router(workflow_router)
+api_router.include_router(categories_router)
