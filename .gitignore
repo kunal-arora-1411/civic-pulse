@@ -31,3 +31,5 @@ Thumbs.db
 
 # local data
 infra/data/
+.claude/worktrees/
+.playwright-mcp/
