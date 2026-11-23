@@ -9,11 +9,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from geoalchemy2 import WKTElement
-from sqlalchemy import ColumnElement, func, select
+from sqlalchemy import ColumnElement, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.core.errors import ValidationFailed
+from app.core.config import get_settings
+from app.core.errors import MfaRequired, NotFound, ValidationFailed
+from app.core.pagination import PageParams, paginate
 from app.core.storage import ObjectStorage
 from app.domains.audit import service as audit
 from app.domains.categories.models import Category
@@ -28,19 +30,28 @@ from app.domains.issues.models import (
 )
 from app.domains.issues.references import allocate
 from app.domains.media.models import MediaAsset, MediaPurpose, MediaStatus
-from app.domains.media.service import to_media_out
+from app.domains.media.service import thumb_url, to_media_out
 from app.domains.org.models import Jurisdiction
+from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
+from app.domains.rbac.scope import accessible_jurisdiction_ids
 from app.domains.reports.errors import EvidenceRequired, InvalidMedia, OutOfJurisdiction
 from app.domains.reports.models import LocationSource, Report, ReportStatus
 from app.domains.reports.schemas import (
+    IssueRef,
     LocationOut,
+    MyReportIssue,
+    MyReportItem,
     PublicTimelineEvent,
     ReportCreate,
+    ReporterOut,
+    ReporterWithContactOut,
     ReportIssue,
     ReportOwnerView,
+    ReportStaffView,
     WardRef,
 )
+from app.domains.users.models import User
 from app.domains.workflow.statuses import IssueStatus
 
 # Phase 1 deployment policy: at least one photo or a description this long,
@@ -356,3 +367,132 @@ async def get_owner_view(
 ) -> ReportOwnerView | None:
     rows = await fetch_report_rows(db, Report.id == report_id)
     return await owner_view(db, storage, rows[0]) if rows else None
+
+
+async def staff_views(
+    db: AsyncSession, storage: ObjectStorage, rows: Sequence[ReportRow], *, with_contact: bool
+) -> list[ReportStaffView]:
+    """Staff report views. Reporter contact details only when `with_contact`
+    (callers holding `user:manage`); otherwise just id and display name."""
+    if not rows:
+        return []
+    media = await media_for_reports(db, [row.report.id for row in rows])
+    reporter_ids = {row.report.reporter_id for row in rows}
+    users = {
+        u.id: u
+        for u in (
+            await db.execute(
+                select(User.id, User.display_name, User.phone, User.email).where(
+                    User.id.in_(reporter_ids)
+                )
+            )
+        ).all()
+    }
+    views: list[ReportStaffView] = []
+    for row in rows:
+        user = users.get(row.report.reporter_id)
+        reporter: ReporterOut
+        if user is not None and with_contact:
+            reporter = ReporterWithContactOut(
+                id=user.id, display_name=user.display_name, phone=user.phone, email=user.email
+            )
+        else:
+            reporter = ReporterOut(
+                id=row.report.reporter_id, display_name=user.display_name if user else None
+            )
+        views.append(
+            ReportStaffView(
+                **base_fields(row, media[row.report.id], storage, staff=True),
+                reporter=reporter,
+                client_created_at=row.report.client_created_at,
+                issue=IssueRef(
+                    id=row.issue.id,
+                    reference=row.issue.reference,
+                    status=IssueStatus(row.issue.status),
+                )
+                if row.issue
+                else None,
+            )
+        )
+    return views
+
+
+def in_scope(scope: set[uuid.UUID] | None, ward_id: uuid.UUID | None) -> bool:
+    """Whether a jurisdiction scope (None = whole tenant) covers a ward.
+
+    Something with no ward is only visible to tenant-wide staff.
+    """
+    if scope is None:
+        return True
+    return ward_id is not None and ward_id in scope
+
+
+async def get_report_view(
+    db: AsyncSession, storage: ObjectStorage, principal: Principal, report_id: uuid.UUID
+) -> ReportOwnerView | ReportStaffView:
+    """The owner's view for the reporter; the staff view for `report:read`
+    within scope; 404 for everyone else, so nothing about the report leaks."""
+    rows = await fetch_report_rows(db, Report.id == report_id)
+    if not rows:
+        raise NotFound()
+    row = rows[0]
+    if row.report.reporter_id == principal.user_id:
+        return await owner_view(db, storage, row)
+    if not principal.has(Permission.REPORT_READ):
+        raise NotFound()
+    scope = await accessible_jurisdiction_ids(db, principal, Permission.REPORT_READ)
+    if not in_scope(scope, row.report.ward_id):
+        raise NotFound()
+    enforce_staff_mfa(principal)
+    (view,) = await staff_views(
+        db, storage, [row], with_contact=principal.has(Permission.USER_MANAGE)
+    )
+    return view
+
+
+def enforce_staff_mfa(principal: Principal) -> None:
+    """The REQUIRE_STAFF_MFA gate, for staff paths not guarded by `require`."""
+    if get_settings().staff_mfa_required and not principal.mfa_verified:
+        raise MfaRequired()
+
+
+MY_REPORT_SORT = (Report.created_at.desc(), Report.id.desc())
+
+
+async def list_mine(
+    db: AsyncSession,
+    storage: ObjectStorage,
+    principal: Principal,
+    params: PageParams,
+    *,
+    statuses: Sequence[IssueStatus],
+) -> tuple[list[MyReportItem], int]:
+    cover = aliased(MediaAsset)
+    stmt = (
+        select(
+            Report, Category, CivicIssue.reference, CivicIssue.status, cover.status, cover.thumb_key
+        )
+        .join(Category, Category.id == Report.category_id)
+        .outerjoin(CivicIssue, CivicIssue.id == Report.issue_id)
+        .outerjoin(cover, and_(cover.report_id == Report.id, cover.position == 0))
+        .where(Report.reporter_id == principal.user_id)
+        .order_by(*MY_REPORT_SORT)
+    )
+    if statuses:
+        stmt = stmt.where(CivicIssue.status.in_([s.value for s in statuses]))
+    rows, total = await paginate(db, stmt, params)
+    items = [
+        MyReportItem(
+            id=report.id,
+            reference=report.reference,
+            created_at=report.created_at,
+            category=to_ref(category),
+            thumb_url=thumb_url(storage, media_status, thumb_key),
+            address_text=report.address_text,
+            issue=MyReportIssue(reference=issue_ref, status=IssueStatus(issue_status))
+            if issue_ref
+            else None,
+        )
+        for report, category, issue_ref, issue_status, media_status, thumb_key in rows
+    ]
+    return items, total
