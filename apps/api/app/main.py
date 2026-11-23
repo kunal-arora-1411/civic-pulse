@@ -12,7 +12,7 @@ from app import health
 from app.api import api_router
 from app.core.config import get_settings
 from app.core.db import get_engine
-from app.core.errors import register_exception_handlers
+from app.core.errors import error_responses, register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.redis import close_redis
@@ -64,7 +64,9 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
-    app.include_router(api_router, prefix="/api/v1")
+    # Any /api/v1 route can fail validation or hit an unexpected error;
+    # declaring both here documents the envelope for them in OpenAPI.
+    app.include_router(api_router, prefix="/api/v1", responses=error_responses(422, 500))
     return app
 
 
