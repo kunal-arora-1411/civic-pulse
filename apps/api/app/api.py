@@ -11,6 +11,7 @@ from app.domains.tenants.router import platform_router
 from app.domains.tenants.router import router as tenants_router
 from app.domains.users.admin_router import router as admin_users_router
 from app.domains.users.router import router as users_router
+from app.domains.workflow.router import router as workflow_router
 
 api_router = APIRouter()
 api_router.include_router(tenants_router)
@@ -20,3 +21,4 @@ api_router.include_router(admin_users_router)
 api_router.include_router(org_router)
 api_router.include_router(audit_router)
 api_router.include_router(platform_router)
+api_router.include_router(workflow_router)

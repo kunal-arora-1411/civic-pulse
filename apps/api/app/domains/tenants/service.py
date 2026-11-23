@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import Conflict
 from app.core.pagination import PageParams, paginate, sort_clauses
+from app.core.tenancy import rls_bypass
 from app.domains.audit import service as audit
 from app.domains.rbac.principal import Principal
 from app.domains.tenants.models import Tenant
 from app.domains.tenants.schemas import PlatformTenant, TenantCreate
+from app.domains.workflow.service import install_default_transitions
 
 SORTS = {"slug": Tenant.slug, "name": Tenant.name, "created_at": Tenant.created_at}
 
@@ -42,6 +44,10 @@ async def create_tenant(db: AsyncSession, actor: Principal, body: TenantCreate) 
     except IntegrityError as exc:
         raise Conflict("A tenant with this slug already exists.") from exc
     await db.refresh(tenant)  # pick up server defaults (locales, flags)
+    # A tenant without transitions can't move any issue, so it starts with
+    # the defaults. The platform admin has no tenant context of its own.
+    async with rls_bypass(db, reason="default workflow for a new tenant"):
+        await install_default_transitions(db, tenant.id)
     out = PlatformTenant.model_validate(tenant)
     await audit.record(
         db,

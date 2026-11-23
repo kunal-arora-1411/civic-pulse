@@ -2625,6 +2625,121 @@
           }
         }
       }
+    },
+    "/api/v1/admin/workflow/transitions": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Transitions",
+        "description": "The tenant's status transitions in lifecycle order. Read-only in Phase 1.",
+        "operationId": "admin_list_transitions",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Page size (1-100).",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Page size (1-100)."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of items to skip.",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of items to skip."
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransitionPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3169,6 +3284,22 @@
         "type": "object",
         "title": "HealthOut"
       },
+      "IssueStatus": {
+        "type": "string",
+        "enum": [
+          "reported",
+          "under_review",
+          "verified",
+          "assigned",
+          "in_progress",
+          "pending_verification",
+          "resolved",
+          "rejected",
+          "closed",
+          "reopened"
+        ],
+        "title": "IssueStatus"
+      },
       "JurisdictionKind": {
         "type": "string",
         "enum": [
@@ -3704,6 +3835,77 @@
           "user"
         ],
         "title": "TokenResponse"
+      },
+      "TransitionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "from_status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "to_status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "allowed_roles": {
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            },
+            "type": "array",
+            "title": "Allowed Roles"
+          },
+          "requires_reason": {
+            "type": "boolean",
+            "title": "Requires Reason"
+          },
+          "system_only": {
+            "type": "boolean",
+            "title": "System Only"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "from_status",
+          "to_status",
+          "allowed_roles",
+          "requires_reason",
+          "system_only"
+        ],
+        "title": "TransitionOut"
+      },
+      "TransitionPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransitionOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "TransitionPage"
       },
       "UserMe": {
         "properties": {
