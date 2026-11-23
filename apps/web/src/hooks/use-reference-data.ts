@@ -34,6 +34,8 @@ export type MapView = {
   center: LatLng;
   zoom: number;
   bounds: TenantMap["bounds"] | null;
+  /** False while the tenant has no boundary, so the view is a fallback. */
+  configured: boolean;
 };
 
 /** The tenant's initial map view, converted from GeoJSON order. */
@@ -41,11 +43,12 @@ export function useTenantMapView(): MapView {
   const { data } = useTenant();
   return useMemo(() => {
     const map = data?.map;
-    if (!map) return { ...FALLBACK_VIEW, bounds: null };
+    if (!map) return { ...FALLBACK_VIEW, bounds: null, configured: !data };
     return {
       center: fromLngLat(map.center),
       zoom: map.zoom,
       bounds: map.bounds,
+      configured: true,
     };
   }, [data]);
 }

@@ -185,6 +185,8 @@ const reportCoreSchema = z.object({
   ward: wardRefSchema.nullish(),
   media: z.array(mediaSchema).default([]),
   status: z.string(),
+  /** Tells the owner and staff shapes apart. */
+  view: z.enum(["owner", "staff"]).nullish(),
 });
 
 /** `GET /reports/{id}` and the `POST /reports` response (owner view). */

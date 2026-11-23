@@ -149,6 +149,10 @@ export function LocationStep({
         ) : null}
       </div>
 
+      {showMap && !mapView.configured ? (
+        <Alert variant="info">{t("noCityMap")}</Alert>
+      ) : null}
+
       {showMap ? (
         <div className="grid gap-3">
           <p className="text-sm text-muted-foreground">

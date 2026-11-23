@@ -28,7 +28,7 @@ export function IssueTimeline({ events }: { events: IssueTimelineEvent[] }) {
           : MessageSquareText;
         const title =
           event.type === "created"
-            ? t("created")
+            ? tStatus("reported")
             : event.to_status
               ? event.from_status
                 ? t("changed", {

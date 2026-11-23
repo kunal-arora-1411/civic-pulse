@@ -73,7 +73,9 @@ export function MapScreen() {
     queryKey: ["admin", "wards", "geometry"],
     queryFn: ({ signal }) => listWardBoundaries(signal),
     staleTime: 60 * 60_000,
-    select: (page) => page.items,
+    // Belt and braces: the query asks for wards, but a city-level row
+    // must never be drawn as a ward.
+    select: (page) => page.items.filter((item) => item.kind === "ward"),
   });
 
   const features = useMemo(() => geojson.data?.features ?? [], [geojson.data]);
@@ -128,6 +130,7 @@ export function MapScreen() {
       />
       <IssueFiltersBar filters={filters} onChange={setFilters} />
 
+      {view.configured ? null : <Alert variant="info">{t("noCityMap")}</Alert>}
       {geojson.data?.truncated ? (
         <Alert variant="warning" live="polite" title={t("truncatedTitle")}>
           {t("truncatedBody", { count: features.length })}

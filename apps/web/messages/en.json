@@ -316,7 +316,6 @@
       "reporters": "Distinct reporters",
       "version": "Version",
       "timeline": {
-        "created": "Issue created",
         "changed": "{from} → {to}",
         "set": "Set to {to}",
         "note": "Note",
@@ -366,7 +365,8 @@
       "showAll": "Show everything in view",
       "empty": "No issues here. Move the map or change the filters.",
       "reports": "{count, plural, one {# report} other {# reports}}",
-      "open": "Open {reference}"
+      "open": "Open {reference}",
+      "noCityMap": "This municipality has no boundary yet, so the map starts over all of India. Zoom in to your city to see its issues."
     },
     "categories": {
       "title": "Categories",
@@ -638,7 +638,8 @@
         "gps": "From your phone's location",
         "pin": "Placed on the map",
         "manual": "Entered by hand"
-      }
+      },
+      "noCityMap": "Your municipality hasn't set up its map area yet, so the map starts zoomed out over India. Use your location, or zoom in to place the pin."
     },
     "details": {
       "title": "What kind of problem is it?",
@@ -727,7 +728,6 @@
     "original": "Open original"
   },
   "timeline": {
-    "received": "Report received",
     "statusChanged": "Status changed to {status}",
     "update": "Update",
     "noteFromCity": "Note from the municipality"

@@ -41,6 +41,13 @@ beforeEach(() => {
       HttpResponse.json(
         page([
           {
+            id: "city",
+            parent_id: null,
+            kind: "city",
+            name: "Synthetic City",
+            code: "SYN-CITY",
+          },
+          {
             id: "w3",
             parent_id: null,
             kind: "ward",
@@ -90,6 +97,21 @@ describe("IssuesScreen", () => {
     expect(
       screen.getByRole("columnheader", { name: /reports/i }),
     ).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("offers only wards, not the city row, as ward filters", async () => {
+    server.use(
+      http.get(`${API}/issues`, () => HttpResponse.json(page([makeIssue()]))),
+    );
+    const { user } = renderWithProviders(<IssuesScreen />);
+    await screen.findByRole("link", { name: "CP-26-000123" });
+    await user.click(screen.getByRole("button", { name: /^ward/i }));
+    expect(
+      await screen.findByRole("checkbox", { name: "Ward 3" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Synthetic City" }),
+    ).toBeNull();
   });
 
   it("writes sort changes to the URL and resets to page 1", async () => {

@@ -26,7 +26,7 @@ export function PublicTimeline({ events }: { events: PublicTimelineEvent[] }) {
         const title =
           event.type === "created" ||
           (!event.from_status && status === "reported")
-            ? t("received")
+            ? tStatus("reported")
             : status
               ? t("statusChanged", { status: tStatus(status) })
               : t("update");

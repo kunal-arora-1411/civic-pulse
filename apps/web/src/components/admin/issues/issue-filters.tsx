@@ -33,7 +33,8 @@ export function useWards() {
     queryKey: ["admin", "wards"],
     queryFn: ({ signal }) => listJurisdictions({ kind: "ward" }, signal),
     staleTime: 10 * 60_000,
-    select: (page) => page.items,
+    // The list can include the city and zones; only wards are filters.
+    select: (page) => page.items.filter((item) => item.kind === "ward"),
   });
 }
 

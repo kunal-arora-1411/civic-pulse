@@ -13,10 +13,13 @@ export const TILE_ATTRIBUTION =
   process.env.NEXT_PUBLIC_MAP_ATTRIBUTION ||
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-/** Used when the tenant has no map configured yet. Bengaluru. */
+/**
+ * Used when the tenant has no boundary geometry yet (tenants/current.map
+ * is null): all of India, zoomed out, with a notice on the page.
+ */
 export const FALLBACK_VIEW = {
-  center: { lat: 12.9716, lng: 77.5946 },
-  zoom: 12,
+  center: { lat: 22.5, lng: 79 },
+  zoom: 5,
 };
 
 export type LatLng = { lat: number; lng: number };
