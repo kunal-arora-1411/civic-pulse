@@ -5,17 +5,17 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from datetime import datetime
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends
-from sqlalchemy import DateTime, MetaData, func
+from sqlalchemy import Connection, DateTime, MetaData, event, func, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, SessionTransaction, mapped_column
 
 from app.core.config import get_settings
 
@@ -53,11 +53,41 @@ def get_engine() -> AsyncEngine:
     )
 
 
+TENANT_INFO_KEY = "civicpulse.tenant_id"
+BYPASS_INFO_KEY = "civicpulse.bypass_rls"
+
+SET_RLS_CONTEXT = text(
+    "SELECT set_config('app.tenant_id', :tenant_id, true),"
+    "       set_config('app.bypass_rls', :bypass, true)"
+)
+
+
+def rls_params(info: dict[str, Any]) -> dict[str, str]:
+    return {
+        "tenant_id": info.get(TENANT_INFO_KEY) or "",
+        "bypass": "on" if info.get(BYPASS_INFO_KEY) else "off",
+    }
+
+
+class AppSession(Session):
+    """Session that carries the RLS context (see app/core/tenancy.py)."""
+
+
+@event.listens_for(AppSession, "after_begin")
+def _apply_rls_context(session: Session, _: SessionTransaction, connection: Connection) -> None:
+    # Transaction-local settings vanish at commit; re-apply them whenever this
+    # session starts a new transaction so the context can't silently drop.
+    if session.info.get(TENANT_INFO_KEY) or session.info.get(BYPASS_INFO_KEY):
+        connection.execute(SET_RLS_CONTEXT, rls_params(session.info))
+
+
 @lru_cache
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
     # expire_on_commit=False: responses are built from objects after the
     # unit of work has committed, and we never want an implicit reload then.
-    return async_sessionmaker(get_engine(), expire_on_commit=False, autoflush=False)
+    return async_sessionmaker(
+        get_engine(), expire_on_commit=False, autoflush=False, sync_session_class=AppSession
+    )
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:

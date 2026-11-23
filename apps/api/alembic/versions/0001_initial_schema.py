@@ -49,6 +49,28 @@ APP_GRANTS = {
 }
 
 
+# Every table with a tenant_id column gets the same policy. Rows are visible
+# (and writable) only when they belong to the tenant set for the current
+# transaction, or when the transaction has explicitly turned on the bypass,
+# which only platform-admin paths and system jobs do (app/core/tenancy.py).
+# With no tenant set, the comparison is NULL and nothing is visible: the
+# failure mode is "sees nothing", never "sees everything".
+TENANT_SCOPED_TABLES = (
+    "users",
+    "user_roles",
+    "departments",
+    "jurisdictions",
+    "otp_challenges",
+    "auth_sessions",
+    "idempotency_keys",
+    "audit_events",
+)
+TENANT_PREDICATE = (
+    "tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid"
+    " OR current_setting('app.bypass_rls', true) = 'on'"
+)
+
+
 def _app_role() -> str:
     role = os.environ.get("APP_DB_USER", "civicpulse_app")
     if not re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", role):
@@ -448,6 +470,18 @@ def upgrade() -> None:
         FOR EACH STATEMENT EXECUTE FUNCTION audit_events_reject_change()
         """
     )
+
+    # --- row-level security ---------------------------------------------------
+    # FORCE applies the policy to the table owner too, so a future non-superuser
+    # owner role can't read across tenants by accident. (Superusers always
+    # bypass RLS, which is why the API never connects as one.)
+    for table in TENANT_SCOPED_TABLES:
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+        op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
+        op.execute(
+            f"CREATE POLICY tenant_isolation ON {table} "
+            f"USING ({TENANT_PREDICATE}) WITH CHECK ({TENANT_PREDICATE})"
+        )
 
     # --- privileges for the application role ---------------------------------
     # The role name is validated by _app_role() and the table names are
