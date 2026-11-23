@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Error codes from the Phase 0 contract, plus two produced by the client. */
+/** Error codes from the Phase 0 and 1 contracts, plus client-side ones. */
 export type KnownErrorCode =
   | "validation_error"
   | "unauthenticated"
@@ -15,6 +15,20 @@ export type KnownErrorCode =
   | "invalid_code"
   | "code_expired"
   | "internal_error"
+  // Phase 1: media uploads
+  | "unsupported_media_type"
+  | "file_too_large"
+  | "upload_verification_failed"
+  // Phase 1: reports
+  | "out_of_jurisdiction"
+  | "evidence_required"
+  | "invalid_media"
+  // Phase 1: issue workflow
+  | "version_conflict"
+  | "invalid_transition"
+  | "reason_required"
+  // Client-side: the PUT to object storage failed (network, expiry, CORS).
+  | "upload_failed"
   // Client-side: the request never got a response.
   | "network_error"
   // Client-side: the response didn't match the expected schema.
