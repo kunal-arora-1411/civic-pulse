@@ -36,21 +36,30 @@ export type MapView = {
   bounds: TenantMap["bounds"] | null;
   /** False while the tenant has no boundary, so the view is a fallback. */
   configured: boolean;
+  /**
+   * False until the tenant has loaded. Leaflet only reads the initial
+   * centre once, so maps wait for this instead of opening on the fallback.
+   */
+  ready: boolean;
 };
 
 /** The tenant's initial map view, converted from GeoJSON order. */
 export function useTenantMapView(): MapView {
-  const { data } = useTenant();
+  const { data, isPending } = useTenant();
   return useMemo(() => {
     const map = data?.map;
-    if (!map) return { ...FALLBACK_VIEW, bounds: null, configured: !data };
+    const ready = !isPending;
+    if (!map) {
+      return { ...FALLBACK_VIEW, bounds: null, configured: !data, ready };
+    }
     return {
       center: fromLngLat(map.center),
       zoom: map.zoom,
       bounds: map.bounds,
       configured: true,
+      ready,
     };
-  }, [data]);
+  }, [data, isPending]);
 }
 
 export function useCategories() {

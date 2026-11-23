@@ -12,7 +12,7 @@ import { useIssueFilters } from "@/components/admin/issues/use-issue-filters";
 import { PageHeader } from "@/components/admin/page-header";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { StatusBadge } from "@/components/issues/status-badge";
-import { IssuesMap } from "@/components/map/lazy-maps";
+import { IssuesMap, MapSkeleton } from "@/components/map/lazy-maps";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -152,18 +152,22 @@ export function MapScreen() {
 
       <div className="grid gap-4 lg:h-[calc(100dvh-24rem)] lg:min-h-[28rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="relative h-[55dvh] min-h-80 overflow-hidden rounded-xl border border-border lg:h-full">
-          <IssuesMap
-            features={features}
-            wards={boundaries.data ?? []}
-            selectedId={selection.selectedId}
-            focusId={mapFocusTarget(selection)}
-            onSelect={(id) => setSelection((s) => selectFromMap(s, id))}
-            onClusterSelect={(ids) => setSelection(selectCluster(ids))}
-            onBoundsChange={setBbox}
-            initialView={view}
-            label={t("mapLabel")}
-            markerLabel={markerLabel}
-          />
+          {view.ready ? (
+            <IssuesMap
+              features={features}
+              wards={boundaries.data ?? []}
+              selectedId={selection.selectedId}
+              focusId={mapFocusTarget(selection)}
+              onSelect={(id) => setSelection((s) => selectFromMap(s, id))}
+              onClusterSelect={(ids) => setSelection(selectCluster(ids))}
+              onBoundsChange={setBbox}
+              initialView={view}
+              label={t("mapLabel")}
+              markerLabel={markerLabel}
+            />
+          ) : (
+            <MapSkeleton />
+          )}
           {geojson.isFetching ? (
             <output className="absolute end-3 top-3 z-[1000] rounded-full bg-card/95 px-3 py-1 text-xs font-semibold shadow-card">
               {t("updating")}

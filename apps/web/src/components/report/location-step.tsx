@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useId, useRef, useState } from "react";
-import { PinMap } from "@/components/map/lazy-maps";
+import { MapSkeleton, PinMap } from "@/components/map/lazy-maps";
 import type { LatLng } from "@/components/map/map-config";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -159,19 +159,25 @@ export function LocationStep({
             {location ? t("mapHelp") : t("tapToPlace")}
           </p>
           <div className="h-72 overflow-hidden rounded-xl border border-border sm:h-96">
-            <PinMap
-              center={mapView.center}
-              zoom={location ? 17 : mapView.zoom}
-              pin={location}
-              accuracyM={location?.source === "gps" ? location.accuracyM : null}
-              onPinChange={movePin}
-              onCenterChange={(center) => {
-                mapCenter.current = center;
-              }}
-              recenterKey={recenterKey}
-              label={t("mapLabel")}
-              pinLabel={t("pinLabel")}
-            />
+            {mapView.ready || location ? (
+              <PinMap
+                center={mapView.center}
+                zoom={location ? 17 : mapView.zoom}
+                pin={location}
+                accuracyM={
+                  location?.source === "gps" ? location.accuracyM : null
+                }
+                onPinChange={movePin}
+                onCenterChange={(center) => {
+                  mapCenter.current = center;
+                }}
+                recenterKey={recenterKey}
+                label={t("mapLabel")}
+                pinLabel={t("pinLabel")}
+              />
+            ) : (
+              <MapSkeleton />
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
