@@ -11,7 +11,12 @@ from app.core.pagination import PageParamsDep
 from app.core.storage import Storage
 from app.domains.issues import service
 from app.domains.issues.filters import IssueFiltersDep, MapFiltersDep
-from app.domains.issues.schemas import IssueDetail, IssueFeatureCollection, IssuePage
+from app.domains.issues.schemas import (
+    IssueDetail,
+    IssueFeatureCollection,
+    IssuePage,
+    StatusChange,
+)
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
@@ -70,4 +75,26 @@ async def get_issue(
     principal: IssueReader, db: DbSession, storage: Storage, issue_id: uuid.UUID
 ) -> IssueDetail:
     """Reports, media, the full timeline and the moves the caller may make."""
+    return await service.get_detail(db, storage, principal, issue_id)
+
+
+@router.patch(
+    "/{issue_id}/status",
+    operation_id="issues_change_status",
+    response_model=IssueDetail,
+    responses=error_responses(401, 403, 404, 409, 422),
+)
+async def change_status(
+    principal: IssueReader,
+    db: DbSession,
+    storage: Storage,
+    issue_id: uuid.UUID,
+    body: StatusChange,
+) -> IssueDetail:
+    """Move the issue to `to_status` if the tenant's workflow lets the
+    caller do so here. Send the `version` you last saw: a stale one is
+    `409 version_conflict` (current version in `details.version`). A move
+    the caller may not make is `422 invalid_transition`, listing the moves
+    they may make. Returns the updated issue."""
+    await service.change_status(db, principal, issue_id, body)
     return await service.get_detail(db, storage, principal, issue_id)

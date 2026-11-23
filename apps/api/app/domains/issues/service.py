@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import ColumnElement, Select, exists, func, or_, select, text
@@ -12,8 +13,10 @@ from sqlalchemy.orm import aliased
 from app.core.errors import NotFound
 from app.core.pagination import PageParams, paginate, sort_clauses
 from app.core.storage import ObjectStorage
+from app.domains.audit import service as audit
 from app.domains.categories.models import Category
 from app.domains.categories.service import to_ref
+from app.domains.issues.errors import InvalidTransition, ReasonRequired, VersionConflict
 from app.domains.issues.filters import IssueFilters
 from app.domains.issues.models import CivicIssue, EventType, IssueEvent, Visibility
 from app.domains.issues.schemas import (
@@ -26,6 +29,7 @@ from app.domains.issues.schemas import (
     IssueListItem,
     PointGeometry,
     PointOut,
+    StatusChange,
     TimelineEvent,
 )
 from app.domains.media.models import MediaAsset
@@ -283,6 +287,70 @@ async def _timeline(db: AsyncSession, issue_id: uuid.UUID) -> list[TimelineEvent
         )
         for event, name in rows
     ]
+
+
+async def change_status(
+    db: AsyncSession, principal: Principal, issue_id: uuid.UUID, change: StatusChange
+) -> None:
+    """Move an issue along the tenant's workflow (PRD FR-052 to FR-054).
+
+    The row is locked first, so the version check and the update can't
+    interleave with another change: of two concurrent requests holding the
+    same version, one wins and the other gets 409 with the new version.
+    Every change writes a timeline event and an audit event and bumps the
+    version.
+    """
+    issue = await get_in_scope(db, principal, issue_id, for_update=True)
+    if change.version != issue.version:
+        raise VersionConflict(details={"version": issue.version})
+
+    allowed = await allowed_transitions(db, principal, issue)
+    target = next((t for t in allowed if t.to_status == change.to_status), None)
+    if target is None:
+        raise InvalidTransition(
+            details={
+                "from_status": issue.status,
+                "to_status": change.to_status.value,
+                "allowed_transitions": [t.model_dump(mode="json") for t in allowed],
+            }
+        )
+    if target.requires_reason and not change.reason:
+        raise ReasonRequired(details={"to_status": change.to_status.value})
+
+    before = {"status": issue.status, "version": issue.version}
+    issue.status = change.to_status.value
+    issue.version += 1
+    issue.status_changed_at = datetime.now(UTC)
+    db.add(
+        IssueEvent(
+            tenant_id=issue.tenant_id,
+            issue_id=issue.id,
+            type=EventType.STATUS_CHANGED,
+            from_status=before["status"],
+            to_status=issue.status,
+            reason=change.reason,
+            public_note=change.public_note,
+            # The move itself is public; its reason stays internal because
+            # the citizen view never includes reasons.
+            visibility=Visibility.PUBLIC,
+            actor_id=principal.user_id,
+        )
+    )
+    await db.flush()
+    await audit.record(
+        db,
+        action="issue.status_changed",
+        entity_type="issue",
+        entity_id=issue.id,
+        actor=principal,
+        before=before,
+        after={
+            "status": issue.status,
+            "version": issue.version,
+            "reason": change.reason,
+            "public_note": change.public_note,
+        },
+    )
 
 
 async def get_detail(
