@@ -3,10 +3,13 @@
     uv run python scripts/seed.py                         # on the host
     docker compose -f infra/docker-compose.yml exec api python scripts/seed.py
 
-Creates exactly the data in docs/api/phase-0-contract.md: tenants demo-city
-and other-city, four departments, two zones and four wards for demo-city, and
-one user per role. Running it again converges on the same state: names,
-geometry and role assignments are reset to these values.
+Creates the data in docs/api/phase-0-contract.md (tenants demo-city and
+other-city, four departments, the city boundary with two zones and four
+wards for demo-city, one user per role) and, from scripts/seed_phase1.py,
+the Phase 1 additions: five categories, the default workflow for both
+tenants and about 60 synthetic issues with processed placeholder photos.
+Running it again converges on the same state: names, geometry, roles and
+categories are reset to these values, and existing issues are left alone.
 
 The ward polygons are SYNTHETIC rectangles around central Bengaluru
 (~12.97 N, 77.59 E). They are not real municipal boundaries.
@@ -34,6 +37,8 @@ from app.domains.rbac.models import UserRole
 from app.domains.rbac.roles import Role
 from app.domains.tenants.models import Tenant
 from app.domains.users.models import User
+from app.domains.workflow.service import install_default_transitions
+from scripts import seed_phase1 as phase1
 
 TENANTS = {"demo-city": "Demo City", "other-city": "Other City"}
 
@@ -59,8 +64,23 @@ class Area:
 
 
 AREAS = [
-    Area("SYN-ZN", "Synthetic Zone North", JurisdictionKind.ZONE, (WEST, MID_LAT, EAST, NORTH)),
-    Area("SYN-ZS", "Synthetic Zone South", JurisdictionKind.ZONE, (WEST, SOUTH, EAST, MID_LAT)),
+    # The city boundary decides what is "in jurisdiction" for reports and
+    # where the map starts (Phase 1).
+    Area("SYN-CITY", "Demo City (synthetic)", JurisdictionKind.CITY, (WEST, SOUTH, EAST, NORTH)),
+    Area(
+        "SYN-ZN",
+        "Synthetic Zone North",
+        JurisdictionKind.ZONE,
+        (WEST, MID_LAT, EAST, NORTH),
+        "SYN-CITY",
+    ),
+    Area(
+        "SYN-ZS",
+        "Synthetic Zone South",
+        JurisdictionKind.ZONE,
+        (WEST, SOUTH, EAST, MID_LAT),
+        "SYN-CITY",
+    ),
     Area(
         "SYN-W01",
         "Synthetic Ward 1 (North-West)",
@@ -177,21 +197,36 @@ async def run() -> dict[str, int]:
             code: await _upsert_department(db, demo, code, name) for code, name in DEPARTMENTS
         }
         areas: dict[str, uuid.UUID] = {}
-        for area in AREAS:  # zones come first, so parents exist before wards
+        for area in AREAS:  # parents are listed before their children
             parent_id = areas[area.parent] if area.parent else None
             areas[area.code] = await _upsert_area(db, demo, area, parent_id)
 
+        user_ids: dict[str, uuid.UUID] = {}
         for seed in USERS:
             tenant_id = tenant_ids[seed.tenant] if seed.tenant else None
             department_id = departments[seed.department] if seed.department else None
-            await _upsert_user(db, seed, tenant_id, department_id)
+            user_ids[seed.phone] = await _upsert_user(db, seed, tenant_id, department_id)
 
-        return {
-            "tenants": len(tenant_ids),
-            "departments": len(departments),
-            "jurisdictions": len(areas),
-            "users": len(USERS),
-        }
+        categories = await phase1.seed_categories(db, demo, departments)
+        for tenant_id in tenant_ids.values():
+            await install_default_transitions(db, tenant_id)
+
+    wards = {areas[area.code]: area.bbox for area in AREAS if area.kind is JurisdictionKind.WARD}
+    issues = await phase1.seed_issues(
+        tenant_id=demo,
+        categories=categories,
+        wards=wards,
+        citizen_id=user_ids["+919000000005"],
+        operator_id=user_ids["+919000000002"],
+    )
+    return {
+        "tenants": len(tenant_ids),
+        "departments": len(departments),
+        "jurisdictions": len(areas),
+        "users": len(USERS),
+        "categories": len(categories),
+        "issues": issues,
+    }
 
 
 async def _main() -> None:
