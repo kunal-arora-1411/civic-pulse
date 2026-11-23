@@ -133,3 +133,31 @@ Tenant `demo-city` ("Demo City") with 2 zones, 4 wards and 4 departments (Roads,
 | +919100000001 | municipal_admin | other-city |
 
 In development, the SMS provider writes OTP codes to the API log, and the fixed code `000000` is also accepted when `DEV_FIXED_OTP=true`. Fixed codes are never accepted in production.
+
+## Implementation notes (backend)
+
+Details the backend settled while implementing this contract. `apps/api/openapi.json` is the precise, generated form of everything above.
+
+### Auth error codes
+| Situation | Response |
+|---|---|
+| Wrong OTP or TOTP code | `400 invalid_code`, `details.attempts_remaining` |
+| Challenge or `mfa_token` expired or already used | `400 code_expired` (start again) |
+| Attempt limit for this challenge used up (5) | `429 too_many_attempts` (start again; no `Retry-After`) |
+| Too many OTP requests (per phone: 30 s cooldown, 5/hour; per IP: 30/hour) | `429 rate_limited`, `Retry-After` header = `details.retry_after` (seconds) |
+| Rate-limit store (Redis) down | `503 service_unavailable` (fails closed) |
+| Account deactivated | `403 account_disabled` |
+| Phone belongs to a platform admin, OTP verified with `X-Tenant` and no account in that tenant | `403 platform_account`. Sign in without `X-Tenant`. A platform admin's number is never auto-registered as a citizen. |
+| Refresh token missing, unknown, revoked, expired or reused | `401 unauthenticated` (the `cp_refresh` cookie is cleared) |
+
+### Behaviour
+- **Refresh reuse grace:** presenting a just-rotated refresh token again within 10 seconds (two tabs refreshing at once) returns a new token instead of revoking the session. Outside that window it counts as reuse, and the whole session family is revoked.
+- **`X-Tenant` with a platform admin's token** is ignored, since platform tokens have no tenant. For tenant users a mismatch is still `403 tenant_mismatch`.
+- **Cross-tenant IDs** (for example `GET /admin/users/{id}` for another tenant's user) return `404 not_found`, never `403`.
+- **`Idempotency-Key`** must be 1–255 printable ASCII characters. Replayed responses carry `Idempotent-Replayed: true`. Keys are scoped per tenant, admin and operation, and kept for 24 hours. A failed request stores nothing, so it can be retried with the same key.
+- **`GET /ready`** returns `503 {"status": "unavailable", "checks": {...}}` with the failing check set to `"error"`. It's a probe, so it doesn't use the error envelope.
+- **Jurisdictions:** `geometry` is `null` unless `include_geometry=true`, in which case it's a GeoJSON `MultiPolygon`. Also filterable by `parent_id`.
+- **Admin users** have the `/users/me` shape plus `is_active`, `created_at` and `last_login_at`. Admins can't deactivate themselves or remove their own `user:manage` (`409 conflict`). Deactivating a user ends their sessions immediately.
+- **Platform tenants:** `GET /platform/tenants` uses the standard list envelope. Items add `is_active` and `created_at` to the tenant shape. `POST` returns `201` with the same shape, and a duplicate slug is `409 conflict`.
+- **Sort fields:** users `created_at` (default `-created_at`), `display_name`, `phone`, `last_login_at`; departments `name` (default), `code`, `created_at`; jurisdictions `code` (default), `name`; audit events `occurred_at` (default `-occurred_at`); tenants `slug` (default), `name`, `created_at`. Unknown fields return `422`.
+- **CORS** allows `http://localhost:3000` and `http://localhost:3100` by default (`CORS_ORIGINS`, comma-separated).
