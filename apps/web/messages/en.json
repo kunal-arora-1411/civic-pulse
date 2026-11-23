@@ -20,5 +20,27 @@
   "notFound": {
     "title": "We couldn't find that page",
     "description": "The link may be broken, or the page may have moved."
+  },
+  "session": {
+    "offlineTitle": "Can't reach CivicPulse",
+    "offlineDescription": "Check your connection. You can keep browsing, but signing in won't work until we're back online."
+  },
+  "errors": {
+    "network_error": "We couldn't reach the server. Check your connection and try again.",
+    "invalid_response": "The server sent something unexpected. Please try again.",
+    "unauthenticated": "Your session has ended. Please sign in again.",
+    "token_expired": "Your session has ended. Please sign in again.",
+    "forbidden": "You don't have permission to do that.",
+    "tenant_mismatch": "This account belongs to a different municipality.",
+    "not_found": "We couldn't find what you were looking for.",
+    "conflict": "This conflicts with an existing record.",
+    "rate_limited": "Too many attempts. Please wait a moment and try again.",
+    "rate_limited_wait": "Too many attempts. Try again in {seconds, plural, one {# second} other {# seconds}}.",
+    "validation_error": "Some details aren't valid. Check the form and try again.",
+    "idempotency_key_reused": "This request was already sent with different details. Close the form and start again.",
+    "invalid_code": "That code isn't right. Check the message and try again.",
+    "code_expired": "That code has expired. Request a new one.",
+    "internal_error": "Something went wrong on our side. Please try again.",
+    "unknown": "Something went wrong. Please try again."
   }
 }
