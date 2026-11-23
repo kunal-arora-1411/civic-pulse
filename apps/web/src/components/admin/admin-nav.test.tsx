@@ -117,6 +117,7 @@ describe("RequireAdminAccess", () => {
   });
 
   it("sends signed-out visitors to the login page", () => {
+    window.history.replaceState(null, "", "/admin/users");
     session.clear();
     renderWithProviders(
       <RequireAdminAccess permission="user:manage">

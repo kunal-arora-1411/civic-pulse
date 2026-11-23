@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect } from "react";
 import { PageLoading } from "@/components/page-loading";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import type { CurrentUser } from "@/lib/api";
 import { useSession } from "@/lib/auth/use-session";
 import { NotAuthorised } from "./not-authorised";
@@ -26,13 +26,18 @@ export function RequireSession({
 }) {
   const { status, user } = useSession();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     if (status === "anonymous") {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      // Read the URL here rather than through usePathname(). On a dynamic
+      // route (/reports/[id]) the pathname is runtime data, and calling
+      // the hook during render would push the whole page out of the
+      // static shell. This also keeps the query string, so a shared
+      // /admin/issues?status=… link survives the trip through sign-in.
+      const { pathname, search } = window.location;
+      router.replace(`/login?next=${encodeURIComponent(pathname + search)}`);
     }
-  }, [status, pathname, router]);
+  }, [status, router]);
 
   if (status !== "authenticated" || !user) {
     return fallback ?? <PageLoading className="p-4 sm:p-8" />;

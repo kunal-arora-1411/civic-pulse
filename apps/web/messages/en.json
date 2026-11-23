@@ -23,8 +23,6 @@
     "signInToSeeTitle": "Sign in to see your reports",
     "signInToSeeBody": "All you need is your mobile number. No password.",
     "signIn": "Sign in",
-    "noReportsTitle": "No reports yet",
-    "noReportsBody": "When you report an issue, you'll be able to follow its progress here.",
     "staffShortcut": "Go to the admin console",
     "howItWorks": "How it works",
     "step1Title": "Report",
@@ -34,7 +32,8 @@
     "step3Title": "Fixed",
     "step3Body": "Follow each update, and confirm when the work is actually done.",
     "footer": "CivicPulse never shows your name or phone number publicly.",
-    "reportHint": "Takes about a minute. You'll need a photo and the location."
+    "reportHint": "Takes about a minute. You'll need a photo and the location.",
+    "seeAllReports": "See all {count} reports"
   },
   "account": {
     "signIn": "Sign in",
@@ -43,7 +42,8 @@
     "fieldApp": "Field work",
     "profile": "Profile",
     "signOut": "Sign out",
-    "signingOut": "Signing out…"
+    "signingOut": "Signing out…",
+    "myReports": "My reports"
   },
   "access": {
     "title": "You don't have access to this page",
@@ -468,6 +468,54 @@
       "view": "View your report",
       "another": "Report another issue",
       "home": "Back to home"
+    }
+  },
+  "gallery": {
+    "none": "No photos.",
+    "open": "Open photo {number} of {total}",
+    "position": "Photo {number} of {total}",
+    "close": "Close photo",
+    "previous": "Previous",
+    "next": "Next",
+    "original": "Open original"
+  },
+  "timeline": {
+    "received": "Report received",
+    "statusChanged": "Status changed to {status}",
+    "update": "Update",
+    "noteFromCity": "Note from the municipality"
+  },
+  "reports": {
+    "title": "My reports",
+    "description": "Everything you've reported, newest first. Tap one to see its progress.",
+    "newReport": "Report an issue",
+    "loading": "Loading your reports…",
+    "loadError": "We couldn't load your reports",
+    "retry": "Try again",
+    "count": "{count, plural, one {# report} other {# reports}}",
+    "loadMore": "Show more",
+    "noAddress": "Location marked on the map",
+    "emptyTitle": "You haven't reported anything yet",
+    "emptyBody": "Seen a pothole, an overflowing bin or a dark streetlight? Report it in about a minute and follow it here until it's fixed.",
+    "emptyCta": "Report your first issue",
+    "detail": {
+      "metaTitle": "Report details",
+      "back": "All my reports",
+      "loading": "Loading the report…",
+      "loadError": "We couldn't load this report",
+      "retry": "Try again",
+      "notFoundTitle": "Report not found",
+      "notFoundBody": "This report doesn't exist or belongs to another account.",
+      "reportedOn": "Reported on {date}",
+      "photos": "Photos",
+      "photosOf": "Photos of report {reference}",
+      "location": "Location",
+      "mapLabel": "Map showing where the problem was reported",
+      "noAddress": "No street address; see the map.",
+      "details": "Details",
+      "noDescription": "No description.",
+      "progress": "Progress",
+      "issueRef": "Tracked as issue {reference}"
     }
   }
 }
