@@ -1,0 +1,175 @@
+# Local development stack for CivicPulse.
+#
+#   docker compose -f infra/docker-compose.yml up -d --build
+#
+# Every credential below is a development default for this stack only.
+# Override any of them from your shell or with `--env-file .env`.
+name: civicpulse
+
+x-db-env: &db-env
+  POSTGRES_DB: ${POSTGRES_DB:-civicpulse}
+  POSTGRES_USER: ${POSTGRES_USER:-civicpulse}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-civicpulse}
+  APP_DB_USER: ${APP_DB_USER:-civicpulse_app}
+  APP_DB_PASSWORD: ${APP_DB_PASSWORD:-civicpulse_app}
+
+# Shared by migrate, api and worker. The API and worker connect as the
+# non-superuser app role; only `migrate` gets the owner credentials.
+x-api-env: &api-env
+  ENV: ${ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-civicpulse_app}:${APP_DB_PASSWORD:-civicpulse_app}@db:5432/${POSTGRES_DB:-civicpulse}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3100}
+  JWT_SECRET: ${JWT_SECRET:-dev-only-jwt-secret-change-me-0123456789abcdef}
+  OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:-dev-only-otp-hmac-secret-change-me-0123456789}
+  TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-mMLHnH8kUFV7fWcw29AMh4zjPaVTPAsXyuGlw5mP07w=}
+  DEV_FIXED_OTP: ${DEV_FIXED_OTP:-true}
+  REQUIRE_STAFF_MFA: ${REQUIRE_STAFF_MFA:-false}
+
+services:
+  db:
+    build:
+      context: ./db
+    image: civicpulse-db:16-3.5
+    environment:
+      <<: *db-env
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # MinIO stopped publishing community images in 2025; pgsty/minio is a
+  # maintained build of the same server with pinned release tags.
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-civicpulse}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-civicpulse-minio}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One-shot job: creates the private media bucket and exits. It has no
+  # healthcheck because it doesn't stay up; dependants wait on
+  # `service_completed_successfully` instead.
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-11-12T00-00-00Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-civicpulse}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-civicpulse-minio}
+      S3_BUCKET: ${S3_BUCKET:-civicpulse-media}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+        mc anonymous set none "local/$$S3_BUCKET"
+        echo "bucket $$S3_BUCKET ready (private)"
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:v1.29
+    ports:
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One-shot job: applies migrations as the owner role, then exits.
+  migrate:
+    # Same image as api (built there); never pulled from a registry.
+    image: civicpulse-api:dev
+    pull_policy: never
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *api-env
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-civicpulse}:${POSTGRES_PASSWORD:-civicpulse}@db:5432/${POSTGRES_DB:-civicpulse}
+      APP_DB_USER: ${APP_DB_USER:-civicpulse_app}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ../apps/api
+    image: civicpulse-api:dev
+    environment:
+      <<: *api-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  worker:
+    image: civicpulse-api:dev
+    pull_policy: never
+    command: ["celery", "-A", "app.worker:celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    environment:
+      <<: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.worker:celery_app inspect ping -d celery@$$HOSTNAME --timeout 5"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  db-data:
+  redis-data:
+  minio-data:

@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (lint, types, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same Postgres image as local development (PostGIS + pgvector +
+      # h3, plus the civicpulse_app role), built from infra/db. GitHub
+      # service containers can't build images, so compose runs it instead.
+      - name: Start Postgres and Redis
+        working-directory: .
+        run: docker compose -f infra/docker-compose.yml up -d --build --wait db redis
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.9"
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: Ruff (format)
+        run: uv run ruff format --check .
+
+      - name: Pyright
+        run: uv run pyright
+
+      - name: OpenAPI schema is up to date
+        run: uv run python scripts/export_openapi.py --check
+
+      - name: Pytest (real Postgres, as the non-superuser app role)
+        run: uv run pytest
+
+      - name: Service logs
+        if: failure()
+        working-directory: .
+        run: docker compose -f infra/docker-compose.yml logs db redis
+
+  images:
+    name: Docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API and database images
+        run: docker compose -f infra/docker-compose.yml build db api
+
+  web:
+    name: Web (lint, types, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from "packageManager" in the root package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome
+        run: pnpm exec biome check .
+
+      # Next generates route types (LayoutProps, PageProps) that tsc needs.
+      - name: Generate Next route types
+        run: pnpm --filter @civicpulse/web exec next typegen
+
+      - name: Typecheck
+        run: pnpm --filter @civicpulse/web typecheck
+
+      - name: Build
+        run: pnpm --filter @civicpulse/web build
