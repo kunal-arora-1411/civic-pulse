@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import { API_BASE, TENANT } from "./config";
-import { ApiError, parseErrorResponse } from "./errors";
+import { ApiError, isApiError, parseErrorResponse } from "./errors";
+import { type TokenResponse, tokenResponseSchema } from "./schemas";
 import { session } from "./session";
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -141,5 +142,88 @@ async function decode<T>(
 export async function apiRequest<T = void>(
   options: RequestOptions<T>,
 ): Promise<T> {
-  return send(options);
+  const usedToken = options.auth === false ? null : session.getAccessToken();
+  try {
+    return await send(options);
+  } catch (error) {
+    if (!usedToken || !isApiError(error)) throw error;
+
+    if (error.code === "token_expired") {
+      const current = session.getAccessToken();
+      // Another request may already have refreshed while this one was in
+      // flight; if so, just retry with the newer token.
+      if (current && current !== usedToken) return send(options);
+      const refreshed = await refreshSession().catch(() => null);
+      if (refreshed) return send(options);
+      throw error;
+    }
+
+    if (error.code === "unauthenticated") {
+      // The session was revoked server-side (logout elsewhere, reuse
+      // detection). Drop local state so guards send the user to /login.
+      session.clear();
+    }
+    throw error;
+  }
+}
+
+let refreshInFlight: Promise<TokenResponse | null> | null = null;
+
+/**
+ * Exchange the refresh cookie for a new access token.
+ *
+ * Resolves to the token response, or `null` when there's no valid session
+ * (the session is then cleared). Network and server errors reject, so a
+ * flaky connection isn't mistaken for being signed out.
+ *
+ * Calls are single-flight: concurrent callers share one request. That's
+ * more than an optimisation. Refresh tokens rotate on every use, and the
+ * backend revokes the whole session family if one is presented twice, so
+ * two parallel refreshes (several 401s at once, or React Strict Mode
+ * running the restore effect twice) would log the user out. Across tabs,
+ * the Web Locks API serialises refreshes so a second tab waits and then
+ * uses the already-rotated cookie.
+ */
+export function refreshSession(): Promise<TokenResponse | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = withCrossTabLock(performRefresh).finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function performRefresh(): Promise<TokenResponse | null> {
+  try {
+    const tokens = await send({
+      method: "POST",
+      path: "/auth/refresh",
+      body: {},
+      schema: tokenResponseSchema,
+      auth: false,
+      tenant: false,
+      credentials: "include",
+    });
+    // The body also carries `refresh_token` for non-browser clients. We
+    // ignore it on purpose: the browser keeps the HttpOnly cookie.
+    session.setAuthenticated(tokens.access_token, tokens.user);
+    return tokens;
+  } catch (error) {
+    if (isApiError(error) && (error.status === 401 || error.status === 403)) {
+      session.clear();
+      return null;
+    }
+    throw error;
+  }
+}
+
+function withCrossTabLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks =
+    typeof navigator !== "undefined"
+      ? (navigator as Navigator & { locks?: LockManager }).locks
+      : undefined;
+  // lib.dom types the result as Promise<Promise<T>>; it resolves to T.
+  return locks
+    ? (locks.request("civicpulse:auth-refresh", fn) as Promise<T>)
+    : fn();
 }

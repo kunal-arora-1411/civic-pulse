@@ -4,7 +4,7 @@
  * schemas and endpoints for an orval-generated client means changing what
  * this file re-exports, not every call site.
  */
-export { apiRequest } from "./client";
+export { apiRequest, refreshSession } from "./client";
 export { API_BASE, API_URL, TENANT } from "./config";
 export * from "./endpoints/admin";
 export * from "./endpoints/auth";
