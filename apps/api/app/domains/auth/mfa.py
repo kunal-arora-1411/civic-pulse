@@ -26,6 +26,7 @@ from app.core.security import (
     utcnow,
 )
 from app.core.tenancy import acting_as
+from app.domains.audit import service as audit
 from app.domains.auth.errors import AccountDisabled, ChallengeExpired, InvalidCode, TooManyAttempts
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.auth.service import IssuedTokens, issue_session
@@ -97,6 +98,9 @@ async def enable(db: AsyncSession, redis: Redis, principal: Principal, code: str
             .execution_options(synchronize_session=False)
         )
         await db.flush()
+        await audit.record(
+            db, action="auth.mfa_enabled", entity_type="user", entity_id=user.id, actor=principal
+        )
 
 
 async def verify(db: AsyncSession, mfa_token: str, code: str) -> IssuedTokens:

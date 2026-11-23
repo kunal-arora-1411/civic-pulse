@@ -41,6 +41,7 @@ from app.core.security import (
     utcnow,
 )
 from app.core.tenancy import acting_as, rls_bypass
+from app.domains.audit import service as audit
 from app.domains.auth.cookies import clear_refresh_cookie_headers
 from app.domains.auth.errors import AccountDisabled, ChallengeExpired, InvalidCode, TooManyAttempts
 from app.domains.auth.models import AuthSession, OtpChallenge
@@ -182,6 +183,15 @@ async def _register_citizen(db: AsyncSession, tenant_id: uuid.UUID, phone: str) 
     if new_id is not None:
         db.add(UserRole(tenant_id=tenant_id, user_id=new_id, role=Role.CITIZEN))
         await db.flush()
+        await audit.record(
+            db,
+            action="user.registered",
+            entity_type="user",
+            entity_id=new_id,
+            actor_id=new_id,
+            tenant_id=tenant_id,
+            after={"roles": [Role.CITIZEN.value], "via": "otp"},
+        )
     user = await db.scalar(
         select(User)
         .where(User.tenant_id == tenant_id, User.phone == phone)
@@ -259,6 +269,15 @@ async def issue_session(db: AsyncSession, user: User, *, mfa_verified: bool) -> 
     db.add(row)
     user.last_login_at = now
     await db.flush()
+    await audit.record(
+        db,
+        action="auth.login",
+        entity_type="user",
+        entity_id=user.id,
+        actor_id=user.id,
+        tenant_id=user.tenant_id,
+        after={"session_family": str(row.family_id), "mfa_verified": mfa_verified},
+    )
     return IssuedTokens(
         access_token=encode_access_token(user.id, user.tenant_id, row.id),
         refresh_token=refresh_token,
@@ -303,6 +322,14 @@ async def refresh(db: AsyncSession, token: str) -> IssuedTokens:
                 # legitimate client is replaying it. Either way, end the
                 # whole family so the thief's copy dies too.
                 await _revoke_family(db, current.family_id, "reuse_detected")
+                await audit.record(
+                    db,
+                    action="auth.refresh_reuse_detected",
+                    entity_type="user",
+                    entity_id=current.user_id,
+                    tenant_id=current.tenant_id,
+                    after={"session_family": str(current.family_id)},
+                )
                 await db.commit()
                 logger.warning(
                     "refresh token reuse detected; session family revoked",
@@ -351,17 +378,39 @@ async def logout(db: AsyncSession, principal: Principal) -> None:
         )
         if family_id is not None:
             await _revoke_family(db, family_id, "logout")
+        await audit.record(
+            db,
+            action="auth.logout",
+            entity_type="user",
+            entity_id=principal.user_id,
+            actor=principal,
+        )
 
 
 async def revoke_all_sessions(
-    db: AsyncSession, user_id: uuid.UUID, tenant_id: uuid.UUID | None, *, reason: str
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    tenant_id: uuid.UUID | None,
+    *,
+    reason: str,
+    actor: Principal,
 ) -> None:
+    """End every session of a user (self-service, or an admin deactivating them)."""
     async with acting_as(db, tenant_id, reason="platform admin revoking sessions"):
         await db.execute(
             update(AuthSession)
             .where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))
             .values(revoked_at=utcnow(), revoked_reason=reason)
             .execution_options(synchronize_session=False)
+        )
+        await audit.record(
+            db,
+            action="auth.sessions_revoked",
+            entity_type="user",
+            entity_id=user_id,
+            actor=actor,
+            tenant_id=tenant_id,
+            after={"reason": reason},
         )
 
 

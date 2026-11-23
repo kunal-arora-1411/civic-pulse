@@ -132,7 +132,7 @@ async def logout(principal: CurrentPrincipal, db: DbSession) -> Response:
 )
 async def revoke_all_sessions(principal: CurrentPrincipal, db: DbSession) -> Response:
     await service.revoke_all_sessions(
-        db, principal.user_id, principal.tenant_id, reason="revoke_all"
+        db, principal.user_id, principal.tenant_id, reason="revoke_all", actor=principal
     )
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_refresh_cookie(response)
