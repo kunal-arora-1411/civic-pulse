@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import httpx
 import pytest
 from sqlalchemy import text
@@ -39,7 +41,10 @@ async def test_create_and_list_tenants(
         TENANTS, headers=platform_admin.headers, params={"limit": 100, "sort": "-created_at"}
     )
     assert listed.status_code == 200
-    assert listed.json()["items"][0]["id"] == tenant["id"]
+    items = listed.json()["items"]
+    created = [datetime.fromisoformat(t["created_at"]) for t in items]
+    assert created == sorted(created, reverse=True)
+    assert tenant["id"] in {t["id"] for t in items}
 
     # A platform event: no tenant on the audit row.
     async with owner_engine.connect() as conn:

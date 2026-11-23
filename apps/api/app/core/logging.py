@@ -15,7 +15,14 @@ from typing import Any
 
 from app.core.context import request_id_var, tenant_id_var, user_id_var
 
-_RESERVED = set(logging.makeLogRecord({}).__dict__) | {"message", "asctime", "fields"}
+# Standard LogRecord attributes, plus extras we never want in the output
+# (uvicorn attaches an ANSI-coloured copy of its message as color_message).
+_RESERVED = set(logging.makeLogRecord({}).__dict__) | {
+    "message",
+    "asctime",
+    "fields",
+    "color_message",
+}
 
 
 class JsonFormatter(logging.Formatter):

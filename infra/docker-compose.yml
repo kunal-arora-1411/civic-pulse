@@ -13,6 +13,21 @@ x-db-env: &db-env
   APP_DB_USER: ${APP_DB_USER:-civicpulse_app}
   APP_DB_PASSWORD: ${APP_DB_PASSWORD:-civicpulse_app}
 
+# Shared by migrate, api and worker. The API and worker connect as the
+# non-superuser app role; only `migrate` gets the owner credentials.
+x-api-env: &api-env
+  ENV: ${ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-civicpulse_app}:${APP_DB_PASSWORD:-civicpulse_app}@db:5432/${POSTGRES_DB:-civicpulse}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3100}
+  JWT_SECRET: ${JWT_SECRET:-dev-only-jwt-secret-change-me-0123456789abcdef}
+  OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:-dev-only-otp-hmac-secret-change-me-0123456789}
+  TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-mMLHnH8kUFV7fWcw29AMh4zjPaVTPAsXyuGlw5mP07w=}
+  DEV_FIXED_OTP: ${DEV_FIXED_OTP:-true}
+  REQUIRE_STAFF_MFA: ${REQUIRE_STAFF_MFA:-false}
+
 services:
   db:
     build:
@@ -94,6 +109,65 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  # One-shot job: applies migrations as the owner role, then exits.
+  migrate:
+    # Same image as api (built there); never pulled from a registry.
+    image: civicpulse-api:dev
+    pull_policy: never
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *api-env
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-civicpulse}:${POSTGRES_PASSWORD:-civicpulse}@db:5432/${POSTGRES_DB:-civicpulse}
+      APP_DB_USER: ${APP_DB_USER:-civicpulse_app}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ../apps/api
+    image: civicpulse-api:dev
+    environment:
+      <<: *api-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  worker:
+    image: civicpulse-api:dev
+    pull_policy: never
+    command: ["celery", "-A", "app.worker:celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    environment:
+      <<: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.worker:celery_app inspect ping -d celery@$$HOSTNAME --timeout 5"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 20s
 
 volumes:
   db-data:
