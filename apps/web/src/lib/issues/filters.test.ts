@@ -30,6 +30,15 @@ describe("issue filters in the URL", () => {
     expect(parse(query)).toEqual(filters);
   });
 
+  it("treats undefined as unset rather than writing it to the URL", () => {
+    expect(
+      serializeIssueFilters({
+        status: ["verified"],
+        sort: undefined,
+      }).toString(),
+    ).toBe("status=verified");
+  });
+
   it("leaves defaults out of the URL", () => {
     expect(serializeIssueFilters(EMPTY_FILTERS).toString()).toBe("");
     expect(parse("")).toEqual(EMPTY_FILTERS);

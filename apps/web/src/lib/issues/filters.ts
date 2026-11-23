@@ -90,7 +90,12 @@ export function parseIssueFilters(params: ReadableParams): IssueFilters {
 export function serializeIssueFilters(
   filters: Partial<IssueFilters>,
 ): URLSearchParams {
-  const value = { ...EMPTY_FILTERS, ...filters };
+  // Undefined means "not set": it mustn't override a default and end up
+  // in the URL as the string "undefined".
+  const defined = Object.fromEntries(
+    Object.entries(filters).filter(([, item]) => item !== undefined),
+  ) as Partial<IssueFilters>;
+  const value = { ...EMPTY_FILTERS, ...defined };
   const params = new URLSearchParams();
   if (value.q.trim()) params.set("q", value.q.trim());
   for (const status of unique(value.status)) params.append("status", status);

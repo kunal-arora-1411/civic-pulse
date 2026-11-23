@@ -186,7 +186,7 @@ export function IssuesScreen() {
       >
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-14">
+            <TableHead className="w-16 pe-0">
               <span className="sr-only">{t("colPhoto")}</span>
             </TableHead>
             <TableHead>{t("colReference")}</TableHead>
@@ -236,13 +236,13 @@ export function IssuesScreen() {
                   router.push(`/admin/issues/${issue.id}`);
                 }}
               >
-                <TableCell>
+                <TableCell className="pe-0">
                   <RemoteImage
                     src={issue.thumb_url}
                     alt=""
                     width={40}
                     height={40}
-                    className="size-10 rounded-md"
+                    className="size-10 max-w-none shrink-0 rounded-md"
                   />
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
