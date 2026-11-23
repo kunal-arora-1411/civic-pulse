@@ -28,6 +28,8 @@ ADMIN_ENDPOINTS = [
     ("POST", "/api/v1/admin/departments", {"name": "Evil", "code": "EVIL"}),
     ("GET", "/api/v1/admin/jurisdictions", None),
     ("GET", "/api/v1/admin/audit-events", None),
+    ("GET", "/api/v1/platform/tenants", None),
+    ("POST", "/api/v1/platform/tenants", {"slug": "evil-city", "name": "Evil"}),
 ]
 
 
