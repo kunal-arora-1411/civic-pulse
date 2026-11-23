@@ -11,6 +11,7 @@ import json
 import random
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -220,7 +221,7 @@ async def create_issue(
         "ward": ward_id,
         "description": description,
         "address": address_text,
-        "created_at": created_at,
+        "created_at": datetime.fromisoformat(created_at) if created_at else None,
     }
     issue_id = (
         await conn.execute(

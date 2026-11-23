@@ -1,0 +1,301 @@
+"""Civic issues for staff: the queue, the map, the detail page."""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from sqlalchemy import ColumnElement, Select, exists, func, or_, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
+
+from app.core.errors import NotFound
+from app.core.pagination import PageParams, paginate, sort_clauses
+from app.core.storage import ObjectStorage
+from app.domains.categories.models import Category
+from app.domains.categories.service import to_ref
+from app.domains.issues.filters import IssueFilters
+from app.domains.issues.models import CivicIssue, EventType, IssueEvent, Visibility
+from app.domains.issues.schemas import (
+    AllowedTransition,
+    EventActor,
+    IssueDetail,
+    IssueFeature,
+    IssueFeatureCollection,
+    IssueFeatureProperties,
+    IssueListItem,
+    PointGeometry,
+    PointOut,
+    TimelineEvent,
+)
+from app.domains.media.models import MediaAsset
+from app.domains.media.service import thumb_url
+from app.domains.org.models import Jurisdiction
+from app.domains.rbac.permissions import Permission
+from app.domains.rbac.principal import Principal
+from app.domains.rbac.roles import Role
+from app.domains.rbac.scope import accessible_jurisdiction_ids, jurisdiction_subtree, scope_filter
+from app.domains.reports import service as reports
+from app.domains.reports.models import Report
+from app.domains.reports.schemas import WardRef
+from app.domains.users.models import User
+from app.domains.workflow import service as workflow
+from app.domains.workflow.statuses import IssueStatus
+
+GEOJSON_FEATURE_CAP = 5000
+
+SORTS = {
+    "created_at": CivicIssue.created_at,
+    "updated_at": CivicIssue.updated_at,
+    "report_count": CivicIssue.report_count,
+}
+
+_ward = aliased(Jurisdiction)
+_cover = aliased(MediaAsset)
+
+_PREFIX_SQL = text(
+    "SELECT coalesce(string_agg(quote_literal(lexeme) || ':*', ' & '), '') "
+    "FROM unnest(to_tsvector('simple', :q))"
+)
+
+
+async def issue_scope(db: AsyncSession, principal: Principal) -> set[uuid.UUID] | None:
+    """Wards the caller may see issues in (None: the whole tenant)."""
+    return await accessible_jurisdiction_ids(db, principal, Permission.ISSUE_READ)
+
+
+async def _prefix_query(db: AsyncSession, q: str) -> str:
+    """A tsquery string matching every word of `q` by prefix.
+
+    Postgres does the tokenising (so Hindi words split the same way as in
+    the indexed document) and the quoting, so user input never reaches
+    to_tsquery's syntax unescaped.
+    """
+    value = await db.scalar(_PREFIX_SQL, {"q": q})
+    return value or ""
+
+
+def _search(q: str, tsquery: str) -> ColumnElement[bool]:
+    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped}%"
+    report_ref = exists().where(
+        Report.issue_id == CivicIssue.id, Report.reference.ilike(pattern, escape="\\")
+    )
+    conditions: list[ColumnElement[bool]] = [
+        CivicIssue.reference.ilike(pattern, escape="\\"),
+        report_ref,
+    ]
+    if tsquery:
+        conditions.append(CivicIssue.search_document.op("@@")(func.to_tsquery("simple", tsquery)))
+    return or_(*conditions)
+
+
+async def _apply_filters[*Ts](
+    db: AsyncSession, stmt: Select[*Ts], principal: Principal, filters: IssueFilters
+) -> Select[*Ts]:
+    scope = await issue_scope(db, principal)
+    # RLS already limits rows to the tenant. Saying so explicitly lets the
+    # planner use the (tenant_id, ...) indexes, which the policy's
+    # "OR bypass" form hides from it (see ADR 0002).
+    stmt = stmt.where(
+        CivicIssue.tenant_id == principal.tenant_id, scope_filter(CivicIssue.ward_id, scope)
+    )
+    if filters.statuses:
+        stmt = stmt.where(CivicIssue.status.in_([s.value for s in filters.statuses]))
+    if filters.category_ids:
+        stmt = stmt.where(CivicIssue.category_id.in_(filters.category_ids))
+    if filters.ward_ids:
+        stmt = stmt.where(CivicIssue.ward_id.in_(filters.ward_ids))
+    if filters.created_from:
+        stmt = stmt.where(CivicIssue.created_at >= filters.created_from)
+    if filters.created_before:
+        stmt = stmt.where(CivicIssue.created_at < filters.created_before)
+    if filters.bbox:
+        envelope = func.ST_MakeEnvelope(*filters.bbox, 4326)
+        stmt = stmt.where(func.ST_Intersects(CivicIssue.location, envelope))
+    if filters.q:
+        stmt = stmt.where(_search(filters.q, await _prefix_query(db, filters.q)))
+    return stmt
+
+
+def _list_select():  # the inferred Select[...] row type is the useful annotation
+    return (
+        select(
+            CivicIssue,
+            func.ST_X(CivicIssue.location),
+            func.ST_Y(CivicIssue.location),
+            Category,
+            _ward.name,
+            _cover.status,
+            _cover.thumb_key,
+        )
+        .join(Category, Category.id == CivicIssue.category_id)
+        .outerjoin(_ward, _ward.id == CivicIssue.ward_id)
+        .outerjoin(_cover, _cover.id == CivicIssue.cover_media_id)
+    )
+
+
+def _list_item(storage: ObjectStorage, row: Any) -> IssueListItem:
+    issue, x, y, category, ward_name, cover_status, cover_thumb = row
+    return IssueListItem(
+        id=issue.id,
+        reference=issue.reference,
+        status=IssueStatus(issue.status),
+        category=to_ref(category),
+        location=PointOut(lat=float(y), lng=float(x)),
+        address_text=issue.address_text,
+        ward=WardRef(id=issue.ward_id, name=ward_name) if issue.ward_id and ward_name else None,
+        report_count=issue.report_count,
+        unique_reporter_count=issue.unique_reporter_count,
+        severity=issue.severity,
+        priority=issue.priority,
+        thumb_url=thumb_url(storage, cover_status, cover_thumb),
+        created_at=issue.created_at,
+        updated_at=issue.updated_at,
+        version=issue.version,
+    )
+
+
+async def list_issues(
+    db: AsyncSession,
+    storage: ObjectStorage,
+    principal: Principal,
+    params: PageParams,
+    filters: IssueFilters,
+    *,
+    sort: str | None,
+) -> tuple[list[IssueListItem], int]:
+    stmt = await _apply_filters(db, _list_select(), principal, filters)
+    stmt = stmt.order_by(
+        *sort_clauses(sort, SORTS, default="-created_at", tiebreaker=CivicIssue.id)
+    )
+    rows, total = await paginate(db, stmt, params)
+    return [_list_item(storage, row) for row in rows], total
+
+
+async def issues_geojson(
+    db: AsyncSession, principal: Principal, filters: IssueFilters
+) -> IssueFeatureCollection:
+    stmt = (
+        select(
+            CivicIssue.id,
+            CivicIssue.reference,
+            CivicIssue.status,
+            Category.code,
+            CivicIssue.report_count,
+            func.ST_X(CivicIssue.location),
+            func.ST_Y(CivicIssue.location),
+        )
+        .join(Category, Category.id == CivicIssue.category_id)
+        .order_by(CivicIssue.created_at.desc(), CivicIssue.id.desc())
+        .limit(GEOJSON_FEATURE_CAP + 1)
+    )
+    stmt = await _apply_filters(db, stmt, principal, filters)
+    rows = (await db.execute(stmt)).all()
+    truncated = len(rows) > GEOJSON_FEATURE_CAP
+    features = [
+        IssueFeature(
+            id=issue_id,
+            geometry=PointGeometry(coordinates=(float(x), float(y))),
+            properties=IssueFeatureProperties(
+                id=issue_id,
+                reference=reference,
+                status=IssueStatus(status),
+                category_code=code,
+                report_count=report_count,
+            ),
+        )
+        for issue_id, reference, status, code, report_count, x, y in rows[:GEOJSON_FEATURE_CAP]
+    ]
+    return IssueFeatureCollection(features=features, truncated=truncated)
+
+
+async def get_in_scope(
+    db: AsyncSession, principal: Principal, issue_id: uuid.UUID, *, for_update: bool = False
+) -> CivicIssue:
+    """The issue, if it exists in this tenant and the caller's scope; else 404.
+
+    Out of scope is deliberately the same 404 as missing, so nothing about
+    the issue's existence leaks.
+    """
+    stmt = select(CivicIssue).where(CivicIssue.id == issue_id)
+    if for_update:
+        stmt = stmt.with_for_update()
+    issue = await db.scalar(stmt)
+    if issue is None:
+        raise NotFound()
+    scope = await issue_scope(db, principal)
+    if not reports.in_scope(scope, issue.ward_id):
+        raise NotFound()
+    return issue
+
+
+async def roles_for_ward(
+    db: AsyncSession, principal: Principal, ward_id: uuid.UUID | None
+) -> set[Role]:
+    """The caller's roles that apply at this ward.
+
+    A grant scoped to a zone applies to the zone's wards; an unscoped grant
+    applies everywhere. An operator for Zone North who is also a supervisor
+    for Zone South acts as a supervisor only in the south.
+    """
+    roles: set[Role] = set()
+    for grant in principal.grants:
+        if grant.jurisdiction_id is None:
+            roles.add(grant.role)
+            continue
+        if ward_id is None:
+            continue
+        if ward_id in await jurisdiction_subtree(db, [grant.jurisdiction_id]):
+            roles.add(grant.role)
+    return roles
+
+
+async def allowed_transitions(
+    db: AsyncSession, principal: Principal, issue: CivicIssue
+) -> list[AllowedTransition]:
+    roles = await roles_for_ward(db, principal, issue.ward_id)
+    return [
+        AllowedTransition(to_status=IssueStatus(t.to_status), requires_reason=t.requires_reason)
+        for t in await workflow.transitions_from(db, issue.status)
+        if workflow.permits(t, roles)
+    ]
+
+
+async def _timeline(db: AsyncSession, issue_id: uuid.UUID) -> list[TimelineEvent]:
+    rows = await db.execute(
+        select(IssueEvent, User.display_name)
+        .outerjoin(User, User.id == IssueEvent.actor_id)
+        .where(IssueEvent.issue_id == issue_id)
+        .order_by(IssueEvent.created_at, IssueEvent.id)
+    )
+    return [
+        TimelineEvent(
+            id=event.id,
+            at=event.created_at,
+            type=EventType(event.type),
+            from_status=IssueStatus(event.from_status) if event.from_status else None,
+            to_status=IssueStatus(event.to_status) if event.to_status else None,
+            reason=event.reason,
+            public_note=event.public_note,
+            visibility=Visibility(event.visibility),
+            actor=EventActor(id=event.actor_id, display_name=name) if event.actor_id else None,
+        )
+        for event, name in rows
+    ]
+
+
+async def get_detail(
+    db: AsyncSession, storage: ObjectStorage, principal: Principal, issue_id: uuid.UUID
+) -> IssueDetail:
+    issue = await get_in_scope(db, principal, issue_id)
+    row = (await db.execute(_list_select().where(CivicIssue.id == issue.id))).one()
+    report_rows = await reports.fetch_report_rows(db, Report.issue_id == issue.id)
+    return IssueDetail(
+        **_list_item(storage, row).model_dump(),
+        reports=await reports.staff_views(
+            db, storage, report_rows, with_contact=principal.has(Permission.USER_MANAGE)
+        ),
+        timeline=await _timeline(db, issue.id),
+        allowed_transitions=await allowed_transitions(db, principal, issue),
+    )

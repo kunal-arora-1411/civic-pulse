@@ -73,7 +73,7 @@ def accessible_department_ids(
 
 
 def scope_filter(
-    column: ColumnElement[uuid.UUID] | InstrumentedAttribute[uuid.UUID],
+    column: ColumnElement[uuid.UUID] | InstrumentedAttribute[uuid.UUID | None],
     scope: set[uuid.UUID] | None,
 ) -> ColumnElement[bool]:
     """A WHERE clause restricting `column` to a scope from the functions above."""
