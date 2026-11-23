@@ -100,6 +100,41 @@
     "signedIn": "Signed in. Taking you there…",
     "privacy": "We use your number only to sign you in and send updates about your reports."
   },
+  "roles": {
+    "citizen": "Citizen",
+    "community_contributor": "Community contributor",
+    "operator": "Operator",
+    "supervisor": "Supervisor",
+    "field_worker": "Field worker",
+    "municipal_admin": "Municipal admin",
+    "platform_admin": "Platform admin"
+  },
+  "admin": {
+    "metaTitle": "Admin console",
+    "consoleBadge": "Admin console",
+    "openMenu": "Open navigation",
+    "closeMenu": "Close navigation",
+    "nav": {
+      "label": "Admin sections",
+      "overview": "Overview",
+      "users": "Users",
+      "audit": "Audit log"
+    },
+    "overview": {
+      "title": "Welcome back",
+      "greeting": "Welcome back, {name}",
+      "description": "Manage who can work in CivicPulse and review what has changed.",
+      "manage": "Manage",
+      "usersBody": "Add staff, assign roles and departments, and deactivate accounts.",
+      "auditBody": "See who changed what, and when, with before and after values.",
+      "upcoming": "Coming next",
+      "queueTitle": "Issue work queue",
+      "queueBody": "Triage, assign and track citizen reports with SLA timers.",
+      "mapTitle": "Ward map",
+      "mapBody": "See open issues on a map, in sync with the queue.",
+      "phase1": "Phase 1"
+    }
+  },
   "session": {
     "offlineTitle": "Can't reach CivicPulse",
     "offlineDescription": "Check your connection. You can keep browsing, but signing in won't work until we're back online."

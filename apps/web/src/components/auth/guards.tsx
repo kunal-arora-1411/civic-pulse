@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { canUseAdmin, canUseField } from "@/lib/auth/access";
+import { canUseAdmin, canUseField, hasPermission } from "@/lib/auth/access";
 import { RequireSession } from "./require-session";
 
 /*
@@ -19,4 +19,19 @@ export function RequireAdminAccess({ children }: { children: ReactNode }) {
 
 export function RequireFieldAccess({ children }: { children: ReactNode }) {
   return <RequireSession allow={canUseField}>{children}</RequireSession>;
+}
+
+/** For pages inside a shell that has already checked the session. */
+export function RequirePermission({
+  permission,
+  children,
+}: {
+  permission: string;
+  children: ReactNode;
+}) {
+  return (
+    <RequireSession allow={(user) => hasPermission(user, permission)}>
+      {children}
+    </RequireSession>
+  );
 }
