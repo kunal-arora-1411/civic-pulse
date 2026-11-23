@@ -1,0 +1,135 @@
+# Phase 0 API contract
+
+This is the agreed interface between `apps/api` and `apps/web` for Phase 0. The backend implements it, and the frontend builds against it. If either side needs to change it, update this file in the same commit.
+
+Base URL: `http://localhost:8000` in development. All endpoints are under `/api/v1` except the health checks.
+
+## Conventions
+
+### Tenant resolution
+- Unauthenticated requests name their tenant with the `X-Tenant: <slug>` header (for example `demo-city`).
+- Authenticated requests get the tenant from the access token. If an `X-Tenant` header is also sent and it doesn't match the token's tenant, the API returns `403 tenant_mismatch`.
+- Platform administrators have no tenant (`tenant_id: null`).
+
+### Authentication
+- Access token: a JWT sent as `Authorization: Bearer <token>`, valid for 15 minutes.
+- Refresh token: opaque, rotated on every use, valid for 30 days. It's returned in two ways:
+  - as an `HttpOnly; SameSite=Strict` cookie named `cp_refresh`, scoped to `Path=/api/v1/auth` (`Secure` in production). Browsers use this.
+  - in the JSON body as `refresh_token`, for non-browser clients.
+- `POST /auth/refresh` accepts the cookie or a body `refresh_token`. If a refresh token is used twice, its whole session family is revoked.
+- The web app keeps the access token **in memory only**. When the page loads, it calls `/auth/refresh` with `credentials: "include"` to restore the session.
+- CORS allows `http://localhost:3000` with credentials in development.
+
+### Errors
+Every error returns:
+```json
+{ "error": { "code": "machine_readable_code", "message": "Human readable message.", "details": {}, "request_id": "..." } }
+```
+Common codes: `validation_error` (422), `unauthenticated` (401), `token_expired` (401), `forbidden` (403), `tenant_mismatch` (403), `mfa_required` (403), `not_found` (404), `conflict` (409), `rate_limited` (429), `idempotency_key_reused` (422), `internal_error` (500).
+
+### Other headers
+- `X-Request-ID`: echoed back, or generated if missing.
+- `Idempotency-Key`: supported on create operations (in Phase 0: `POST /admin/users`). Repeating the same key with the same body replays the original response. Reusing a key with a different body returns `422 idempotency_key_reused`.
+
+### Lists
+List endpoints accept `limit` (1–100, default 20), `offset` (default 0) and, where noted, `sort` (for example `-created_at`). They return:
+```json
+{ "items": [...], "total": 123, "limit": 20, "offset": 0 }
+```
+
+### Phone numbers
+E.164 format (`+919876543210`). The API normalises Indian 10-digit numbers by adding `+91`.
+
+## Roles and permissions
+
+Roles: `citizen`, `community_contributor`, `operator`, `supervisor`, `field_worker`, `municipal_admin`, `platform_admin`.
+
+Staff roles are all of these except `citizen` and `community_contributor`. A role assignment can be scoped to a `department_id` and/or a `jurisdiction_id`. No scope means the whole tenant.
+
+The frontend uses `permissions` from `/users/me` to decide what to show. The backend always enforces permissions itself.
+
+## Endpoints
+
+### Health
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/health` | Liveness check: `{ "status": "ok" }` |
+| GET | `/ready` | Readiness check (database and Redis): `{ "status": "ok", "checks": { "database": "ok", "redis": "ok" } }`, or 503 |
+
+### Tenant
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/v1/tenants/current` | `X-Tenant` | `{ id, slug, name, default_locale, supported_locales: ["en","hi"] }` |
+
+### Auth
+| Method | Path | Body | Response |
+|---|---|---|---|
+| POST | `/api/v1/auth/otp/request` | `{ phone }` (+ `X-Tenant`, which can be left out only for platform admins) | `200 { challenge_id, expires_in, resend_after }`. Rate limited per phone. |
+| POST | `/api/v1/auth/otp/verify` | `{ challenge_id, code }` | Either a **token response** or `200 { mfa_required: true, mfa_token }`. Unknown phone numbers in a tenant become new `citizen` accounts. |
+| POST | `/api/v1/auth/mfa/verify` | `{ mfa_token, code }` | Token response |
+| POST | `/api/v1/auth/refresh` | `{ refresh_token? }` or the cookie | Token response |
+| POST | `/api/v1/auth/logout` | — (bearer token) | `204`. Revokes the session and clears the cookie. |
+| POST | `/api/v1/auth/sessions/revoke-all` | — (bearer token) | `204` |
+| POST | `/api/v1/auth/mfa/setup` | — (bearer token, staff only) | `{ secret, otpauth_uri }` |
+| POST | `/api/v1/auth/mfa/enable` | `{ code }` | `204` |
+
+**Token response:**
+```json
+{ "access_token": "...", "token_type": "bearer", "expires_in": 900, "refresh_token": "...", "user": { /* same as GET /users/me */ } }
+```
+
+### Current user
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/v1/users/me` | See below |
+| PATCH | `/api/v1/users/me` | Any of `{ display_name, email, locale, preferences }` |
+
+```json
+{
+  "id": "uuid", "tenant_id": "uuid|null", "phone": "+91...", "email": null,
+  "display_name": "Asha", "locale": "en", "preferences": {},
+  "mfa_enabled": false, "is_staff": false,
+  "roles": [{ "role": "citizen", "department_id": null, "jurisdiction_id": null }],
+  "permissions": ["report:create", "report:read_own"]
+}
+```
+
+### Administration (municipal admin)
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/v1/admin/users` | `user:manage` | Filters: `q` (name/phone/email), `role`, `is_active`; `sort` |
+| POST | `/api/v1/admin/users` | `user:manage` | `{ phone, display_name, email?, roles: [{ role, department_id?, jurisdiction_id? }] }` → `201` user. Supports `Idempotency-Key`. |
+| GET | `/api/v1/admin/users/{id}` | `user:manage` | |
+| PATCH | `/api/v1/admin/users/{id}` | `user:manage` | `{ display_name?, email?, is_active? }` |
+| PUT | `/api/v1/admin/users/{id}/roles` | `user:manage` | `{ roles: [...] }` replaces all of the user's roles |
+| GET | `/api/v1/admin/departments` | `config:read` | |
+| POST | `/api/v1/admin/departments` | `config:manage` | `{ name, code }` |
+| GET | `/api/v1/admin/jurisdictions` | `config:read` | `?kind=ward`. Returns `{ id, parent_id, kind, name, code }` without geometry. Add `?include_geometry=true` for GeoJSON. |
+| GET | `/api/v1/admin/audit-events` | `audit:read` | Filters: `actor_id`, `action`, `entity_type`, `entity_id`, `from`, `to` |
+
+Audit event:
+```json
+{ "id": 1, "occurred_at": "...", "actor": { "id": "...", "display_name": "..." }, "action": "user.roles_changed", "entity_type": "user", "entity_id": "...", "before": {}, "after": {}, "request_id": "..." }
+```
+
+### Platform (platform admin)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/v1/platform/tenants` | List tenants |
+| POST | `/api/v1/platform/tenants` | `{ slug, name }` |
+
+## Seed data (development only, synthetic)
+
+Tenant `demo-city` ("Demo City") with 2 zones, 4 wards and 4 departments (Roads, Solid Waste, Storm Water Drains, Street Lighting). Tenant `other-city` exists for isolation tests.
+
+| Phone | Role | Tenant |
+|---|---|---|
+| +919000000000 | platform_admin | — |
+| +919000000001 | municipal_admin | demo-city |
+| +919000000002 | operator | demo-city |
+| +919000000003 | supervisor (Roads) | demo-city |
+| +919000000004 | field_worker (Roads) | demo-city |
+| +919000000005 | citizen | demo-city |
+| +919100000001 | municipal_admin | other-city |
+
+In development, the SMS provider writes OTP codes to the API log, and the fixed code `000000` is also accepted when `DEV_FIXED_OTP=true`. Fixed codes are never accepted in production.

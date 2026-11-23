@@ -1,0 +1,18 @@
+{
+  "name": "civicpulse",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "gen:api": "pnpm --filter @civicpulse/api-client generate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.2",
+    "turbo": "^2"
+  },
+  "packageManager": "pnpm@10.30.3"
+}
