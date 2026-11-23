@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "description": "Report civic issues to your municipality and follow them until they are fixed."
+  },
+  "common": {
+    "tagline": "Report it. Track it. See it fixed.",
+    "skipToContent": "Skip to main content",
+    "close": "Close",
+    "dismissNotification": "Dismiss notification",
+    "loading": "Loading…",
+    "backHome": "Back to home"
+  },
+  "language": {
+    "label": "Language",
+    "switching": "Switching language…"
+  },
+  "home": {
+    "intro": "Potholes, overflowing bins, broken streetlights, blocked drains: tell your municipality what needs fixing and follow it until it's done."
+  },
+  "notFound": {
+    "title": "We couldn't find that page",
+    "description": "The link may be broken, or the page may have moved."
+  }
+}
