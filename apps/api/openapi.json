@@ -3561,6 +3561,118 @@
           }
         }
       }
+    },
+    "/api/v1/reports": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Create Report",
+        "description": "Submit a report. Creates its civic issue in the same transaction.",
+        "operationId": "reports_create",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[\\x21-\\x7e]+$",
+              "description": "Required. One key per submission attempt: a retry with the same key and body returns the original report instead of creating another.",
+              "title": "Idempotency-Key"
+            },
+            "description": "Required. One key per submission attempt: a retry with the same key and body returns the original report instead of creating another."
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOwnerView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4241,6 +4353,39 @@
         ],
         "title": "CategoryPage"
       },
+      "CategoryRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name_i18n": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Name I18N"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name_i18n",
+          "icon"
+        ],
+        "title": "CategoryRef",
+        "description": "The short form embedded in reports and issues."
+      },
       "CategoryUpdate": {
         "properties": {
           "code": {
@@ -4553,6 +4698,15 @@
         ],
         "title": "ErrorResponse"
       },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "created",
+          "status_changed",
+          "note"
+        ],
+        "title": "EventType"
+      },
       "Evidence": {
         "properties": {
           "min_photos": {
@@ -4726,6 +4880,90 @@
         ],
         "title": "JurisdictionPage"
       },
+      "LocationIn": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lng"
+          },
+          "accuracy_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy M"
+          },
+          "source": {
+            "$ref": "#/components/schemas/LocationSource",
+            "description": "How the point was chosen (PRD §10.2)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "source"
+        ],
+        "title": "LocationIn"
+      },
+      "LocationOut": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "accuracy_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy M"
+          },
+          "source": {
+            "$ref": "#/components/schemas/LocationSource"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "accuracy_m",
+          "source"
+        ],
+        "title": "LocationOut"
+      },
+      "LocationSource": {
+        "type": "string",
+        "enum": [
+          "gps",
+          "pin",
+          "manual"
+        ],
+        "title": "LocationSource"
+      },
       "MapConfig": {
         "properties": {
           "center": {
@@ -4860,6 +5098,99 @@
         ],
         "title": "MediaAssetOut",
         "description": "Returned when an upload completes."
+      },
+      "MediaOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MediaStatus"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb Url"
+          },
+          "display_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Url"
+          },
+          "original_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Url",
+            "description": "Staff only; null for everyone else."
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "width",
+          "height",
+          "thumb_url",
+          "display_url",
+          "original_url",
+          "captured_at"
+        ],
+        "title": "MediaOut",
+        "description": "Media as embedded in reports and issues."
       },
       "MediaPurpose": {
         "type": "string",
@@ -5138,6 +5469,59 @@
         ],
         "title": "PlatformTenantPage"
       },
+      "PublicTimelineEvent": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssueStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssueStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "public_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "type",
+          "from_status",
+          "to_status",
+          "public_note"
+        ],
+        "title": "PublicTimelineEvent",
+        "description": "What a citizen may see of an issue's history: no notes marked\ninternal, no reasons, no staff identities."
+      },
       "ReadinessOut": {
         "properties": {
           "status": {
@@ -5186,6 +5570,223 @@
         "type": "object",
         "title": "RefreshIn"
       },
+      "ReportCreate": {
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Category Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationIn"
+          },
+          "address_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Text",
+            "description": "As confirmed by the citizen."
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details",
+            "description": "Answers to the category's `fields`."
+          },
+          "media_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Media Ids"
+          },
+          "client_created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category_id",
+          "location"
+        ],
+        "title": "ReportCreate"
+      },
+      "ReportIssue": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTimelineEvent"
+            },
+            "type": "array",
+            "title": "Timeline"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "timeline"
+        ],
+        "title": "ReportIssue"
+      },
+      "ReportOwnerView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference",
+            "examples": [
+              "R-26-000123"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryRef"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationOut"
+          },
+          "address_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Text"
+          },
+          "ward": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/app__domains__reports__schemas__WardRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "media": {
+            "items": {
+              "$ref": "#/components/schemas/MediaOut"
+            },
+            "type": "array",
+            "title": "Media"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          },
+          "view": {
+            "type": "string",
+            "const": "owner",
+            "title": "View",
+            "default": "owner"
+          },
+          "issue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportIssue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference",
+          "created_at",
+          "category",
+          "description",
+          "details",
+          "location",
+          "address_text",
+          "ward",
+          "media",
+          "status",
+          "issue"
+        ],
+        "title": "ReportOwnerView",
+        "description": "The reporter's own view."
+      },
+      "ReportStatus": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "withdrawn"
+        ],
+        "title": "ReportStatus"
+      },
       "ReverseGeocodeOut": {
         "properties": {
           "address_text": {
@@ -5206,7 +5807,7 @@
           "ward": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WardRef"
+                "$ref": "#/components/schemas/app__domains__geo__router__WardRef"
               },
               {
                 "type": "null"
@@ -5714,7 +6315,26 @@
         "type": "object",
         "title": "UserMeUpdate"
       },
-      "WardRef": {
+      "ZoneRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ZoneRef"
+      },
+      "app__domains__geo__router__WardRef": {
         "properties": {
           "id": {
             "type": "string",
@@ -5738,7 +6358,7 @@
         ],
         "title": "WardRef"
       },
-      "ZoneRef": {
+      "app__domains__reports__schemas__WardRef": {
         "properties": {
           "id": {
             "type": "string",
@@ -5755,7 +6375,7 @@
           "id",
           "name"
         ],
-        "title": "ZoneRef"
+        "title": "WardRef"
       }
     },
     "securitySchemes": {
