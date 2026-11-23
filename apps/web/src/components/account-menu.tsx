@@ -3,6 +3,7 @@
 import {
   ChevronDown,
   ClipboardList,
+  Inbox,
   LayoutDashboard,
   LogOut,
   UserRound,
@@ -95,7 +96,10 @@ export function AccountMenu({ align = "end" }: { align?: "start" | "end" }) {
         >
           {initials(user.display_name || "?")}
         </span>
-        <span className="max-w-32 truncate">{name}</span>
+        {/* On phones the avatar alone fits next to the language picker. */}
+        <span className="sr-only sm:not-sr-only sm:max-w-32 sm:truncate">
+          {name}
+        </span>
         <span className="sr-only">{t("menuLabel")}</span>
         <ChevronDown
           aria-hidden="true"
@@ -141,6 +145,16 @@ export function AccountMenu({ align = "end" }: { align?: "start" | "end" }) {
               </Link>
             </li>
           ) : null}
+          <li>
+            <Link
+              href="/reports"
+              className={itemClass}
+              onClick={() => setOpen(false)}
+            >
+              <Inbox aria-hidden="true" />
+              {t("myReports")}
+            </Link>
+          </li>
           <li>
             <Link
               href="/profile"

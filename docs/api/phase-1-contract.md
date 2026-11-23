@@ -43,8 +43,8 @@ Coordinates are always `[lng, lat]`, following GeoJSON order. The bounds come fr
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/v1/categories` | `X-Tenant` or bearer | Active categories only, flat list ordered by `sort_order`. Used by the report form. |
-| GET | `/api/v1/admin/categories` | `config:read` | Includes inactive categories |
+| GET | `/api/v1/categories` | `X-Tenant` or bearer | Active categories only, as a plain JSON array (not paginated) ordered by `sort_order`. Used by the report form. |
+| GET | `/api/v1/admin/categories` | `config:read` | Includes inactive categories. Paginated like other admin lists. |
 | POST | `/api/v1/admin/categories` | `config:manage` | Create. `code` is unique per tenant. Audited. |
 | PATCH | `/api/v1/admin/categories/{id}` | `config:manage` | Partial update, including `is_active` and `fields`. Audited. |
 
@@ -154,7 +154,7 @@ Returns `201`:
 | Method | Path | Permission | Notes |
 |---|---|---|---|
 | POST | `/api/v1/reports` | `report:create` | See above |
-| GET | `/api/v1/users/me/reports` | `report:read_own` | Own reports, newest first. List items: `{ id, reference, created_at, category, thumb_url, address_text, issue: { reference, status } }`. Filter `status`. |
+| GET | `/api/v1/users/me/reports` | `report:read_own` | Own reports, newest first, paginated (`limit`/`offset`). List items: `{ id, reference, created_at, category, thumb_url, address_text, issue: { reference, status } }`. Filter `status`. |
 | GET | `/api/v1/reports/{id}` | owner, or `report:read` within scope | Owner view as above. Staff get the staff view (reporter `{ id, display_name }` but **never** phone or email unless they hold `user:manage`). |
 
 ## 6. Civic issues (staff)
@@ -178,10 +178,10 @@ Returns `201`:
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| GET | `/api/v1/issues` | `issue:read` | Filters below. `sort`: `-created_at` (default), `created_at`, `-updated_at`, `-report_count`. |
+| GET | `/api/v1/issues` | `issue:read` | Paginated. Filters below. `sort`: `-created_at` (default), `created_at`, `-updated_at`, `-report_count`. |
 | GET | `/api/v1/issues/geojson` | `issue:read` | Same filters, plus a required `bbox`. Returns a GeoJSON `FeatureCollection` of points with properties `{ id, reference, status, category_code, report_count }`, capped at 5000 features with `"truncated": true` when capped. Used for the map. |
 | GET | `/api/v1/issues/{id}` | `issue:read` within scope | Issue detail, below |
-| PATCH | `/api/v1/issues/{id}/status` | per the transition rule | `{ to_status, reason?, public_note?, version }`. Version mismatch → `409 version_conflict` with the current `version` in `details`. Disallowed transition → `422 invalid_transition` with the allowed targets in `details`. Missing required reason → `422 reason_required`. |
+| PATCH | `/api/v1/issues/{id}/status` | per the transition rule | `{ to_status, reason?, public_note?, version }`. Returns `200` with the updated issue detail. Version mismatch → `409 version_conflict` with the current `version` in `details`. Disallowed transition → `422 invalid_transition` with the allowed targets in `details`. Missing required reason → `422 reason_required`. |
 
 **Filters** (all optional, combined with AND):
 - `status` (repeatable), `category_id` (repeatable), `ward_id` (repeatable)

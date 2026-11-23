@@ -73,6 +73,28 @@ describe("apiRequest", () => {
     });
   });
 
+  it("repeats array params and skips empty entries", async () => {
+    let url: URL | undefined;
+    server.use(
+      http.get(`${API}/issues`, ({ request }) => {
+        url = new URL(request.url);
+        return HttpResponse.json({});
+      }),
+    );
+
+    await apiRequest({
+      path: "/issues",
+      query: { status: ["reported", "", "verified"], ward_id: [] },
+      schema: z.object({}),
+    });
+
+    expect(url?.searchParams.getAll("status")).toEqual([
+      "reported",
+      "verified",
+    ]);
+    expect(url?.searchParams.has("ward_id")).toBe(false);
+  });
+
   it("passes the idempotency key through", async () => {
     let key: string | null = null;
     server.use(

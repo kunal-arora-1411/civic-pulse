@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { UsersScreen } from "@/components/admin/users/users-screen";
-import { RequirePermission } from "@/components/auth/guards";
+import { RequireAdminAccess } from "@/components/auth/guards";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("admin.users");
@@ -10,8 +10,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function AdminUsersPage() {
   return (
-    <RequirePermission permission="user:manage">
+    <RequireAdminAccess permission="user:manage">
       <UsersScreen />
-    </RequirePermission>
+    </RequireAdminAccess>
   );
 }

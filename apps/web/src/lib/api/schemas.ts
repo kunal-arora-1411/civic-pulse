@@ -2,6 +2,7 @@ import { z } from "zod";
 
 /*
  * Response schemas for the Phase 0 contract (docs/api/phase-0-contract.md).
+ * Phase 1 additions live in schemas-phase1.ts.
  *
  * These are hand-written for now. Once the backend publishes openapi.json,
  * orval can generate both the types and zod schemas; the plan is to replace
@@ -91,12 +92,26 @@ export const otpChallengeSchema = z.object({
 });
 export type OtpChallenge = z.infer<typeof otpChallengeSchema>;
 
+/** GeoJSON order: longitude first. */
+export const lngLatSchema = z.tuple([z.number(), z.number()]);
+export type LngLatTuple = z.infer<typeof lngLatSchema>;
+
+/** Phase 1: the initial map view, from the city jurisdiction. */
+export const tenantMapSchema = z.object({
+  center: lngLatSchema,
+  zoom: z.number(),
+  /** minLng, minLat, maxLng, maxLat */
+  bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+});
+export type TenantMap = z.infer<typeof tenantMapSchema>;
+
 export const tenantSchema = z.object({
   id: z.string(),
   slug: z.string(),
   name: z.string(),
   default_locale: z.string(),
   supported_locales: z.array(z.string()),
+  map: tenantMapSchema.nullish(),
 });
 export type Tenant = z.infer<typeof tenantSchema>;
 

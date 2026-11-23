@@ -1,9 +1,7 @@
 "use client";
 
-import { ArrowRight, Clock, Inbox, Map as MapIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Link } from "@/i18n/navigation";
 import { useSession } from "@/lib/auth/use-session";
 import { ADMIN_NAV, type AdminNavKey, visibleNavItems } from "./nav-items";
@@ -18,22 +16,12 @@ export function AdminOverview() {
     (item) => item.key !== ADMIN_NAV[0]?.key,
   );
   const descriptions: Partial<Record<AdminNavKey, string>> = {
+    issues: t("overview.issuesBody"),
+    map: t("overview.mapBody"),
+    categories: t("overview.categoriesBody"),
     users: t("overview.usersBody"),
     audit: t("overview.auditBody"),
   };
-  const upcoming = [
-    {
-      icon: Inbox,
-      title: t("overview.queueTitle"),
-      body: t("overview.queueBody"),
-    },
-    {
-      icon: MapIcon,
-      title: t("overview.mapTitle"),
-      body: t("overview.mapBody"),
-    },
-  ];
-
   return (
     <div className="grid gap-8 motion-safe:animate-rise">
       <PageHeader
@@ -84,34 +72,6 @@ export function AdminOverview() {
           </ul>
         </section>
       ) : null}
-
-      <section aria-labelledby="overview-upcoming" className="grid gap-3">
-        <h2
-          id="overview-upcoming"
-          className="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
-        >
-          {t("overview.upcoming")}
-        </h2>
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {upcoming.map(({ icon: Icon, title, body }) => (
-            <li key={title}>
-              <Card className="flex h-full items-start gap-4 border-dashed bg-transparent p-5 shadow-none">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary text-secondary-foreground">
-                  <Icon aria-hidden="true" className="size-5" />
-                </span>
-                <span className="grid gap-1.5">
-                  <span className="font-semibold">{title}</span>
-                  <span className="text-sm text-muted-foreground">{body}</span>
-                  <Badge variant="neutral" className="w-fit">
-                    <Clock aria-hidden="true" />
-                    {t("overview.phase1")}
-                  </Badge>
-                </span>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }

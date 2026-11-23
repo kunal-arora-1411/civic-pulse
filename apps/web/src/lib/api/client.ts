@@ -4,7 +4,9 @@ import { ApiError, isApiError, parseErrorResponse } from "./errors";
 import { type TokenResponse, tokenResponseSchema } from "./schemas";
 import { session } from "./session";
 
-type QueryValue = string | number | boolean | null | undefined;
+type QueryScalar = string | number | boolean | null | undefined;
+/** Arrays become repeated keys (`status=a&status=b`), as the contract expects. */
+export type QueryValue = QueryScalar | readonly QueryScalar[];
 
 export type RequestOptions<T> = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -35,8 +37,11 @@ export type RequestOptions<T> = {
 export function buildUrl(path: string, query?: Record<string, QueryValue>) {
   const url = new URL(`${API_BASE}${path}`);
   for (const [key, value] of Object.entries(query ?? {})) {
-    if (value === undefined || value === null || value === "") continue;
-    url.searchParams.set(key, String(value));
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      if (item === undefined || item === null || item === "") continue;
+      url.searchParams.append(key, String(item));
+    }
   }
   return url.toString();
 }
