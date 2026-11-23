@@ -77,7 +77,7 @@ class MediaAsset(TimestampMixin, Base):
         # Only verified uploads can be attached to a report.
         CheckConstraint("report_id IS NULL OR status <> 'pending'", name="attached_is_verified"),
         Index("ix_media_assets_tenant_owner_status", "tenant_id", "owner_id", "status"),
-        Index("ix_media_assets_tenant_report", "tenant_id", "report_id"),
+        Index("ix_media_assets_report_id", "report_id"),
         Index("ix_media_assets_status_created_at", "status", "created_at"),
     )
 

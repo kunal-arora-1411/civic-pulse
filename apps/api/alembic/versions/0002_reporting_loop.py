@@ -282,7 +282,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_media_assets_tenant_owner_status", "media_assets", ["tenant_id", "owner_id", "status"]
     )
-    op.create_index("ix_media_assets_tenant_report", "media_assets", ["tenant_id", "report_id"])
+    op.create_index("ix_media_assets_report_id", "media_assets", ["report_id"])
     op.create_index("ix_media_assets_status_created_at", "media_assets", ["status", "created_at"])
 
     # --- civic_issues ----------------------------------------------------------
@@ -429,7 +429,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_reports_tenant_reporter_created", "reports", ["tenant_id", "reporter_id", "created_at"]
     )
-    op.create_index("ix_reports_tenant_issue", "reports", ["tenant_id", "issue_id"])
+    op.create_index("ix_reports_issue_id", "reports", ["issue_id"])
     op.create_index("ix_reports_location", "reports", ["location"], postgresql_using="gist")
 
     # media_assets -> reports closes the media/report/issue cycle.
@@ -487,11 +487,7 @@ def upgrade() -> None:
             name="ck_issue_events_status_change_has_target",
         ),
     )
-    op.create_index(
-        "ix_issue_events_tenant_issue_created",
-        "issue_events",
-        ["tenant_id", "issue_id", "created_at"],
-    )
+    op.create_index("ix_issue_events_issue_created", "issue_events", ["issue_id", "created_at"])
 
     # --- full-text search document ---------------------------------------------
     # The `simple` configuration lower-cases and splits words without

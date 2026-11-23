@@ -143,7 +143,7 @@ class IssueEvent(Base):
         CheckConstraint(
             "type <> 'status_changed' OR to_status IS NOT NULL", name="status_change_has_target"
         ),
-        Index("ix_issue_events_tenant_issue_created", "tenant_id", "issue_id", "created_at"),
+        Index("ix_issue_events_issue_created", "issue_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

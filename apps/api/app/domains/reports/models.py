@@ -85,7 +85,7 @@ class Report(TimestampMixin, Base):
         ),
         CheckConstraint("jsonb_typeof(details) = 'object'", name="details_is_object"),
         Index("ix_reports_tenant_reporter_created", "tenant_id", "reporter_id", "created_at"),
-        Index("ix_reports_tenant_issue", "tenant_id", "issue_id"),
+        Index("ix_reports_issue_id", "issue_id"),
         Index("ix_reports_location", "location", postgresql_using="gist"),
     )
 
