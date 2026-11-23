@@ -6,11 +6,13 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.core.pagination import Page
+from app.core.phone import PhoneNumber
 from app.domains.rbac.roles import Role
 
 
 class RoleAssignment(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     role: Role
     department_id: uuid.UUID | None = None
@@ -40,6 +42,29 @@ class UserMeUpdate(BaseModel):
     preferences: dict[str, Any] | None = None
 
 
+class AdminUserCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    phone: PhoneNumber
+    display_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr | None = None
+    roles: list[RoleAssignment] = Field(min_length=1, max_length=20)
+
+
+class AdminUserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str | None = Field(default=None, min_length=1, max_length=100)
+    email: EmailStr | None = None
+    is_active: bool | None = None
+
+
+class RolesUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    roles: list[RoleAssignment] = Field(min_length=1, max_length=20)
+
+
 class AdminUser(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID | None
@@ -53,3 +78,7 @@ class AdminUser(BaseModel):
     roles: list[RoleAssignment]
     created_at: datetime
     last_login_at: datetime | None
+
+
+class AdminUserPage(Page[AdminUser]):
+    pass
