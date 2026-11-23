@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 
+from app.core import idempotency
 from app.core.db import DbSession
 from app.core.errors import error_responses
+from app.core.idempotency import IdempotencyKeyHeader
 from app.core.pagination import PageParamsDep
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
@@ -63,9 +65,25 @@ async def list_users(
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(401, 403, 409, 422),
 )
-async def create_user(principal: UserManager, db: DbSession, body: AdminUserCreate) -> AdminUser:
-    user = await admin_service.create_user(db, principal, body)
-    return to_admin(user)
+async def create_user(
+    principal: UserManager,
+    db: DbSession,
+    body: AdminUserCreate,
+    idempotency_key: IdempotencyKeyHeader = None,
+) -> Any:
+    claim = await idempotency.begin(
+        db,
+        key=idempotency_key,
+        scope="POST /admin/users",
+        tenant_id=principal.tenant_id,
+        actor_id=principal.user_id,
+        body=body,
+    )
+    if isinstance(claim, Response):
+        return claim
+    user = to_admin(await admin_service.create_user(db, principal, body))
+    await idempotency.complete(db, claim, status.HTTP_201_CREATED, user)
+    return user
 
 
 @router.get(
