@@ -119,7 +119,8 @@
       "overview": "Overview",
       "users": "Users",
       "audit": "Audit log",
-      "issues": "Work queue"
+      "issues": "Work queue",
+      "map": "Map"
     },
     "overview": {
       "title": "Welcome back",
@@ -128,7 +129,8 @@
       "manage": "Manage",
       "usersBody": "Add staff, assign roles and departments, and deactivate accounts.",
       "auditBody": "See who changed what, and when, with before and after values.",
-      "issuesBody": "Every reported issue in your area, with filters you can share as a link."
+      "issuesBody": "Every reported issue in your area, with filters you can share as a link.",
+      "mapBody": "Issues on a map with ward boundaries, in sync with a list."
     },
     "users": {
       "title": "Users",
@@ -345,6 +347,24 @@
         "transitionGoneBody": "The issue's status may have moved on. Reload to see which changes are available now.",
         "reload": "Reload issue"
       }
+    },
+    "map": {
+      "title": "Issue map",
+      "description": "Issues in the visible area. Pick a marker to find it in the list, or a row to find it on the map.",
+      "listView": "List view",
+      "mapLabel": "Map of issues. Markers can be reached with the Tab key.",
+      "updating": "Updating…",
+      "truncatedTitle": "Not every issue is shown",
+      "truncatedBody": "Only the first {count} issues in this area are on the map. Zoom in or narrow the filters to see the rest.",
+      "loadError": "Couldn't load the map data",
+      "retry": "Try again",
+      "listHeading": "In this area",
+      "clusterHeading": "In the selected cluster",
+      "count": "{count, plural, =0 {No issues} one {# issue} other {# issues}}",
+      "showAll": "Show everything in view",
+      "empty": "No issues here. Move the map or change the filters.",
+      "reports": "{count, plural, one {# report} other {# reports}}",
+      "open": "Open {reference}"
     }
   },
   "profile": {

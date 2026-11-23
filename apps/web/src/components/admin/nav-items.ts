@@ -2,17 +2,23 @@ import {
   Inbox,
   LayoutDashboard,
   type LucideIcon,
+  Map as MapIcon,
   ScrollText,
   UsersRound,
 } from "lucide-react";
 import type { CurrentUser } from "@/lib/api";
 import { hasPermission } from "@/lib/auth/access";
 
-export type AdminNavKey = "overview" | "issues" | "users" | "audit";
+export type AdminNavKey = "overview" | "issues" | "map" | "users" | "audit";
 
 export type AdminNavItem = {
   key: AdminNavKey;
-  href: "/admin" | "/admin/issues" | "/admin/users" | "/admin/audit";
+  href:
+    | "/admin"
+    | "/admin/issues"
+    | "/admin/map"
+    | "/admin/users"
+    | "/admin/audit";
   icon: LucideIcon;
   /** Hidden unless the user has this permission. No value: any staff. */
   permission?: string;
@@ -26,6 +32,7 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: Inbox,
     permission: "issue:read",
   },
+  { key: "map", href: "/admin/map", icon: MapIcon, permission: "issue:read" },
   {
     key: "users",
     href: "/admin/users",

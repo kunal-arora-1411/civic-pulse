@@ -17,6 +17,7 @@ export function AdminOverview() {
   );
   const descriptions: Partial<Record<AdminNavKey, string>> = {
     issues: t("overview.issuesBody"),
+    map: t("overview.mapBody"),
     users: t("overview.usersBody"),
     audit: t("overview.auditBody"),
   };

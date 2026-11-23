@@ -30,3 +30,8 @@ export const PinMap = dynamic(
   () => import("./pin-map").then((mod) => mod.PinMap),
   { ssr: false, loading: () => <MapSkeleton /> },
 );
+
+export const IssuesMap = dynamic(
+  () => import("./issues-map").then((mod) => mod.IssuesMap),
+  { ssr: false, loading: () => <MapSkeleton /> },
+);
