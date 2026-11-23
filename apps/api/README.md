@@ -1,6 +1,6 @@
 # CivicPulse API
 
-FastAPI service for CivicPulse. Phase 0 provides tenancy (Postgres RLS), phone-OTP auth with rotating refresh tokens and staff TOTP, RBAC with jurisdiction scoping, an append-only audit trail, and admin endpoints. The interface is specified in [`docs/api/phase-0-contract.md`](../../docs/api/phase-0-contract.md), and the design decisions are in [`docs/adr/`](../../docs/adr).
+FastAPI service for CivicPulse. Phase 0 provides tenancy (Postgres RLS), phone-OTP auth with rotating refresh tokens and staff TOTP, RBAC with jurisdiction scoping, an append-only audit trail, and admin endpoints. Phase 1 adds the reporting loop: categories, direct-to-storage photo uploads with verification and metadata-free variants, reverse geocoding, report submission, the staff issue queue and map, and the configurable status workflow. The interface is specified in [`docs/api/phase-0-contract.md`](../../docs/api/phase-0-contract.md) and [`docs/api/phase-1-contract.md`](../../docs/api/phase-1-contract.md), and the design decisions are in [`docs/adr/`](../../docs/adr).
 
 ## Run everything with Docker
 
@@ -16,16 +16,18 @@ docker compose -f infra/docker-compose.yml exec api python scripts/seed.py
 | api | 8000 | <http://localhost:8000/docs> |
 | db | 5432 | PostGIS 3.5 + pgvector + h3 (`infra/db/Dockerfile`) |
 | redis | 6379 | Rate limits, Celery broker |
-| minio | 9000 / 9001 | Private bucket `civicpulse-media` |
+| minio | 9000 / 9001 | Private bucket `civicpulse-media`; CORS for `localhost:3000`/`3100` |
+| minio-init | – | One-shot: creates the bucket and the `civicpulse-app` user (that bucket only) |
 | mailpit | 8025 | Not used until notifications |
-| worker | – | Celery (`civicpulse.ping`) |
+| worker | – | Celery: media processing, housekeeping |
+| beat | – | Celery Beat: hourly housekeeping (run exactly one) |
 | migrate | – | One-shot `alembic upgrade head`, run as the owner role |
 
 Credentials are development defaults inlined in the compose file. Override them from your shell or with `--env-file .env`.
 
 ## Sign in
 
-The seed creates `demo-city`, `other-city` and one user per role (see the contract). With `DEV_FIXED_OTP=true` (the compose default), `000000` works. The real code is also written to the API log:
+The seed creates `demo-city`, `other-city` and one user per role (see the Phase 0 contract), plus five categories, the default workflow and about 60 synthetic issues with processed placeholder photos (Phase 1 contract, section 8). Running it again changes nothing. With `DEV_FIXED_OTP=true` (the compose default), `000000` works. The real code is also written to the API log:
 
 ```sh
 curl -s -X POST localhost:8000/api/v1/auth/otp/request \
@@ -65,7 +67,7 @@ uv run celery -A app.worker:celery_app worker --loglevel=INFO   # optional
 uv run pytest
 ```
 
-The tests need the compose `db` and `redis` running. Each run drops and recreates a `civicpulse_test` database through the owner connection and migrates it to head. The app under test then connects as `civicpulse_app`, so RLS is exercised for real, never mocked. Redis DB 15 is flushed at the start. Override the connections with `MIGRATION_DATABASE_URL`, `DATABASE_URL` and `TEST_REDIS_URL`.
+The tests need the compose `db`, `redis` and `minio` running. Storage tests use the real MinIO, in a `civicpulse-test` bucket that is emptied at the start of each run (`TEST_S3_*` to override), because signatures, signed headers and CORS are exactly what a fake would hide. Media processing runs inline in tests and nothing reaches the Celery broker; the geocoder is `none`, and the Nominatim client is tested against an in-process transport. Each run drops and recreates a `civicpulse_test` database through the owner connection and migrates it to head. The app under test then connects as `civicpulse_app`, so RLS is exercised for real, never mocked. Redis DB 15 is flushed at the start. Override the connections with `MIGRATION_DATABASE_URL`, `DATABASE_URL` and `TEST_REDIS_URL`.
 
 Lint and types (CI runs the same):
 
@@ -97,3 +99,6 @@ uv run python scripts/export_openapi.py --check  # what CI runs
 - **Permissions.** Add them to `Permission` and `ROLE_PERMISSIONS` in `app/domains/rbac/permissions.py`, then guard routes with `Annotated[Principal, require(Permission.X)]`. Every permission check needs a "denied" test.
 - **Audit.** Call `audit.record(...)` in the same transaction as the change, with before/after snapshots for sensitive actions.
 - **Errors.** Raise `AppError` subclasses from `app/core/errors.py`. Never return ad-hoc error bodies.
+- **Storage.** Use the `Storage` dependency (`app/core/storage.py`). Server-side calls go to `S3_ENDPOINT`; URLs for browsers are signed for `S3_PUBLIC_ENDPOINT`, because the signature covers the host.
+- **Background jobs.** Tasks are thin sync wrappers around async functions run through `run_async()` (`app/worker.py`). Queue work from a request with `BackgroundTasks`, which run after the transaction has committed, and keep tasks idempotent (`acks_late` redelivers).
+- **Scope.** Staff reads of issues and reports filter by `accessible_jurisdiction_ids`, and out-of-scope is `404`, never `403`.
