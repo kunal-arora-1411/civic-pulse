@@ -7,16 +7,13 @@ import { API, server } from "@/test/msw";
 import { renderWithProviders } from "@/test/render";
 import { ProfileForm } from "./profile-form";
 
-const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
-vi.mock("@/i18n/navigation", () => ({
-  useRouter: () => router,
-  usePathname: () => "/profile",
-}));
+const switchLocale = vi.hoisted(() => vi.fn());
+vi.mock("@/i18n/switch-locale", () => ({ switchLocale }));
 
 const asha = makeUser({ display_name: "Asha", email: null, locale: "en" });
 
 beforeEach(() => {
-  router.replace.mockReset();
+  switchLocale.mockReset();
   session.setAuthenticated("token", asha);
 });
 afterEach(() => session.reset());
@@ -53,7 +50,7 @@ describe("ProfileForm", () => {
       locale: "en",
     });
     expect(session.getSnapshot().user?.display_name).toBe("Asha Rao");
-    expect(router.replace).not.toHaveBeenCalled();
+    expect(switchLocale).not.toHaveBeenCalled();
   });
 
   it("switches the interface when the language preference changes", async () => {
@@ -67,9 +64,7 @@ describe("ProfileForm", () => {
     await user.selectOptions(screen.getByLabelText(/^language/i), "hi");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    await waitFor(() =>
-      expect(router.replace).toHaveBeenCalledWith("/profile", { locale: "hi" }),
-    );
+    await waitFor(() => expect(switchLocale).toHaveBeenCalledWith("hi"));
   });
 
   it("validates the email before saving", async () => {

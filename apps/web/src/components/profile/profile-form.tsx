@@ -21,8 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useErrorMessage } from "@/hooks/use-error-message";
-import { usePathname, useRouter } from "@/i18n/navigation";
 import { type AppLocale, localeNames, locales } from "@/i18n/routing";
+import { switchLocale } from "@/i18n/switch-locale";
 import {
   type CurrentUser,
   session,
@@ -35,8 +35,6 @@ export function ProfileForm({ user }: { user: CurrentUser }) {
   const t = useTranslations("profile");
   const tRoles = useTranslations("roles");
   const currentLocale = useLocale();
-  const router = useRouter();
-  const pathname = usePathname();
   const errorMessage = useErrorMessage();
   const { toast } = useToast();
 
@@ -86,7 +84,7 @@ export function ProfileForm({ user }: { user: CurrentUser }) {
         (locales as readonly string[]).includes(updated.locale)
       ) {
         // Switching language reloads the page in the new locale.
-        router.replace(pathname, { locale: updated.locale as AppLocale });
+        switchLocale(updated.locale as AppLocale);
         return;
       }
       toast({ variant: "success", title: t("saved") });

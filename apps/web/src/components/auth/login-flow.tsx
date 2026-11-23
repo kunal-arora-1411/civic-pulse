@@ -26,6 +26,7 @@ import { formatSeconds, useCountdown } from "@/hooks/use-countdown";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useRouter } from "@/i18n/navigation";
 import { locales } from "@/i18n/routing";
+import { switchLocale } from "@/i18n/switch-locale";
 import {
   completeLogin,
   isApiError,
@@ -91,7 +92,7 @@ export function LoginFlow() {
     if (status !== "authenticated" || !user) return;
     const target = nextPathFromLocation() ?? homePathFor(user);
     if (user.locale !== locale && hasLocale(locales, user.locale)) {
-      router.replace(target, { locale: user.locale });
+      switchLocale(user.locale, target);
     } else {
       router.replace(target);
     }

@@ -18,14 +18,16 @@ export const localeNames: Record<AppLocale, string> = {
  * request data, and Cache Components would then refuse to build a static
  * shell for any route.
  */
+export const localeCookie = {
+  name: "NEXT_LOCALE",
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: "lax",
+} as const;
+
 export const routing = defineRouting({
   locales,
   defaultLocale: "en",
   localePrefix: "never",
-  localeCookie: {
-    name: "NEXT_LOCALE",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  },
+  localeCookie,
   alternateLinks: false,
 });
