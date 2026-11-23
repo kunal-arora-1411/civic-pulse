@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 from app.core.db import DbSession
 from app.core.errors import Unauthenticated, error_responses
 from app.core.redis import get_redis
-from app.domains.auth import service
+from app.domains.auth import mfa, service
 from app.domains.auth.cookies import (
     REFRESH_COOKIE,
     clear_refresh_cookie,
@@ -18,6 +18,9 @@ from app.domains.auth.cookies import (
 from app.domains.auth.dependencies import CurrentPrincipal
 from app.domains.auth.schemas import (
     MfaChallengeResponse,
+    MfaEnableIn,
+    MfaSetupOut,
+    MfaVerifyIn,
     OtpRequestIn,
     OtpRequestOut,
     OtpVerifyIn,
@@ -134,3 +137,46 @@ async def revoke_all_sessions(principal: CurrentPrincipal, db: DbSession) -> Res
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_refresh_cookie(response)
     return response
+
+
+@router.post(
+    "/mfa/verify",
+    operation_id="auth_verify_mfa",
+    response_model=TokenResponse,
+    responses=error_responses(400, 401, 403, 422, 429),
+    summary="Complete login with a TOTP code",
+)
+async def verify_mfa(body: MfaVerifyIn, db: DbSession, response: Response) -> TokenResponse:
+    tokens = await mfa.verify(db, body.mfa_token, body.code)
+    return token_response(response, tokens)
+
+
+@router.post(
+    "/mfa/setup",
+    operation_id="auth_setup_mfa",
+    response_model=MfaSetupOut,
+    responses=error_responses(401, 403, 409),
+    summary="Start TOTP enrolment (staff only)",
+)
+async def setup_mfa(principal: CurrentPrincipal, db: DbSession, response: Response) -> MfaSetupOut:
+    secret, uri = await mfa.setup(db, principal)
+    response.headers["cache-control"] = "no-store"
+    return MfaSetupOut(secret=secret, otpauth_uri=uri)
+
+
+@router.post(
+    "/mfa/enable",
+    operation_id="auth_enable_mfa",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses=error_responses(400, 401, 403, 409, 422, 429),
+    summary="Confirm TOTP enrolment with a code from the authenticator app",
+)
+async def enable_mfa(
+    body: MfaEnableIn,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    redis: Annotated[Redis, Depends(get_redis)],
+) -> Response:
+    await mfa.enable(db, redis, principal, body.code)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
