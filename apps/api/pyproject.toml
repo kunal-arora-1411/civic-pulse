@@ -58,7 +58,7 @@ known-third-party = ["alembic"]
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
-include = ["app", "tests", "alembic"]
+include = ["app", "tests", "alembic", "scripts"]
 venvPath = "."
 venv = ".venv"
 
