@@ -128,11 +128,7 @@ export function ToastProvider({
         <output aria-live="polite" className="grid w-full max-w-sm gap-2">
           {render(toasts.filter((item) => item.variant !== "error"))}
         </output>
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="grid w-full max-w-sm gap-2"
-        >
+        <div aria-live="assertive" className="grid w-full max-w-sm gap-2">
           {render(toasts.filter((item) => item.variant === "error"))}
         </div>
       </div>
