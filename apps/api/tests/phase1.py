@@ -26,6 +26,7 @@ from tests.factories import (
     square_wkt,
 )
 from tests.helpers import RecordingSms, Session, login
+from tests.images import sha256
 
 WEST, MID_LNG, EAST = 77.55, 77.59, 77.63
 SOUTH, MID_LAT, NORTH = 12.93, 12.97, 13.01
@@ -147,6 +148,52 @@ async def make_city(
         admin=await login(client, sms, admin.phone, tenant.slug),
         supervisor=await login(client, sms, supervisor.phone, tenant.slug),
     )
+
+
+async def put_to_storage(url: str, data: bytes, content_type: str) -> httpx.Response:
+    """PUT to a pre-signed URL the way a browser on the web origin would."""
+    async with httpx.AsyncClient() as http:
+        return await http.put(
+            url,
+            content=data,
+            headers={"Content-Type": content_type, "Origin": "http://localhost:3000"},
+        )
+
+
+async def upload(
+    client: httpx.AsyncClient,
+    session: Session,
+    data: bytes,
+    content_type: str = "image/jpeg",
+    *,
+    declared_type: str | None = None,
+    checksum: str | None = None,
+) -> httpx.Response:
+    """Create an upload, PUT the bytes, complete it; returns the complete response."""
+    declared = declared_type or content_type
+    created = await client.post(
+        "/api/v1/media/uploads",
+        headers=session.headers,
+        json={
+            "purpose": "report_evidence",
+            "content_type": declared,
+            "size_bytes": len(data),
+            "checksum_sha256": checksum or sha256(data),
+        },
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+    put = await put_to_storage(body["url"], data, body["headers"]["Content-Type"])
+    assert put.status_code == 200, put.text
+    return await client.post(
+        f"/api/v1/media/uploads/{body['upload_id']}/complete", headers=session.headers
+    )
+
+
+async def uploaded_media_id(client: httpx.AsyncClient, session: Session, data: bytes) -> str:
+    response = await upload(client, session, data)
+    assert response.status_code == 200, response.text
+    return response.json()["id"]
 
 
 async def login_new(

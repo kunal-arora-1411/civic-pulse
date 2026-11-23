@@ -100,6 +100,17 @@ class Settings(BaseSettings):
     s3_secret_key: SecretStr
     s3_bucket: str = "civicpulse-media"
 
+    # Media uploads
+    media_max_bytes: int = 10 * 1024 * 1024
+    media_max_pixels: int = 50_000_000  # decompression-bomb guard (~8000 x 6000)
+    media_upload_url_ttl_seconds: int = 600
+    media_download_url_ttl_seconds: int = 600
+    media_max_pending_uploads: int = 20
+
+    # Naive local times (EXIF capture times, date filters) are read in this
+    # zone. Every Phase 1 deployment is in India.
+    local_timezone: str = "Asia/Kolkata"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
