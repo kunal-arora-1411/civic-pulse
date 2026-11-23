@@ -27,6 +27,12 @@ Every error returns:
 ```
 Common codes: `validation_error` (422), `unauthenticated` (401), `token_expired` (401), `forbidden` (403), `tenant_mismatch` (403), `mfa_required` (403), `not_found` (404), `conflict` (409), `rate_limited` (429), `idempotency_key_reused` (422), `internal_error` (500).
 
+Auth codes for the OTP and MFA steps:
+- `invalid_code` (400): the OTP or MFA code is wrong. `details.attempts_remaining` is included when known.
+- `code_expired` (400): the OTP challenge or MFA token has expired or used up its attempts. The user has to request a new code.
+
+`rate_limited` responses include a `Retry-After` header and the same number of seconds in `details.retry_after`.
+
 ### Other headers
 - `X-Request-ID`: echoed back, or generated if missing.
 - `Idempotency-Key`: supported on create operations (in Phase 0: `POST /admin/users`). Repeating the same key with the same body replays the original response. Reusing a key with a different body returns `422 idempotency_key_reused`.
@@ -106,6 +112,8 @@ The frontend uses `permissions` from `/users/me` to decide what to show. The bac
 | POST | `/api/v1/admin/departments` | `config:manage` | `{ name, code }` |
 | GET | `/api/v1/admin/jurisdictions` | `config:read` | `?kind=ward`. Returns `{ id, parent_id, kind, name, code }` without geometry. Add `?include_geometry=true` for GeoJSON. |
 | GET | `/api/v1/admin/audit-events` | `audit:read` | Filters: `actor_id`, `action`, `entity_type`, `entity_id`, `from`, `to` |
+
+Admin user responses (list items, and the responses to create, get, `PATCH` and `PUT .../roles`) use the `/users/me` shape plus `"is_active": true` and `"created_at": "<ISO 8601>"`.
 
 Audit event:
 ```json
