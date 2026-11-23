@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -16,6 +17,16 @@ class RecordingSms:
     async def send_otp(self, phone: str, code: str, *, ttl_seconds: int) -> None:
         self.codes[phone] = code
         self.sent.append((phone, code))
+
+
+class RecordingMediaQueue:
+    """Stands in for the Celery queue: remembers what would have been processed."""
+
+    def __init__(self) -> None:
+        self.queued: list[tuple[uuid.UUID, uuid.UUID]] = []
+
+    def enqueue(self, asset_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
+        self.queued.append((asset_id, tenant_id))
 
 
 @dataclass

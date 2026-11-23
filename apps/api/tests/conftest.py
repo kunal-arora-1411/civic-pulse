@@ -51,6 +51,15 @@ os.environ.update(
         "REFRESH_REUSE_GRACE_SECONDS": "0",
         # Every test request comes from 127.0.0.1.
         "OTP_MAX_PER_IP_PER_HOUR": "100000",
+        # Real MinIO from compose, in a bucket of its own (emptied per run).
+        # The root credentials are fine here: the suite creates that bucket.
+        "S3_ENDPOINT": os.environ.get("TEST_S3_ENDPOINT", "http://localhost:9000"),
+        "S3_PUBLIC_ENDPOINT": os.environ.get("TEST_S3_ENDPOINT", "http://localhost:9000"),
+        "S3_ACCESS_KEY": os.environ.get("TEST_S3_ACCESS_KEY", "civicpulse"),
+        "S3_SECRET_KEY": os.environ.get("TEST_S3_SECRET_KEY", "civicpulse-minio"),
+        "S3_BUCKET": os.environ.get("TEST_S3_BUCKET", "civicpulse-test"),
+        # Never call a real geocoder from tests.
+        "GEOCODER": "none",
     }
 )
 
@@ -62,7 +71,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E40
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.redis import get_redis  # noqa: E402
-from tests.helpers import RecordingSms  # noqa: E402
+from tests.helpers import RecordingMediaQueue, RecordingSms  # noqa: E402
 
 
 def _dsn(url: URL) -> str:
@@ -113,6 +122,37 @@ def database() -> None:
     _run_migrations()
 
 
+def _reset_bucket() -> None:
+    import boto3
+    from botocore.config import Config
+
+    settings = get_settings()
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=settings.s3_endpoint,
+        region_name=settings.s3_region,
+        aws_access_key_id=settings.s3_access_key.get_secret_value(),
+        aws_secret_access_key=settings.s3_secret_key.get_secret_value(),
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+    )
+    bucket = settings.s3_bucket
+    existing = {b["Name"] for b in s3.list_buckets().get("Buckets", [])}
+    if bucket not in existing:
+        s3.create_bucket(Bucket=bucket)
+        return
+    for page in s3.get_paginator("list_objects_v2").paginate(Bucket=bucket):
+        keys = [{"Key": obj["Key"]} for obj in page.get("Contents", [])]
+        if keys:
+            s3.delete_objects(Bucket=bucket, Delete={"Objects": keys, "Quiet": True})
+
+
+@pytest.fixture(scope="session", autouse=True)
+def bucket() -> str:
+    """An empty test bucket on the compose MinIO."""
+    _reset_bucket()
+    return get_settings().s3_bucket
+
+
 @pytest.fixture(scope="session")
 async def owner_engine(database: None) -> AsyncIterator[AsyncEngine]:
     """Superuser connection to the test database, for setup and assertions."""
@@ -127,15 +167,26 @@ def sms() -> RecordingSms:
 
 
 @pytest.fixture(scope="session")
-async def app(database: None, sms: RecordingSms) -> AsyncIterator[FastAPI]:
+def media_queue() -> RecordingMediaQueue:
+    return RecordingMediaQueue()
+
+
+@pytest.fixture(scope="session")
+async def app(
+    database: None, sms: RecordingSms, media_queue: RecordingMediaQueue
+) -> AsyncIterator[FastAPI]:
     from app.core.db import get_engine
     from app.domains.auth.sms import get_sms_provider
+    from app.domains.media.tasks import get_media_queue
     from app.main import create_app
 
     redis = get_redis()
     await redis.flushdb()
     application = create_app()
     application.dependency_overrides[get_sms_provider] = lambda: sms
+    # Tests run media processing explicitly (tests/phase1.py); nothing may
+    # reach the Celery broker from the suite.
+    application.dependency_overrides[get_media_queue] = lambda: media_queue
     yield application
     await get_engine().dispose()
     await redis.aclose()

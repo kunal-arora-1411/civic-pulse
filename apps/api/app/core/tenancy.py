@@ -115,6 +115,10 @@ async def system_session(*, reason: str) -> AsyncIterator[AsyncSession]:
         try:
             async with rls_bypass(session, reason=reason):
                 yield session
+                # Flush while the bypass is still on: objects added with
+                # session.add() would otherwise be written at commit, after
+                # the bypass is lifted, and fail the policy.
+                await session.flush()
             await session.commit()
         except BaseException:
             await session.rollback()

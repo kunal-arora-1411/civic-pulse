@@ -37,3 +37,28 @@ def require(*permissions: Permission) -> Any:
 
     dependency.__name__ = "require_" + "_".join(p.value.replace(":", "_") for p in permissions)
     return Depends(dependency)
+
+
+def require_any(*permissions: Permission) -> Any:
+    """Like `require`, but one of the listed permissions is enough.
+
+    The staff-MFA gate applies only when every permission the caller could
+    be relying on is a staff one: a citizen uploading evidence through
+    `report:create` doesn't need TOTP just because field workers can do the
+    same through `evidence:upload`.
+    """
+
+    async def dependency(principal: CurrentPrincipal) -> Principal:
+        held = [p for p in permissions if principal.has(p)]
+        if not held:
+            raise Forbidden()
+        if (
+            get_settings().staff_mfa_required
+            and not principal.mfa_verified
+            and all(is_staff_permission(p) for p in held)
+        ):
+            raise MfaRequired()
+        return principal
+
+    dependency.__name__ = "require_any_" + "_".join(p.value.replace(":", "_") for p in permissions)
+    return Depends(dependency)

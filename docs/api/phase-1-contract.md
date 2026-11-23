@@ -231,3 +231,62 @@ Every transition writes a timeline event (previous status, new status, actor, ti
 
 ## 9. Housekeeping included in Phase 1
 - A Celery Beat job deletes expired OTP challenges, expired or revoked sessions older than 30 days, idempotency keys older than 24 hours, and incomplete uploads older than 24 hours (including their objects).
+
+---
+
+## Implementation notes (backend)
+
+Details the backend settled while implementing this contract. `apps/api/openapi.json` is the precise, generated form. Items marked **(change)** differ from, or add to, the text above.
+
+### Conventions
+- **Timestamps** are returned in UTC (`...Z`), including `captured_at`. The offset a photo was taken at is kept privately.
+- **New error codes:** `unsupported_media_type`, `file_too_large`, `upload_verification_failed`, `out_of_jurisdiction`, `evidence_required`, `invalid_media` (all 422), `too_many_uploads` (429, no `Retry-After`), `version_conflict` (409), `invalid_transition`, `reason_required` (422).
+- **Audit actions:** `category.created`, `category.updated`, `report.created`, `issue.created`, `issue.status_changed`.
+
+### Tenant
+- **(change)** `map` is `null` for a tenant with no jurisdiction geometry. The center is the city's centroid when it lies inside the city, otherwise a point that does. The zoom is derived from the bounds (12 for the seeded city).
+
+### Categories
+- **(change)** `GET /categories` returns a bare JSON array (no page envelope), because the form needs the whole list. `GET /admin/categories` and `GET /admin/workflow/transitions` use the standard page envelope. Admin category sorts: `sort_order` (default), `code`, `created_at`. Filter `is_active`.
+- Field definitions are validated on save: keys `^[a-z][a-z0-9_]{0,39}$` and unique, `options` required and unique for `select` and not allowed otherwise, `label_i18n.en` required, at most 20 fields. Non-select fields come back with `"options": null`.
+- `evidence.max_photos` is at most 10. `PATCH` accepts `null` only for `parent_id` and `default_department_id`. Re-parenting into a cycle is `422`. A duplicate `code` is `409 conflict`.
+- `details` validation: unknown keys, wrong types, values outside a select's options and missing required answers are all reported at once in `details.errors` (`loc: ["body", "details", "<key>"]`). Text answers are trimmed, max 500 characters, and blank counts as missing. Numbers can't be booleans.
+
+### Media
+- `POST /media/uploads`: the URL signs `Content-Type` **and `Content-Length`**, so the PUT must send exactly `size_bytes` bytes with the returned `Content-Type`. Storage rejects anything else with `403` (browsers set `Content-Length` themselves). The URL is signed for the public storage host.
+- `too_many_uploads` counts only uploads whose URL hasn't expired yet. `details.limit` is 20.
+- `complete` is idempotent: completing an already verified upload returns it again (`processing` or `ready`). After a failure, the upload stays failed: completing again returns the same `422 upload_verification_failed`, and the client starts a new upload. `details.reason` is one of `object_missing`, `size_mismatch`, `checksum_mismatch`, `content_type_mismatch`, `not_an_image`, `image_too_large` (over 50 megapixels).
+- `width`/`height` are as displayed, with EXIF orientation applied: the original's at completion, then the display variant's once `ready`. The aspect ratio is the same.
+- `variants` / `thumb_url` / `display_url` are `null` until the asset is `ready`. `original_url` is only filled for staff with `report:read`.
+
+### Geocoding
+- Outside the city, `in_jurisdiction` is `false` and `ward`/`zone` are `null`. `address_text` is still looked up.
+- Ward matching counts boundary points (`ST_Covers`) and picks the smallest ward, so a point on a shared edge gets exactly one ward.
+
+### Reports
+- Without `Idempotency-Key` the response is `422 validation_error`, with `loc: ["header", "Idempotency-Key"]`. A replay returns `201` with `Idempotent-Replayed: true` and the report **re-rendered** (fresh signed URLs, current status), not the stored bytes.
+- Validation order: unknown or inactive category (`422 validation_error`, `loc: ["body", "category_id"]`), then `out_of_jurisdiction`, then `evidence_required` (category photo range; `details: {min_photos, max_photos, received}`), then `invalid_media` (`details.media: [{id, reason}]`, reason one of `not_found`, `wrong_purpose`, `not_completed`, `failed`, `already_attached`), then details, then the photo-or-description policy (`evidence_required` with `details.min_description_length: 10`). Someone else's upload reads as `not_found`.
+- `description` and `address_text` are trimmed, and a blank value is stored as `null`. `client_created_at` must include an offset. `media_ids` must be unique (at most 10).
+- **(change)** Report views carry `"view": "owner"` or `"view": "staff"`, so a generated client can narrow `GET /reports/{id}`. The staff view also has `reporter`, `client_created_at` and `issue: {id, reference, status}`, without a timeline (the issue detail has the full one). `reporter.phone`/`email` are present only for callers with `user:manage`.
+- **(change)** The first timeline event has `"type": "created"` (`from_status: null`, `to_status: "reported"`), as the contract text says. The example in §5 shows `status_changed`.
+- The citizen timeline has public events only, and never `reason` or the actor.
+- **(change)** `GET /users/me/reports?status=` filters by the **linked issue's** status (the status the list shows), is repeatable, and accepts issue statuses.
+- A report the caller can't see is `404` (other citizens, staff outside the report's ward scope, staff without `report:read`, other tenants).
+- References are `R-YY-NNNNNN` / `CP-YY-NNNNNN` from a per-tenant, per-year counter in the submitting transaction. A failed submission gives its number back.
+
+### Issues
+- Scope is the jurisdiction subtree of the caller's `issue:read` grants. Issues with no ward are visible only to tenant-wide staff.
+- `sort` also accepts `updated_at` and `report_count` ascending. Unknown sorts are `422`.
+- `q` matches every word by **prefix** (`poth` finds "pothole"; Hindi works the same way). Issue and report references match as substrings, case-insensitive.
+- `from`/`to` are whole days in Asia/Kolkata, and `from > to` is `422`. `bbox` must be in range with min < max, else `422`.
+- GeoJSON features are newest first and also carry the issue id as the feature `id`.
+- `allowed_transitions` only counts the caller's roles whose grant covers the issue's ward. A supervisor for Zone North is not a supervisor in Zone South.
+- `PATCH .../status` returns the updated issue detail. Errors:
+  - `409 version_conflict`, with `details: {version}`.
+  - `422 invalid_transition`, with `details: {from_status, to_status, allowed_transitions: [{to_status, requires_reason}]}`. This also covers system-only moves and moves to the same status.
+  - `422 reason_required`, with `details: {to_status}`. A blank reason counts as missing.
+- A status change is a **public** timeline event: citizens see the move and the `public_note`, never the `reason`.
+
+### Seed
+- **(change to Phase 0 seed data)** `demo-city` now has a city jurisdiction `SYN-CITY` (kind `city`, the union of the zones), which is the parent of both zones. The admin jurisdictions list shows 7 rows.
+- Seeded issues have addresses `Synthetic Street N, Ward W (synthetic)` and English or Hindi descriptions, so search can be tried in both languages.

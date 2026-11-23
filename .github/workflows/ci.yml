@@ -26,9 +26,9 @@ jobs:
       # The same Postgres image as local development (PostGIS + pgvector +
       # h3, plus the civicpulse_app role), built from infra/db. GitHub
       # service containers can't build images, so compose runs it instead.
-      - name: Start Postgres and Redis
+      - name: Start Postgres, Redis and MinIO
         working-directory: .
-        run: docker compose -f infra/docker-compose.yml up -d --build --wait db redis
+        run: docker compose -f infra/docker-compose.yml up -d --build --wait db redis minio
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -51,13 +51,13 @@ jobs:
       - name: OpenAPI schema is up to date
         run: uv run python scripts/export_openapi.py --check
 
-      - name: Pytest (real Postgres, as the non-superuser app role)
+      - name: Pytest (real Postgres as the app role, real MinIO)
         run: uv run pytest
 
       - name: Service logs
         if: failure()
         working-directory: .
-        run: docker compose -f infra/docker-compose.yml logs db redis
+        run: docker compose -f infra/docker-compose.yml logs db redis minio
 
   images:
     name: Docker images

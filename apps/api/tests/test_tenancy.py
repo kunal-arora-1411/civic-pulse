@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import get_settings
 from app.core.db import AppSession, get_session_factory
-from app.core.tenancy import acting_as, rls_bypass, set_tenant
+from app.core.tenancy import acting_as, rls_bypass, set_tenant, system_session
 from app.domains.org.models import Department
 from app.domains.users.models import User
 from tests.factories import TenantRow, create_department, create_tenant, create_user
@@ -154,3 +154,19 @@ async def test_tenants_table_is_readable_without_tenant(
             await session.execute(text("SELECT slug FROM tenants WHERE id = :id"), {"id": a.id})
         ).scalar_one()
         assert slug == a.slug
+
+
+async def test_system_session_writes_added_objects_under_the_bypass(
+    owner_engine: AsyncEngine,
+) -> None:
+    # Objects added with session.add() are flushed before the bypass ends,
+    # not at commit, where the policy would reject them.
+    async with owner_engine.begin() as conn:
+        tenant = await create_tenant(conn)
+    async with system_session(reason="test") as db:
+        db.add(Department(tenant_id=tenant.id, name="Parks", code="PARKS"))
+    async with owner_engine.connect() as conn:
+        found = await conn.scalar(
+            text("SELECT count(*) FROM departments WHERE tenant_id = :t"), {"t": tenant.id}
+        )
+    assert found == 1

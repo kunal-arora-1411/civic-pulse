@@ -20,6 +20,23 @@ class TenantOut(BaseModel):
     supported_locales: list[str]
 
 
+class MapConfig(BaseModel):
+    """Initial map view. Coordinates are `[lng, lat]`, in GeoJSON order."""
+
+    center: tuple[float, float] = Field(examples=[[77.5946, 12.9716]])
+    zoom: int = Field(ge=0, le=22, examples=[12])
+    bounds: tuple[float, float, float, float] = Field(
+        description="`[min_lng, min_lat, max_lng, max_lat]` of the city boundary.",
+        examples=[[77.50, 12.90, 77.70, 13.05]],
+    )
+
+
+class TenantCurrent(TenantOut):
+    map: MapConfig | None = Field(
+        description="From the city jurisdiction's geometry; null if the tenant has none yet."
+    )
+
+
 class PlatformTenant(TenantOut):
     is_active: bool
     created_at: datetime

@@ -20,6 +20,20 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "OR phone = '+919100000001'",
         "seed_roles": "SELECT count(*) FROM user_roles r JOIN users u ON u.id = r.user_id "
         "WHERE u.phone LIKE '+9190000000%' OR u.phone = '+919100000001'",
+        "city": "SELECT count(*) FROM jurisdictions WHERE code = 'SYN-CITY' AND kind = 'city'",
+        "categories": "SELECT count(*) FROM categories c JOIN tenants t ON t.id = c.tenant_id "
+        "WHERE t.slug = 'demo-city' AND c.name_i18n ? 'hi' AND c.default_department_id IS NOT NULL",
+        "transitions": "SELECT count(*) FROM status_transitions s JOIN tenants t "
+        "ON t.id = s.tenant_id WHERE t.slug IN ('demo-city', 'other-city')",
+        "issues": "SELECT count(*) FROM civic_issues i JOIN tenants t ON t.id = i.tenant_id "
+        "WHERE t.slug = 'demo-city' AND i.address_text LIKE 'Synthetic Street%'",
+        "reports": "SELECT count(*) FROM reports r JOIN tenants t ON t.id = r.tenant_id "
+        "WHERE t.slug = 'demo-city' AND r.address_text LIKE 'Synthetic Street%'",
+        "ready_photos": "SELECT count(*) FROM media_assets m JOIN reports r ON r.id = m.report_id "
+        "WHERE r.address_text LIKE 'Synthetic Street%' AND m.status = 'ready' "
+        "AND m.thumb_key IS NOT NULL",
+        "events": "SELECT count(*) FROM issue_events e JOIN civic_issues i ON i.id = e.issue_id "
+        "WHERE i.address_text LIKE 'Synthetic Street%'",
     }
     async with engine.connect() as conn:
         return {name: (await conn.execute(text(sql))).scalar_one() for name, sql in queries.items()}
@@ -39,7 +53,42 @@ async def test_seed_is_idempotent_and_usable(
         "wards": 4,
         "seed_users": 7,
         "seed_roles": 7,
+        "city": 1,
+        "categories": 5,
+        "transitions": 14,
+        "issues": 60,
+        "reports": 60,
+        "ready_photos": 60,
+        # created x60, plus 12 x1 (under_review), 12 x2 (verified), 6 x1 (rejected)
+        "events": 60 + 12 + 24 + 6,
     }
+
+    async with owner_engine.connect() as conn:
+        statuses = dict(
+            (
+                await conn.execute(
+                    text(
+                        "SELECT status, count(*) FROM civic_issues "
+                        "WHERE address_text LIKE 'Synthetic Street%' GROUP BY status"
+                    )
+                )
+            ).all()
+        )
+        wards = await conn.scalar(
+            text(
+                "SELECT count(DISTINCT ward_id) FROM civic_issues "
+                "WHERE address_text LIKE 'Synthetic Street%'"
+            )
+        )
+        span = await conn.scalar(
+            text(
+                "SELECT max(created_at) - min(created_at) FROM civic_issues "
+                "WHERE address_text LIKE 'Synthetic Street%'"
+            )
+        )
+    assert statuses == {"reported": 30, "under_review": 12, "verified": 12, "rejected": 6}
+    assert wards == 4
+    assert span.days >= 28
 
     # Wards sit inside their zone, around central Bengaluru.
     async with owner_engine.connect() as conn:
