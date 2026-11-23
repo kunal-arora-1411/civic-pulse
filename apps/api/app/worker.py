@@ -15,6 +15,7 @@ from collections.abc import Coroutine
 from typing import Any
 
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import setup_logging
 
 from app.core.config import get_settings
@@ -26,7 +27,7 @@ celery_app = Celery(
     "civicpulse",
     broker=settings.broker_url,
     backend=settings.broker_url,
-    include=["app.domains.media.tasks"],
+    include=["app.domains.media.tasks", "app.domains.housekeeping.tasks"],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -41,6 +42,14 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     result_expires=3600,
     broker_connection_retry_on_startup=True,
+    # Run by the `beat` service in compose. Hourly keeps the short-lived
+    # tables small; the job is idempotent, so a missed or doubled run is fine.
+    beat_schedule={
+        "housekeeping-cleanup": {
+            "task": "civicpulse.housekeeping.cleanup",
+            "schedule": crontab(minute=17),
+        },
+    },
 )
 
 
