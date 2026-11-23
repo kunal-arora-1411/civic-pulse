@@ -180,7 +180,7 @@ export function CreateUserDialog({
         onSubmit={onSubmit}
         className="grid gap-5 pb-2"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
           <Field
             label={t("nameLabel")}
             error={errors.display_name?.message}

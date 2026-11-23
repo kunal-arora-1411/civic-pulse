@@ -5,7 +5,10 @@ import { AdminShell } from "@/components/admin/admin-shell";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("admin");
   return {
-    title: { default: t("metaTitle"), template: `%s · ${t("metaTitle")}` },
+    title: {
+      default: t("metaTitle"),
+      template: `%s · ${t("metaTitle")} · CivicPulse`,
+    },
     // The console is useless to crawlers and shouldn't show up in search.
     robots: { index: false, follow: false },
   };

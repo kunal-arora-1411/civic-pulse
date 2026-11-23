@@ -17,12 +17,18 @@ export function RequireSession({
   allow,
   children,
   fallback,
+  standalone = false,
 }: {
   /** Extra check on the signed-in user (role, permission). */
   allow?: (user: CurrentUser) => boolean;
   children: ReactNode;
   /** Rendered while the session is being restored. */
   fallback?: ReactNode;
+  /**
+   * Set when the guard sits outside any page chrome, so the denied state
+   * provides the main landmark (the skip link targets it) itself.
+   */
+  standalone?: boolean;
 }) {
   const { status, user } = useSession();
   const router = useRouter();
@@ -37,6 +43,14 @@ export function RequireSession({
   if (status !== "authenticated" || !user) {
     return fallback ?? <PageLoading className="p-4 sm:p-8" />;
   }
-  if (allow && !allow(user)) return <NotAuthorised user={user} />;
+  if (allow && !allow(user)) {
+    return standalone ? (
+      <main id="main" className="flex-1">
+        <NotAuthorised user={user} />
+      </main>
+    ) : (
+      <NotAuthorised user={user} />
+    );
+  }
   return children;
 }

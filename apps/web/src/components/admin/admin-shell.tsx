@@ -136,7 +136,7 @@ function ShellSkeleton() {
  */
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
-    <RequireSession allow={canUseAdmin} fallback={<ShellSkeleton />}>
+    <RequireSession allow={canUseAdmin} fallback={<ShellSkeleton />} standalone>
       <AdminFrame>{children}</AdminFrame>
     </RequireSession>
   );
