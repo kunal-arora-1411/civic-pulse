@@ -87,6 +87,19 @@ class Settings(BaseSettings):
 
     idempotency_ttl_seconds: int = 24 * 3600
 
+    # Object storage (S3 API; MinIO in development). The API talks to
+    # S3_ENDPOINT, which may be an internal hostname. Pre-signed URLs are
+    # handed to browsers, and a SigV4 signature covers the Host header, so
+    # they must be signed for the address the browser will use:
+    # S3_PUBLIC_ENDPOINT. The two only differ when storage sits on a private
+    # network (docker compose, a VPC endpoint).
+    s3_endpoint: str = "http://localhost:9000"
+    s3_public_endpoint: str | None = None
+    s3_region: str = "us-east-1"
+    s3_access_key: SecretStr
+    s3_secret_key: SecretStr
+    s3_bucket: str = "civicpulse-media"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -142,6 +155,10 @@ class Settings(BaseSettings):
     @property
     def broker_url(self) -> str:
         return self.celery_broker_url or self.redis_url
+
+    @property
+    def s3_presign_endpoint(self) -> str:
+        return self.s3_public_endpoint or self.s3_endpoint
 
 
 @lru_cache

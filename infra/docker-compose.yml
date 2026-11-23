@@ -27,6 +27,13 @@ x-api-env: &api-env
   TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-mMLHnH8kUFV7fWcw29AMh4zjPaVTPAsXyuGlw5mP07w=}
   DEV_FIXED_OTP: ${DEV_FIXED_OTP:-true}
   REQUIRE_STAFF_MFA: ${REQUIRE_STAFF_MFA:-false}
+  # Server-side calls go to minio over the compose network; URLs handed to
+  # browsers are signed for the host port instead (see app/core/storage.py).
+  S3_ENDPOINT: http://minio:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+  S3_BUCKET: ${S3_BUCKET:-civicpulse-media}
+  S3_ACCESS_KEY: ${S3_APP_ACCESS_KEY:-civicpulse-app}
+  S3_SECRET_KEY: ${S3_APP_SECRET_KEY:-civicpulse-app-secret}
 
 services:
   db:
@@ -67,6 +74,10 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-civicpulse}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-civicpulse-minio}
+      # Browsers PUT uploads straight to pre-signed URLs, so the web origins
+      # need CORS. MinIO applies this server-wide (it has no per-bucket CORS)
+      # and answers preflights for any requested header from these origins.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${S3_CORS_ORIGINS:-http://localhost:3000,http://localhost:3100}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -78,8 +89,10 @@ services:
       timeout: 3s
       retries: 20
 
-  # One-shot job: creates the private media bucket and exits. It has no
-  # healthcheck because it doesn't stay up; dependants wait on
+  # One-shot job: creates the private media bucket and a least-privilege
+  # user for the API and worker (object read/write/delete on that bucket
+  # only), then exits. The root credentials stay here. It has no healthcheck
+  # because it doesn't stay up; dependants wait on
   # `service_completed_successfully` instead.
   minio-init:
     image: pgsty/mc:RELEASE.2026-11-12T00-00-00Z
@@ -90,6 +103,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-civicpulse}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-civicpulse-minio}
       S3_BUCKET: ${S3_BUCKET:-civicpulse-media}
+      S3_APP_ACCESS_KEY: ${S3_APP_ACCESS_KEY:-civicpulse-app}
+      S3_APP_SECRET_KEY: ${S3_APP_SECRET_KEY:-civicpulse-app-secret}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -97,7 +112,22 @@ services:
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
         mc mb --ignore-existing "local/$$S3_BUCKET"
         mc anonymous set none "local/$$S3_BUCKET"
-        echo "bucket $$S3_BUCKET ready (private)"
+        cat > /tmp/app-policy.json <<EOF
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {"Effect": "Allow", "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+             "Resource": ["arn:aws:s3:::$$S3_BUCKET"]},
+            {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+             "Resource": ["arn:aws:s3:::$$S3_BUCKET/*"]}
+          ]
+        }
+        EOF
+        mc admin user add local "$$S3_APP_ACCESS_KEY" "$$S3_APP_SECRET_KEY"
+        mc admin policy create local civicpulse-app /tmp/app-policy.json
+        mc admin policy attach local civicpulse-app --user "$$S3_APP_ACCESS_KEY" 2>/dev/null \
+          || echo "policy already attached"
+        echo "bucket $$S3_BUCKET ready (private), app user $$S3_APP_ACCESS_KEY configured"
     restart: "no"
 
   mailpit:
@@ -162,6 +192,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "celery -A app.worker:celery_app inspect ping -d celery@$$HOSTNAME --timeout 5"]
       interval: 30s

@@ -27,6 +27,8 @@ _PLACEHOLDERS = {
     "JWT_SECRET": "openapi-export-placeholder-not-a-secret-000000",
     "OTP_HMAC_SECRET": "openapi-export-placeholder-not-a-secret-000000",
     "TOTP_ENCRYPTION_KEY": "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+    "S3_ACCESS_KEY": "openapi-export-placeholder",
+    "S3_SECRET_KEY": "openapi-export-placeholder",
 }
 for name, value in _PLACEHOLDERS.items():
     os.environ.setdefault(name, value)
