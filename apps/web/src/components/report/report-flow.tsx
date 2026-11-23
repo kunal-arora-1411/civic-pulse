@@ -149,6 +149,7 @@ export function ReportFlow() {
   const goTo = useCallback((next: ReportStep, history = true) => {
     setDraft((current) => ({ ...current, step: next }));
     setFurthest((current) => (next > current ? next : current));
+    setResumed(false);
     moveFocus.current = true;
     if (history) window.history.pushState(null, "", `?step=${next}`);
   }, []);

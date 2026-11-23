@@ -81,7 +81,9 @@ export function LocationStep({
         });
         setManual(true);
       },
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+      // maximumAge 0: "find my location again" must not return the cached
+      // fix the citizen is trying to replace.
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
   }, [onChange]);
 

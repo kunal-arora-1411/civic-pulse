@@ -241,6 +241,9 @@
 .leaflet-container {
   font-family: var(--font-sans);
   background: var(--muted);
+  /* Leaflet's panes use z-indexes up to 1000. Contain them so a map
+     never paints over sticky headers, footers or dialogs. */
+  isolation: isolate;
 }
 
 .leaflet-container:focus-visible {
