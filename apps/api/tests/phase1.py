@@ -14,6 +14,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.tenancy import system_session
+from app.domains.media.processing import process_asset
 from app.domains.workflow.service import install_default_transitions
 from tests.factories import (
     TenantRow,
@@ -194,6 +195,16 @@ async def uploaded_media_id(client: httpx.AsyncClient, session: Session, data: b
     response = await upload(client, session, data)
     assert response.status_code == 200, response.text
     return response.json()["id"]
+
+
+async def ready_media_id(client: httpx.AsyncClient, session: Session, data: bytes) -> str:
+    """Upload and run processing inline, as the worker would."""
+    response = await upload(client, session, data)
+    assert response.status_code == 200, response.text
+    asset_id = response.json()["id"]
+    status = await process_asset(uuid.UUID(asset_id), uuid.UUID(session.user["tenant_id"]))
+    assert status == "ready"
+    return asset_id
 
 
 async def login_new(

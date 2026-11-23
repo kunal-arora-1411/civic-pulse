@@ -71,7 +71,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E40
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.redis import get_redis  # noqa: E402
-from tests.helpers import RecordingSms  # noqa: E402
+from tests.helpers import RecordingMediaQueue, RecordingSms  # noqa: E402
 
 
 def _dsn(url: URL) -> str:
@@ -167,15 +167,26 @@ def sms() -> RecordingSms:
 
 
 @pytest.fixture(scope="session")
-async def app(database: None, sms: RecordingSms) -> AsyncIterator[FastAPI]:
+def media_queue() -> RecordingMediaQueue:
+    return RecordingMediaQueue()
+
+
+@pytest.fixture(scope="session")
+async def app(
+    database: None, sms: RecordingSms, media_queue: RecordingMediaQueue
+) -> AsyncIterator[FastAPI]:
     from app.core.db import get_engine
     from app.domains.auth.sms import get_sms_provider
+    from app.domains.media.tasks import get_media_queue
     from app.main import create_app
 
     redis = get_redis()
     await redis.flushdb()
     application = create_app()
     application.dependency_overrides[get_sms_provider] = lambda: sms
+    # Tests run media processing explicitly (tests/phase1.py); nothing may
+    # reach the Celery broker from the suite.
+    application.dependency_overrides[get_media_queue] = lambda: media_queue
     yield application
     await get_engine().dispose()
     await redis.aclose()

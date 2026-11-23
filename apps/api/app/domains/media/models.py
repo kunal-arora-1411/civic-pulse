@@ -95,7 +95,8 @@ class MediaAsset(TimestampMixin, Base):
     storage_key: Mapped[str] = mapped_column(String(300))
     display_key: Mapped[str | None] = mapped_column(String(300))
     thumb_key: Mapped[str | None] = mapped_column(String(300))
-    # Dimensions as displayed, i.e. after applying the EXIF orientation.
+    # Dimensions as displayed (EXIF orientation applied): the original's until
+    # processing finishes, then the display variant's. The ratio is the same.
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
     captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

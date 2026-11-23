@@ -1,16 +1,17 @@
 """Celery application for background jobs.
 
-Phase 0 only wires the plumbing (Redis broker, JSON serialisation, JSON logs)
-and a `ping` task. Jobs that touch the database should open
+Jobs that touch the database should open
 `app.core.tenancy.system_session(reason=...)` or set the tenant explicitly;
 workers connect as the same non-superuser role as the API, so RLS applies to
-them too.
+them too. Tasks are thin sync wrappers that hand async code to `run_async`.
 
     celery -A app.worker:celery_app worker --loglevel=INFO
 """
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Coroutine
 from typing import Any
 
 from celery import Celery
@@ -21,7 +22,12 @@ from app.core.logging import configure_logging
 
 settings = get_settings()
 
-celery_app = Celery("civicpulse", broker=settings.broker_url, backend=settings.broker_url)
+celery_app = Celery(
+    "civicpulse",
+    broker=settings.broker_url,
+    backend=settings.broker_url,
+    include=["app.domains.media.tasks"],
+)
 celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
@@ -41,6 +47,24 @@ celery_app.conf.update(
 @setup_logging.connect
 def _configure_logging(**_: Any) -> None:
     configure_logging(settings.log_level, "civicpulse-worker")
+
+
+def run_async[T](coro: Coroutine[Any, Any, T]) -> T:
+    """Run a coroutine to completion from a (sync) Celery task.
+
+    Each call gets a fresh event loop, and asyncpg connections belong to the
+    loop that opened them, so the engine's pool is disposed before the loop
+    closes. The next task opens new connections on its own loop.
+    """
+    from app.core.db import get_engine
+
+    async def runner() -> T:
+        try:
+            return await coro
+        finally:
+            await get_engine().dispose()
+
+    return asyncio.run(runner())
 
 
 @celery_app.task(name="civicpulse.ping")
