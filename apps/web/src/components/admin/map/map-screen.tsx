@@ -12,7 +12,9 @@ import { useIssueFilters } from "@/components/admin/issues/use-issue-filters";
 import { PageHeader } from "@/components/admin/page-header";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { StatusBadge } from "@/components/issues/status-badge";
+import type { MarkerStyle } from "@/components/map/issues-map";
 import { IssuesMap, MapSkeleton } from "@/components/map/lazy-maps";
+import { PriorityShape } from "@/components/map/priority-shapes";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,8 +24,9 @@ import { useLocalized, useTenantMapView } from "@/hooks/use-reference-data";
 import { Link } from "@/i18n/navigation";
 import {
   getIssuesGeoJson,
-  type IssueStatus,
+  type IssueFeature,
   listWardBoundaries,
+  PRIORITY_BANDS,
 } from "@/lib/api";
 import { serializeIssueFilters, toFilterParams } from "@/lib/issues/filters";
 import {
@@ -51,6 +54,7 @@ import { cn } from "@/lib/utils";
 export function MapScreen() {
   const t = useTranslations("admin.map");
   const tStatus = useTranslations("issueStatus");
+  const tBand = useTranslations("priority.band");
   const errorMessage = useErrorMessage();
   const localized = useLocalized();
   const view = useTenantMapView();
@@ -104,10 +108,17 @@ export function MapScreen() {
     () => new Map((categories.data ?? []).map((c) => [c.code, c])),
     [categories.data],
   );
+  const [styleBy, setStyleBy] = useState<MarkerStyle>("status");
   const markerLabel = useCallback(
-    (reference: string, status: IssueStatus) =>
-      `${reference}, ${tStatus(status)}`,
-    [tStatus],
+    ({ reference, status, priority_band }: IssueFeature["properties"]) =>
+      priority_band
+        ? t("markerLabelPriority", {
+            reference,
+            status: tStatus(status),
+            band: tBand(priority_band),
+          })
+        : `${reference}, ${tStatus(status)}`,
+    [t, tStatus, tBand],
   );
 
   const shown = visibleListItems(items, selection);
@@ -150,6 +161,52 @@ export function MapScreen() {
         </Alert>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <fieldset className="flex flex-wrap items-center gap-2">
+          <legend className="sr-only">{t("styleLegend")}</legend>
+          <span aria-hidden="true" className="text-sm font-semibold">
+            {t("styleLegend")}
+          </span>
+          <div className="inline-flex rounded-lg border border-input bg-card p-0.5">
+            {(["status", "priority"] as const).map((value) => (
+              <label
+                key={value}
+                className={cn(
+                  "cursor-pointer rounded-md px-3 py-1 text-sm font-semibold has-focus-visible:ring-3 has-focus-visible:ring-ring/30",
+                  styleBy === value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="marker-style"
+                  value={value}
+                  checked={styleBy === value}
+                  onChange={() => setStyleBy(value)}
+                  className="sr-only"
+                />
+                {t(`style_${value}`)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {styleBy === "priority" ? (
+          <ul
+            aria-label={t("legendLabel")}
+            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"
+          >
+            {PRIORITY_BANDS.map((band) => (
+              <li key={band} className="flex items-center gap-1.5">
+                <PriorityShape band={band} className="size-4" />
+                {tBand(band)}
+              </li>
+            ))}
+            <li className="text-muted-foreground">{t("legendUnscored")}</li>
+          </ul>
+        ) : null}
+      </div>
+
       <div className="grid gap-4 lg:h-[calc(100dvh-24rem)] lg:min-h-[28rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="relative h-[55dvh] min-h-80 overflow-hidden rounded-xl border border-border lg:h-full">
           {view.ready ? (
@@ -164,6 +221,7 @@ export function MapScreen() {
               initialView={view}
               label={t("mapLabel")}
               markerLabel={markerLabel}
+              styleBy={styleBy}
             />
           ) : (
             <MapSkeleton />

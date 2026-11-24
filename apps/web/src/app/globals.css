@@ -309,6 +309,38 @@
   outline: 3px solid var(--accent);
 }
 
+/* Priority markers: a shape per band (see priority-shapes.tsx), tinted
+   like the band's badge, with a light outline to stand off the tiles. */
+.cp-band {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: var(--tone, var(--primary));
+  stroke: var(--card);
+  stroke-width: 2;
+  paint-order: stroke;
+  filter: drop-shadow(0 1px 1.5px hsl(var(--shadow-color) / 0.5));
+}
+
+.cp-band[data-band="critical"] {
+  --tone: var(--destructive);
+}
+.cp-band[data-band="high"] {
+  --tone: var(--warning-soft-foreground);
+}
+.cp-band[data-band="medium"] {
+  --tone: var(--info-soft-foreground);
+}
+.cp-band[data-band="low"] {
+  --tone: var(--muted-foreground);
+}
+
+.cp-dot-icon.is-selected .cp-band {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
 .leaflet-marker-icon:focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: 2px;

@@ -188,7 +188,7 @@ Citizens whose reports moved see the new issue in their report detail. The publi
 "severity": { "level": "high", "source": "rule" },
 "priority": { "score": 67.5, "band": "high", "computed_band": "high", "overridden": false, "override_reason": null, "factors": [ ... ] }
 ```
-`factors` appear on the detail only. The issue list adds `sort=-priority` (the new default for staff) and filters `severity` and `priority_band` (both repeatable).
+`factors` appear on the detail only. The issue list adds `sort=-priority` (the new default for staff) and filters `severity` and `priority_band` (both repeatable). `GET /issues/geojson` takes the same two filters, and each feature's properties add `priority_band` (the effective band, or `null` while unscored) so the staff map can shape its markers by band.
 
 ## G. Configuration and governance
 | Method | Path | Permission |
