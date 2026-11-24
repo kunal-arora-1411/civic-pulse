@@ -313,8 +313,6 @@
    like the band's badge, with a light outline to stand off the tiles. */
 .cp-band {
   display: block;
-  width: 100%;
-  height: 100%;
   overflow: visible;
   fill: var(--tone, var(--primary));
   stroke: var(--card);
@@ -334,6 +332,13 @@
 }
 .cp-band[data-band="low"] {
   --tone: var(--muted-foreground);
+}
+
+/* In a marker the shape fills the icon box; the legend sizes its own
+   with utilities (unlayered CSS here would override them). */
+.cp-dot-icon .cp-band {
+  width: 100%;
+  height: 100%;
 }
 
 .cp-dot-icon.is-selected .cp-band {

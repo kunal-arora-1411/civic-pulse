@@ -47,7 +47,7 @@ const LIST_KEY = ["review-tasks", "list"] as const;
 function Kbd({ children }: { children: ReactNode }) {
   return (
     // The key is announced through aria-keyshortcuts on the control.
-    <span aria-hidden="true">
+    <span aria-hidden="true" className="max-sm:hidden">
       <kbd className="ms-1 inline-grid min-w-5 place-items-center rounded border border-current/30 px-1 font-mono text-[0.6875rem] leading-4 font-semibold opacity-80">
         {children}
       </kbd>
@@ -210,11 +210,14 @@ function CandidatePanel({ candidate }: { candidate: ReviewCandidate }) {
           <ExternalLink aria-hidden="true" className="size-3.5" />
         </Link>
       </h3>
-      <RemoteImage
-        src={issue.thumb_url}
-        alt={t("issuePhoto", { reference: issue.reference })}
-        className="aspect-[4/3] w-full rounded-lg object-cover"
-      />
+      {/* Same tile size as the report's photos, so the two compare fairly. */}
+      <div className="grid grid-cols-3 gap-2">
+        <RemoteImage
+          src={issue.thumb_url}
+          alt={t("issuePhoto", { reference: issue.reference })}
+          className="aspect-square w-full rounded-lg border border-border object-cover"
+        />
+      </div>
       <div className="flex flex-wrap gap-1.5">
         <StatusBadge status={issue.status} />
         {issue.priority ? (
@@ -344,7 +347,7 @@ function Comparison({
       </div>
 
       {candidate ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
           <Card className="grid content-start gap-3 p-4">
             <h3 className="font-semibold">{t("mapHeading")}</h3>
             <div className="h-56 overflow-hidden rounded-lg border border-border">
@@ -606,6 +609,7 @@ export function ReviewScreen() {
         actions={
           <Button
             variant="outline"
+            className="max-sm:hidden"
             aria-expanded={help}
             aria-keyshortcuts="?"
             onClick={() => setHelp((value) => !value)}

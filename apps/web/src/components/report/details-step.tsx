@@ -77,7 +77,7 @@ function CategoryTile({
           {localized(category.name_i18n)}
         </span>
         {suggested ? (
-          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent-foreground">
+          <span className="inline-flex w-fit items-start gap-1 rounded-md bg-accent-soft px-1.5 py-0.5 text-xs leading-snug font-semibold text-accent-foreground [&>svg]:mt-px [&>svg]:shrink-0">
             <Sparkles aria-hidden="true" className="size-3.5" />
             {t("suggestedBadge")}
           </span>

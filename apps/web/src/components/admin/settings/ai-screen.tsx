@@ -175,11 +175,15 @@ function Stat({
   value: ReactNode;
   note?: ReactNode;
 }) {
+  // Labels take up the slack and the note keeps its line, so the numbers
+  // in a row line up even when one label wraps.
   return (
-    <div className="grid gap-0.5">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
+    <div className="flex flex-col gap-0.5">
+      <dt className="flex flex-1 items-end text-sm text-muted-foreground">
+        {label}
+      </dt>
       <dd className="text-2xl font-semibold tabular-nums">{value}</dd>
-      {note ? <dd className="text-xs text-muted-foreground">{note}</dd> : null}
+      <dd className="min-h-4 text-xs text-muted-foreground">{note}</dd>
     </div>
   );
 }
@@ -314,7 +318,7 @@ function Quality() {
           </div>
 
           <Table label={t("categoriesTitle")}>
-            <caption className="px-4 pt-3 text-start text-sm font-semibold text-foreground">
+            <caption className="caption-top px-4 pt-3 text-start text-sm font-semibold text-foreground">
               {t("categoriesTitle")}
             </caption>
             <TableHeader>

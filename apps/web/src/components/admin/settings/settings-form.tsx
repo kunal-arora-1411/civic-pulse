@@ -1,15 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCcw, Save } from "lucide-react";
+import { CircleAlert, RotateCcw, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { PageLoading } from "@/components/page-loading";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { hasPermission } from "@/lib/auth/access";
@@ -158,40 +158,51 @@ export function NumberField({
   className?: string;
 }) {
   const t = useTranslations("admin.settings");
+  const id = useId();
+  const helpId = `${id}-help`;
+  const errorId = `${id}-error`;
+  // Help sits under the input rather than above it, so the inputs in a
+  // grid line up however long each explanation is.
   return (
-    <Field
-      label={label}
-      description={
-        <>
-          {help}
-          {defaultValue !== undefined ? (
-            <span className="block text-xs">
-              {t("default", { value: String(defaultValue) })}
-            </span>
-          ) : null}
-        </>
-      }
-      error={errorText}
-      className={className}
-    >
-      {(control) => (
-        <div className="flex items-center gap-2">
-          <Input
-            {...control}
-            type="number"
-            inputMode="decimal"
-            step={step}
-            value={form.values?.[path] ?? ""}
-            onChange={(event) => form.setValue(path, event.target.value)}
-            disabled={!form.canManage}
-            className="w-32 tabular-nums"
-          />
-          {suffix ? (
-            <span className="text-sm text-muted-foreground">{suffix}</span>
-          ) : null}
-        </div>
-      )}
-    </Field>
+    <div className={cn("grid content-start gap-1.5", className)}>
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          id={id}
+          type="number"
+          inputMode="decimal"
+          step={step}
+          value={form.values?.[path] ?? ""}
+          onChange={(event) => form.setValue(path, event.target.value)}
+          disabled={!form.canManage}
+          aria-invalid={errorText ? true : undefined}
+          aria-describedby={[errorText ? errorId : null, helpId]
+            .filter(Boolean)
+            .join(" ")}
+          className="w-32 tabular-nums"
+        />
+        {suffix ? (
+          <span className="text-sm text-muted-foreground">{suffix}</span>
+        ) : null}
+      </div>
+      {errorText ? (
+        <p
+          id={errorId}
+          className="flex items-start gap-1.5 text-sm font-medium text-destructive-soft-foreground"
+        >
+          <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <span>{errorText}</span>
+        </p>
+      ) : null}
+      <p id={helpId} className="text-sm text-muted-foreground">
+        {help}
+        {defaultValue !== undefined ? (
+          <span className="block text-xs">
+            {t("default", { value: String(defaultValue) })}
+          </span>
+        ) : null}
+      </p>
+    </div>
   );
 }
 
