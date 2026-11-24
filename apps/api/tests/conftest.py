@@ -15,7 +15,9 @@ from collections.abc import AsyncIterator
 
 from sqlalchemy.engine import URL, make_url
 
-TEST_DB_NAME = "civicpulse_test"
+# Overridable so that two checkouts can run the suite against one Postgres
+# at the same time without dropping each other's database.
+TEST_DB_NAME = os.environ.get("TEST_DB_NAME", "civicpulse_test")
 
 _owner_url = make_url(
     os.environ.get(
