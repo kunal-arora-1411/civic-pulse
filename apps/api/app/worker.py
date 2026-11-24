@@ -34,6 +34,7 @@ celery_app = Celery(
         "app.domains.ai.tasks",
         "app.domains.matching.tasks",
         "app.domains.operations.tasks",
+        "app.domains.sla.tasks",
     ],
 )
 
@@ -81,6 +82,12 @@ celery_app.conf.update(
         "close-resolved-issues": {
             "task": "civicpulse.operations.close_resolved",
             "schedule": crontab(minute="*/15"),
+        },
+        # Marks issues past their SLA and escalates them. Each issue moves up
+        # each escalation level once, so overlapping runs are harmless.
+        "sla-scan": {
+            "task": "civicpulse.sla.scan",
+            "schedule": crontab(minute="*/5"),
         },
         "priority-nightly": {
             "task": "civicpulse.priority.nightly",

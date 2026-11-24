@@ -118,7 +118,8 @@
       "categories": "Categories",
       "matching": "Matching",
       "priority": "Priority rules",
-      "ai": "AI models"
+      "ai": "AI models",
+      "sla": "SLA targets"
     },
     "overview": {
       "title": "Welcome back",
@@ -292,7 +293,8 @@
         "priority": "Priority",
         "allPriorities": "All priorities",
         "severity": "Severity",
-        "allSeverities": "All severities"
+        "allSeverities": "All severities",
+        "overdueOnly": "Overdue only"
       }
     },
     "settings": {
@@ -315,7 +317,9 @@
         "weightsSumHundred": "The weights must add up to 100.",
         "reviewBelowAuto": "Must be lower than the auto-link score.",
         "pointsIncreasing": "Must be at least as high as the level below.",
-        "bandsDescending": "Must be lower than the band above."
+        "bandsDescending": "Must be lower than the band above.",
+        "hoursRange": "Enter whole hours from 1 to {max}.",
+        "escalateRequired": "Enter when to escalate: this category has a target."
       },
       "matching": {
         "title": "Matching",
@@ -397,6 +401,22 @@
         "examplePlace": "Near a school or hospital",
         "previewScore": "Score {score} of 100",
         "previewInvalid": "Fix the highlighted settings to see the preview."
+      },
+      "sla": {
+        "title": "SLA targets",
+        "description": "How long issues may stay open before they are overdue, and who hears about it. Every change is recorded in the audit log.",
+        "saved": "SLA targets saved",
+        "targetsTitle": "Resolution targets",
+        "targetsIntro": "Hours from the first report to resolution. A blank band uses the All bands target; a category with no target has no deadline. Saving reschedules every open issue.",
+        "tableLabel": "Resolution targets by category and priority",
+        "category": "Category",
+        "allBands": "All bands",
+        "escalateAfter": "Escalate after",
+        "cellLabel": "{category}: {column}, hours",
+        "hoursNote": "All values are in hours. The clock pauses when an issue is resolved, rejected or closed, and restarts if it is reopened.",
+        "escalationTitle": "Escalation",
+        "escalationStep1": "When an issue passes its target, the supervisors of the category's department (and supervisors without a department) are notified and the breach is recorded on the issue.",
+        "escalationStep2": "If it is still open after the Escalate after hours, the municipal admins are notified."
       }
     },
     "ai": {
@@ -580,7 +600,9 @@
           "severity_changed": "Severity changed",
           "priority_changed": "Priority changed",
           "related_added": "Related issue linked",
-          "related_removed": "Related issue unlinked"
+          "related_removed": "Related issue unlinked",
+          "sla_breached": "SLA breached: supervisors alerted",
+          "sla_escalated": "SLA breach escalated to municipal admins"
         }
       },
       "match": {
@@ -747,7 +769,10 @@
         "transitionGoneTitle": "That change is no longer possible",
         "transitionGoneBody": "The issue's status may have moved on. Reload to see which changes are available now.",
         "reload": "Reload issue"
-      }
+      },
+      "slaDue": "SLA due",
+      "slaEscalatedSupervisors": "Breached: supervisors alerted",
+      "slaEscalatedAdmins": "Breached: escalated to municipal admins"
     },
     "map": {
       "title": "Issue map",
@@ -926,7 +951,8 @@
         "acknowledgement_time": "Median time to acknowledge",
         "duplicate_rate": "Duplicate rate",
         "review_rate": "Sent to review",
-        "reopen_rate": "Reopen rate"
+        "reopen_rate": "Reopen rate",
+        "sla_compliance": "Resolved within SLA"
       },
       "filters": {
         "label": "Analytics filters",
@@ -1649,6 +1675,11 @@
       "fallback": {
         "title": "Update",
         "body": "Something changed. Open it for details."
+      },
+      "sla_breach": {
+        "title": "Issue {issue} is past its SLA",
+        "body_level_1": "It hasn't been resolved in the target time. Check who is working on it.",
+        "body_level_2": "It is still open well past its target. The supervisors were alerted earlier."
       }
     }
   },
@@ -1770,5 +1801,10 @@
       "days": "{count, plural, one {# day} other {# days}}",
       "retry": "Try again"
     }
+  },
+  "sla": {
+    "overdue": "Overdue",
+    "dueSoon": "Due soon",
+    "dueAt": "SLA due {date}"
   }
 }

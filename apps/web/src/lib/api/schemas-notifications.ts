@@ -12,6 +12,7 @@ export const NOTIFICATION_KINDS = [
   "issue_status",
   "review_task",
   "assignment",
+  "sla_breach",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 

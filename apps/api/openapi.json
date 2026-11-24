@@ -4788,6 +4788,24 @@
             "description": "The effective band (an override counts). Repeatable."
           },
           {
+            "name": "overdue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`true`: open and past the SLA deadline; `false`: everything else.",
+              "title": "Overdue"
+            },
+            "description": "`true`: open and past the SLA deadline; `false`: everything else."
+          },
+          {
             "name": "X-Tenant",
             "in": "header",
             "required": false,
@@ -5049,6 +5067,24 @@
               "title": "Priority Band"
             },
             "description": "The effective band (an override counts). Repeatable."
+          },
+          {
+            "name": "overdue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`true`: open and past the SLA deadline; `false`: everything else.",
+              "title": "Overdue"
+            },
+            "description": "`true`: open and past the SLA deadline; `false`: everything else."
           },
           {
             "name": "X-Tenant",
@@ -6743,6 +6779,190 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClosureConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/sla-targets": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Sla Targets",
+        "description": "Resolution targets per category, optionally narrowed to a priority band.",
+        "operationId": "admin_get_sla_targets",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlaTargets"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Sla Targets",
+        "description": "Replace the whole set. One target per category and band (a null band\ncovers the rest). Every open issue is rescheduled against it. Audited.",
+        "operationId": "admin_update_sla_targets",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlaTargetsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlaTargets"
                 }
               }
             }
@@ -14579,7 +14799,9 @@
           "verification",
           "reopened",
           "closed",
-          "report_withdrawn"
+          "report_withdrawn",
+          "sla_breached",
+          "sla_escalated"
         ],
         "title": "EventType"
       },
@@ -15237,6 +15459,28 @@
             ],
             "title": "Thumb Url"
           },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At",
+            "description": "The SLA resolution deadline; null when no target applies. Frozen once the issue is resolved, rejected or closed."
+          },
+          "overdue": {
+            "type": "boolean",
+            "title": "Overdue",
+            "description": "Open and past `due_at`."
+          },
+          "sla_state": {
+            "$ref": "#/components/schemas/SlaState",
+            "description": "`due_soon`: a quarter or less of the target time is left."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -15297,6 +15541,26 @@
           "operations": {
             "$ref": "#/components/schemas/OperationsOut",
             "description": "The open assignment and pending closure request (Phase 3)."
+          },
+          "breached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breached At",
+            "description": "When the SLA scanner first found the issue past its deadline."
+          },
+          "escalation_level": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Escalation Level",
+            "description": "0: none; 1: supervisors told; 2: municipal admins told."
           }
         },
         "type": "object",
@@ -15314,6 +15578,9 @@
           "severity",
           "priority",
           "thumb_url",
+          "due_at",
+          "overdue",
+          "sla_state",
           "created_at",
           "updated_at",
           "version",
@@ -15322,7 +15589,9 @@
           "allowed_transitions",
           "merged_into",
           "related",
-          "operations"
+          "operations",
+          "breached_at",
+          "escalation_level"
         ],
         "title": "IssueDetail"
       },
@@ -15513,6 +15782,28 @@
             ],
             "title": "Thumb Url"
           },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At",
+            "description": "The SLA resolution deadline; null when no target applies. Frozen once the issue is resolved, rejected or closed."
+          },
+          "overdue": {
+            "type": "boolean",
+            "title": "Overdue",
+            "description": "Open and past `due_at`."
+          },
+          "sla_state": {
+            "$ref": "#/components/schemas/SlaState",
+            "description": "`due_soon`: a quarter or less of the target time is left."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -15543,6 +15834,9 @@
           "severity",
           "priority",
           "thumb_url",
+          "due_at",
+          "overdue",
+          "sla_state",
           "created_at",
           "updated_at",
           "version"
@@ -16986,7 +17280,8 @@
           "report_linked",
           "issue_status",
           "review_task",
-          "assignment"
+          "assignment",
+          "sla_breach"
         ],
         "title": "NotificationKind"
       },
@@ -19644,6 +19939,137 @@
         ],
         "title": "SeveritySource"
       },
+      "SlaState": {
+        "type": "string",
+        "enum": [
+          "none",
+          "on_track",
+          "due_soon",
+          "overdue"
+        ],
+        "title": "SlaState"
+      },
+      "SlaTargetIn": {
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Category Id"
+          },
+          "priority_band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriorityBand"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null: every band without a narrower target."
+          },
+          "resolve_hours": {
+            "type": "integer",
+            "maximum": 8760.0,
+            "minimum": 1.0,
+            "title": "Resolve Hours",
+            "description": "Hours from report to resolution."
+          },
+          "escalate_after_hours": {
+            "type": "integer",
+            "maximum": 8760.0,
+            "minimum": 1.0,
+            "title": "Escalate After Hours",
+            "description": "Hours after the breach before the municipal admins are told."
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_id",
+          "resolve_hours",
+          "escalate_after_hours"
+        ],
+        "title": "SlaTargetIn"
+      },
+      "SlaTargetOut": {
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Category Id"
+          },
+          "priority_band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriorityBand"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null: every band without a narrower target."
+          },
+          "resolve_hours": {
+            "type": "integer",
+            "maximum": 8760.0,
+            "minimum": 1.0,
+            "title": "Resolve Hours",
+            "description": "Hours from report to resolution."
+          },
+          "escalate_after_hours": {
+            "type": "integer",
+            "maximum": 8760.0,
+            "minimum": 1.0,
+            "title": "Escalate After Hours",
+            "description": "Hours after the breach before the municipal admins are told."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_id",
+          "resolve_hours",
+          "escalate_after_hours",
+          "id"
+        ],
+        "title": "SlaTargetOut"
+      },
+      "SlaTargets": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SlaTargetOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SlaTargets"
+      },
+      "SlaTargetsUpdate": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SlaTargetIn"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SlaTargetsUpdate"
+      },
       "SplitRequest": {
         "properties": {
           "reason": {
@@ -19903,16 +20329,9 @@
             "title": "In Progress"
           },
           "overdue": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "integer",
             "title": "Overdue",
-            "description": "Null until SLA targets exist (Phase 4)."
+            "description": "Issues with open work here that are past their SLA."
           },
           "members": {
             "items": {

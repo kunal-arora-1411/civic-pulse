@@ -1,4 +1,5 @@
-"""In-app notifications (created by database triggers, migration 0008)."""
+"""In-app notifications (created by database triggers, migration 0008, and
+by the SLA scanner)."""
 
 from __future__ import annotations
 
@@ -30,6 +31,7 @@ class NotificationKind(StrEnum):
     ISSUE_STATUS = "issue_status"  # the issue your report is on moved
     REVIEW_TASK = "review_task"  # a report waits for a duplicate decision
     ASSIGNMENT = "assignment"  # an issue was assigned to you
+    SLA_BREACH = "sla_breach"  # an issue you oversee is past its SLA
 
 
 class Notification(Base):

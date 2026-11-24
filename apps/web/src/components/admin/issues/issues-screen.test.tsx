@@ -99,6 +99,34 @@ describe("IssuesScreen", () => {
     ).toHaveAttribute("aria-sort", "descending");
   });
 
+  it("flags overdue issues and filters to them", async () => {
+    window.history.replaceState(null, "", "/admin/issues?overdue=1");
+    let requested: URL | undefined;
+    server.use(
+      http.get(`${API}/issues`, ({ request }) => {
+        requested = new URL(request.url);
+        return HttpResponse.json(
+          page([
+            makeIssue({
+              due_at: "2026-11-01T10:00:00+05:30",
+              overdue: true,
+              sla_state: "overdue",
+            }),
+          ]),
+        );
+      }),
+    );
+    const { user } = renderWithProviders(<IssuesScreen />);
+    await screen.findByRole("link", { name: "CP-26-000123" });
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+    expect(requested?.searchParams.get("overdue")).toBe("true");
+
+    const toggle = screen.getByRole("checkbox", { name: "Overdue only" });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    expect(window.location.search).toBe("");
+  });
+
   it("offers only wards, not the city row, as ward filters", async () => {
     server.use(
       http.get(`${API}/issues`, () => HttpResponse.json(page([makeIssue()]))),

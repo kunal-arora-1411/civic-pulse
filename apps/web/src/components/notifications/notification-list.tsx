@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlarmClock,
   Bell,
   ClipboardList,
   GitCompareArrows,
@@ -40,6 +41,10 @@ const ICONS: Record<string, { icon: LucideIcon; tone: string }> = {
   assignment: {
     icon: ClipboardList,
     tone: "bg-accent-soft text-accent-foreground",
+  },
+  sla_breach: {
+    icon: AlarmClock,
+    tone: "bg-destructive-soft text-destructive-soft-foreground",
   },
 };
 const FALLBACK = { icon: Bell, tone: "bg-secondary text-secondary-foreground" };

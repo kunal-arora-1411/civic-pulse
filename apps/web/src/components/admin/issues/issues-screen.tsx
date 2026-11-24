@@ -15,6 +15,7 @@ import { Pagination } from "@/components/admin/pagination";
 import { useOpenReviewCount } from "@/components/admin/review/use-open-review-count";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { PriorityBadge } from "@/components/issues/priority-badge";
+import { SlaBadge } from "@/components/issues/sla-badge";
 import { StatusBadge } from "@/components/issues/status-badge";
 import { RemoteImage } from "@/components/media/remote-image";
 import { Alert } from "@/components/ui/alert";
@@ -346,7 +347,10 @@ export function IssuesScreen() {
                   {issue.report_count}
                 </TableCell>
                 <TableCell className={MOBILE.status}>
-                  <StatusBadge status={issue.status} />
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <StatusBadge status={issue.status} />
+                    <SlaBadge state={issue.sla_state} dueAt={issue.due_at} />
+                  </span>
                 </TableCell>
                 <TableCell
                   className={cn(

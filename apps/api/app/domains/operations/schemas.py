@@ -229,7 +229,7 @@ class TeamLoad(BaseModel):
     open: int
     pending_acceptance: int
     in_progress: int
-    overdue: int | None = Field(description="Null until SLA targets exist (Phase 4).")
+    overdue: int = Field(description="Issues with open work here that are past their SLA.")
     members: list[MemberLoad]
 
 
