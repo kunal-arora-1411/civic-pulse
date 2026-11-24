@@ -17986,6 +17986,19 @@
             ],
             "title": "Merged Into",
             "description": "The reference this issue was merged into."
+          },
+          "merged_into_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into Id",
+            "description": "The id of that issue, for linking to its public page."
           }
         },
         "type": "object",
