@@ -426,6 +426,55 @@
         "reason": "Reason (staff only)",
         "publicNote": "Note shown to the citizen"
       },
+      "dialog": {
+        "close": "Close",
+        "cancel": "Cancel",
+        "reload": "Reload issue",
+        "conflictTitle": "This issue changed while you were looking at it",
+        "conflictBody": "Someone else updated it, so your change wasn't saved. Reload to see the latest version, then try again. What you entered is kept.",
+        "reason": "Reason",
+        "reasonOptional": "Reason (optional)",
+        "reasonHelp": "For staff only. It's kept with the change in the history and the audit log."
+      },
+      "priority": {
+        "heading": "Priority",
+        "override": "Override",
+        "score": "Score {score} of 100",
+        "overridden": "Set to {band} by hand. The rules give {computed}.",
+        "reasonLabel": "Reason",
+        "factorsHeading": "What the score is made of",
+        "points": "+{points}",
+        "factorsHelp": "Points out of 100, largest first. Each bar shows how far that factor is towards its maximum.",
+        "notScored": "Not scored yet.",
+        "severityHeading": "Severity",
+        "changeSeverity": "Change",
+        "severityRules": "From the category's rules",
+        "severityOverride": "Set by hand"
+      },
+      "priorityDialog": {
+        "title": "Priority of {reference}",
+        "description": "It's {band} now; the rules give {computed}. An override stays until someone clears it.",
+        "legend": "Priority band",
+        "computedHint": "From the rules",
+        "useComputed": "Go back to the computed band ({band})",
+        "chooseBand": "Choose a band.",
+        "reasonRequired": "Say why you're overriding the priority.",
+        "submit": "Save priority",
+        "changed": "{reference} is now {band} priority",
+        "cleared": "{reference} is back to its computed priority"
+      },
+      "severityDialog": {
+        "title": "Severity of {reference}",
+        "description": "Severity normally comes from the category's rules and feeds the priority score. An override stays until someone clears it.",
+        "legend": "Severity",
+        "currentHint": "Current",
+        "useRules": "Go back to the category's rules",
+        "chooseLevel": "Choose a severity.",
+        "reasonRequired": "Say why you're overriding the severity.",
+        "submit": "Save severity",
+        "changed": "{reference} severity is now {level}",
+        "cleared": "{reference} severity comes from the rules again"
+      },
       "statusDialog": {
         "title": "Change status of {reference}",
         "description": "It's currently {status}. The change is recorded in the history and the audit log.",
@@ -650,6 +699,15 @@
     "version_conflict": "Someone else changed this while you were looking at it. Reload to see the latest version.",
     "invalid_transition": "That status change isn't allowed from the current status.",
     "reason_required": "This change needs a reason."
+  },
+  "priorityFactors": {
+    "severity": "Severity is {level}",
+    "severityUnknown": "Severity",
+    "reporters": "{count, plural, =0 {No one has reported it yet} one {# person has reported it} other {# people have reported it}}",
+    "age": "{count, plural, =0 {Reported today} one {Open for # day} other {Open for # days}}",
+    "recurrence": "{count, plural, =0 {No similar issues nearby recently} one {# similar issue nearby in recent months} other {# similar issues nearby in recent months}}",
+    "nearPlaces": "Near a school, hospital or other sensitive place",
+    "noPlaces": "No sensitive places nearby"
   },
   "priority": {
     "label": "Priority",

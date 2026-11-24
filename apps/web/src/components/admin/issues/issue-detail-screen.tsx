@@ -22,8 +22,12 @@ import {
   isApiError,
   type StaffReport,
 } from "@/lib/api";
+import { hasPermission } from "@/lib/auth/access";
+import { useSession } from "@/lib/auth/use-session";
 import { processingRefetchInterval } from "@/lib/media/processing";
 import { IssueTimeline } from "./issue-timeline";
+import { PriorityDialog, SeverityDialog } from "./override-dialogs";
+import { PriorityCard } from "./priority-card";
 import { StatusDialog } from "./status-dialog";
 
 function ReportItem({ report }: { report: StaffReport }) {
@@ -90,7 +94,13 @@ function Body({
   const t = useTranslations("admin.issueDetail");
   const format = useFormatter();
   const localized = useLocalized();
+  const { user } = useSession();
+  const can = (permission: string) => hasPermission(user, permission);
   const [changing, setChanging] = useState(false);
+  const [dialog, setDialog] = useState<"priority" | "severity" | null>(null);
+  const closeDialog = (open: boolean) => {
+    if (!open) setDialog(null);
+  };
   const media = issue.reports.flatMap((report) => report.media);
 
   return (
@@ -150,6 +160,14 @@ function Body({
         </div>
 
         <div className="grid content-start gap-6">
+          <PriorityCard
+            issue={issue}
+            canSetPriority={can("issue:set_priority")}
+            canSetSeverity={can("issue:update")}
+            onOverridePriority={() => setDialog("priority")}
+            onChangeSeverity={() => setDialog("severity")}
+          />
+
           <Card className="grid gap-3 p-5">
             <h2 className="font-semibold">{t("location")}</h2>
             <div className="h-56 overflow-hidden rounded-lg border border-border">
@@ -201,6 +219,18 @@ function Body({
         issue={issue}
         open={changing}
         onOpenChange={setChanging}
+        onReload={onReload}
+      />
+      <PriorityDialog
+        issue={issue}
+        open={dialog === "priority"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <SeverityDialog
+        issue={issue}
+        open={dialog === "severity"}
+        onOpenChange={closeDialog}
         onReload={onReload}
       />
     </div>
