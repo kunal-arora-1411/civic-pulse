@@ -53,6 +53,9 @@ class PublicIssueDetail(PublicIssueItem):
     before_photos: list[PublicPhoto]
     after_photos: list[PublicPhoto]
     merged_into: str | None = Field(description="The reference this issue was merged into.")
+    merged_into_id: uuid.UUID | None = Field(
+        default=None, description="The id of that issue, for linking to its public page."
+    )
 
 
 class PublicFeatureProperties(BaseModel):
