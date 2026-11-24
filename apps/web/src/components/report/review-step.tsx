@@ -2,7 +2,7 @@
 
 import { ImageIcon, LogIn, Pencil, RotateCcw, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { PinMap } from "@/components/map/lazy-maps";
 import { Alert } from "@/components/ui/alert";
@@ -77,6 +77,12 @@ export function ReviewStep({
   onSubmitAsNew: () => void;
 }) {
   const t = useTranslations("report");
+  // On phones the action bar is sticky and can cover the error's buttons:
+  // bring the error into the middle of the screen when it appears.
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView?.({ block: "center" });
+  }, [error]);
   const localized = useLocalized();
   const location = draft.location;
   const detailEntries = (category?.fields ?? []).flatMap((field) => {
@@ -212,74 +218,79 @@ export function ReviewStep({
       ) : null}
 
       {error ? (
-        <Alert
-          variant="destructive"
-          live="assertive"
-          title={t("review.errorTitle")}
-        >
-          <p>
-            {error.key === "rate_limited" && error.retryAfter
-              ? t("submitErrors.rate_limited_wait", {
-                  seconds: error.retryAfter,
-                })
-              : t(`submitErrors.${error.key}`)}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {error.retryable ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onSubmit}
-                loading={submitting}
-              >
-                <RotateCcw aria-hidden="true" />
-                {t("review.tryAgain")}
-              </Button>
-            ) : null}
-            {error.step ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onEdit(error.step as ReportStep)}
-              >
-                <Pencil aria-hidden="true" />
-                {t("review.fixStep", {
-                  step: t(
-                    `steps.${(["photos", "location", "details", "review"] as const)[error.step - 1]}`,
-                  ),
-                })}
-              </Button>
-            ) : null}
-            {error.key === "idempotency_key_reused" ? (
-              <>
-                <Link
-                  href="/reports"
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  {t("review.checkMyReports")}
-                </Link>
+        <div ref={errorRef} className="scroll-my-24">
+          <Alert
+            variant="destructive"
+            live="assertive"
+            title={t("review.errorTitle")}
+          >
+            <p>
+              {error.key === "rate_limited" && error.retryAfter
+                ? t("submitErrors.rate_limited_wait", {
+                    seconds: error.retryAfter,
+                  })
+                : t(`submitErrors.${error.key}`)}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {error.retryable ? (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onSubmitAsNew}
+                  onClick={onSubmit}
                   loading={submitting}
                 >
-                  <Send aria-hidden="true" />
-                  {t("review.sendAsNew")}
+                  <RotateCcw aria-hidden="true" />
+                  {t("review.tryAgain")}
                 </Button>
-              </>
-            ) : null}
-            {error.key === "signed_out" ? (
-              <Link
-                href={`/login?next=${encodeURIComponent("/report")}`}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                <LogIn aria-hidden="true" />
-                {t("review.signIn")}
-              </Link>
-            ) : null}
-          </div>
-        </Alert>
+              ) : null}
+              {error.step ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit(error.step as ReportStep)}
+                >
+                  <Pencil aria-hidden="true" />
+                  {t("review.fixStep", {
+                    step: t(
+                      `steps.${(["photos", "location", "details", "review"] as const)[error.step - 1]}`,
+                    ),
+                  })}
+                </Button>
+              ) : null}
+              {error.key === "idempotency_key_reused" ? (
+                <>
+                  <Link
+                    href="/reports"
+                    className={buttonVariants({
+                      variant: "outline",
+                      size: "sm",
+                    })}
+                  >
+                    {t("review.checkMyReports")}
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onSubmitAsNew}
+                    loading={submitting}
+                  >
+                    <Send aria-hidden="true" />
+                    {t("review.sendAsNew")}
+                  </Button>
+                </>
+              ) : null}
+              {error.key === "signed_out" ? (
+                <Link
+                  href={`/login?next=${encodeURIComponent("/report")}`}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <LogIn aria-hidden="true" />
+                  {t("review.signIn")}
+                </Link>
+              ) : null}
+            </div>
+          </Alert>
+        </div>
       ) : null}
     </div>
   );
