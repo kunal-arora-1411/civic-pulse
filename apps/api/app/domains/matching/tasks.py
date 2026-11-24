@@ -8,7 +8,7 @@ from celery import Task
 
 import app.models  # noqa: F401  (every mapper configured in the worker process)
 from app.core.storage import StorageError
-from app.domains.matching import service
+from app.domains.matching import quality, service
 from app.jobs import MATCH_REPORT
 from app.worker import celery_app, run_async
 
@@ -37,3 +37,12 @@ def watchdog() -> dict[str, int]:
     for report_id, tenant_id in result.requeue:
         match_report.delay(str(report_id), str(tenant_id))
     return result.summary()
+
+
+@celery_app.task(name="civicpulse.matching.quality_check")
+def quality_check() -> dict[str, int]:
+    """Runs on `default`. Rolls up the latest complete week and logs a
+    warning for any category whose correction or false-merge rate has
+    jumped against its four-week baseline. Read-only, so idempotent."""
+    run = run_async(quality.check_latest_week())
+    return {"groups": len(run.rollups), "alerts": len(run.alerts)}

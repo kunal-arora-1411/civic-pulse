@@ -122,6 +122,12 @@ class Settings(BaseSettings):
     # zone. Every Phase 1 deployment is in India.
     local_timezone: str = "Asia/Kolkata"
 
+    # Weekly matching quality alerts: a week is flagged when its correction
+    # or false-merge rate exceeds the prior four weeks' rate by this factor,
+    # and only once it has enough samples for the rate to mean something.
+    quality_alert_ratio: float = 1.5
+    quality_alert_min_samples: int = 10
+
     # Vision models (Phase 2). `fake` is the deterministic stand-in from
     # app/ai/fake.py, used by tests and by any process that has no model
     # weights; `onnx` loads the real models from AI_MODEL_DIR. Domain code
