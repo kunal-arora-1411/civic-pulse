@@ -22,6 +22,13 @@ Where a timestamp the metric needs does not exist yet, the entry says
   issue through `reports.issue_id`.
 - **Rejected issues** (`status = 'rejected'`) count as issues created but are
   excluded from resolution time, SLA compliance and reopen rate.
+- **Status moves** are read from **any** `issue_events` row with a
+  `to_status`, whatever its `type`. Phase 3 records moves with their own
+  event types (`assigned`, `work_started`, `closure_requested`,
+  `closure_approved`, `reopened`, `closed`, ...) rather than
+  `status_changed`, so the queries below that say
+  `e.type = 'status_changed'` are read as "an event with a target status".
+  The implementation (`app/domains/analytics/service.py`) does exactly that.
 - Timestamps used: `reports.created_at`, `civic_issues.created_at`
   (both from `TimestampMixin`), `issue_events.created_at` with
   `type = 'status_changed'` plus `from_status`/`to_status`, and
@@ -213,3 +220,96 @@ FROM resolved r;
 ```
 
 Example: 20 issues resolved in November, 2 reopened: 10%.
+
+## Metric ids
+
+Every analytics response names the entries it draws on (`metric` /
+`metrics`). The ids are the snake_case of the headings above
+(`reports`, `issues`, `unique_reporters`, `acknowledgement_time`,
+`resolution_time`, `duplicate_rate`, `review_rate`, `reopen_rate`), plus
+`issues_by_category`, `issues_by_ward` and the entries below.
+
+## Issues by status (`issues_by_status`)
+
+Issues created in the period (as in **Issues**), grouped by their
+**current** status. The counts add up to the Issues figure for the same
+filters.
+
+```sql
+SELECT status, count(*) FROM civic_issues
+WHERE merged_into_id IS NULL AND created_at >= :from AND created_at < :to
+GROUP BY status;
+```
+
+Example: 40 issues created in November; today 12 are resolved, 3 rejected
+and 25 still open in various states.
+
+## Auto-link rate (`auto_link_rate`)
+
+Share of decided, non-withdrawn reports (`matching_status IN ('linked',
+'new_issue')`) that the platform linked without a person: at least one
+`match_decisions` row with `decision = 'auto_linked'`. Together with the
+review rate it shows how much the AI decides alone (PRD §8.6).
+
+```sql
+SELECT count(*) FILTER (WHERE EXISTS (
+         SELECT 1 FROM match_decisions m
+         WHERE m.report_id = r.id AND m.decision = 'auto_linked'
+       ))::numeric
+     / NULLIF(count(*) FILTER (WHERE r.matching_status IN ('linked', 'new_issue')), 0)
+FROM reports r
+WHERE r.status <> 'withdrawn' AND r.created_at >= :from AND r.created_at < :to;
+```
+
+Example: 50 decided reports, 9 linked automatically: 18%.
+
+## Correction rate (`correction_rate`)
+
+Of match decisions on the period's reports that staff gave feedback on
+(`feedback IS NOT NULL`), the share marked `incorrect`. Decisions without
+feedback are not counted either way, so the rate says nothing until
+someone reviews outcomes; the response returns `feedback_count` alongside.
+
+```sql
+SELECT count(*) FILTER (WHERE m.feedback = 'incorrect')::numeric / NULLIF(count(*), 0)
+FROM match_decisions m JOIN reports r ON r.id = m.report_id
+WHERE m.feedback IS NOT NULL
+  AND r.status <> 'withdrawn' AND r.created_at >= :from AND r.created_at < :to;
+```
+
+Example: feedback on 20 decisions, 2 incorrect: 10%.
+
+## Hotspots (`hotspots`)
+
+Issues created in the period (as in **Issues**) counted per H3 cell of
+their location, at resolution 8 by default (5 to 10 allowed), densest
+first, at most 400 cells. `open` counts those not resolved, closed or
+rejected. Each cell is returned with its centre as `lng`, `lat`.
+
+```sql
+SELECT h3_lat_lng_to_cell(point(ST_X(location), ST_Y(location)), 8) AS cell,
+       count(*) AS issues,
+       count(*) FILTER (WHERE status NOT IN ('resolved', 'closed', 'rejected')) AS open
+FROM civic_issues
+WHERE merged_into_id IS NULL AND created_at >= :from AND created_at < :to
+GROUP BY 1 ORDER BY 2 DESC LIMIT 400;
+```
+
+Example: six potholes within one ~0.7 km² cell show up as one cell with 6.
+
+## Report activity (`report_activity`)
+
+Reports filed in the period (as in **Reports**) by IST weekday (0 =
+Monday) and hour of day: when citizens report, for staffing the intake.
+
+```sql
+SELECT extract(isodow FROM created_at AT TIME ZONE 'Asia/Kolkata')::int - 1 AS weekday,
+       extract(hour FROM created_at AT TIME ZONE 'Asia/Kolkata')::int AS hour,
+       count(*)
+FROM reports
+WHERE status <> 'withdrawn' AND created_at >= :from AND created_at < :to
+GROUP BY 1, 2;
+```
+
+Example: a report at 2026-11-23 03:00 UTC is Monday 08:30 IST: weekday 0,
+hour 8.

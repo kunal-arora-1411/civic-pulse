@@ -114,6 +114,7 @@
       "review": "Review queue",
       "openReviews": "({count} waiting)",
       "map": "Map",
+      "analytics": "Analytics",
       "categories": "Categories",
       "matching": "Matching",
       "priority": "Priority rules",
@@ -891,6 +892,150 @@
           "option_value_duplicate": "Each choice needs a different value.",
           "option_label_required": "Enter an English label."
         }
+      }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "description": "How reporting and resolution are going: volumes, where issues cluster, how long they take and how the duplicate matching performs.",
+      "loading": "Loading…",
+      "error": "This chart couldn't load.",
+      "retry": "Try again",
+      "empty": "No data for these filters.",
+      "viewTable": "View as table",
+      "viewChart": "View as chart",
+      "noValue": "—",
+      "hours": "{value} h",
+      "days": "{value} d",
+      "bin": "{from}–{to}",
+      "binOpen": "{from}+",
+      "kpisLabel": "Headline figures",
+      "deltaPoints": "{value} pts",
+      "tone": {
+        "good": "{change}, better",
+        "bad": "{change}, worse",
+        "neutral": "{change}"
+      },
+      "vsPrevious": "vs {value} in the previous period",
+      "noComparison": "No comparison",
+      "issuesTotal": "issues",
+      "kpi": {
+        "reports": "Reports",
+        "issues": "New issues",
+        "unique_reporters": "Citizens reporting",
+        "resolution_time": "Median time to resolve",
+        "acknowledgement_time": "Median time to acknowledge",
+        "duplicate_rate": "Duplicate rate",
+        "review_rate": "Sent to review",
+        "reopen_rate": "Reopen rate"
+      },
+      "filters": {
+        "label": "Analytics filters",
+        "period": "Period",
+        "presets": {
+          "7d": "Last 7 days",
+          "30d": "Last 30 days",
+          "90d": "Last 90 days",
+          "mtd": "This month",
+          "custom": "Custom range"
+        },
+        "from": "From",
+        "to": "To",
+        "rangeInvalid": "The start must be on or before the end.",
+        "category": "Category",
+        "allCategories": "All categories",
+        "ward": "Ward",
+        "allWards": "All wards",
+        "status": "Status",
+        "allStatuses": "All statuses",
+        "selected": "{count} selected",
+        "reset": "Reset filters"
+      },
+      "groups": {
+        "new": "New and verified",
+        "inWork": "In work",
+        "done": "Resolved or closed",
+        "rejected": "Rejected"
+      },
+      "trend": {
+        "title": "Reports and resolutions over time",
+        "description": "Reports filed, issues created and issues first resolved.",
+        "summary": "{reports} reports, {issues} new issues and {resolved} resolutions in the period.",
+        "interval": "Group by",
+        "day": "Daily",
+        "week": "Weekly",
+        "weekOf": "Week of {day}",
+        "period": "Period",
+        "reports": "Reports",
+        "issues": "New issues",
+        "resolved": "Resolved"
+      },
+      "status": {
+        "title": "Where issues stand",
+        "description": "Issues created in the period, by their current stage.",
+        "summary": "{total, plural, one {# issue} other {# issues}}; {done} resolved or closed.",
+        "status": "Status",
+        "count": "Issues"
+      },
+      "category": {
+        "title": "Issues by category",
+        "description": "Split by current stage.",
+        "summary": "{name} has the most issues: {count}.",
+        "category": "Category",
+        "total": "Total"
+      },
+      "wards": {
+        "title": "Ward ranking",
+        "description": "The {count} wards with the most issues.",
+        "summary": "{name} has the most issues: {count}.",
+        "ward": "Ward",
+        "issues": "Issues",
+        "open": "Open",
+        "resolved": "Resolved",
+        "median": "Median time to resolve",
+        "outside": "Outside any ward"
+      },
+      "resolution": {
+        "title": "Time to resolve",
+        "description": "How long issues took to be first resolved. The dashed line marks the median.",
+        "summary": "{count, plural, one {# issue} other {# issues}} resolved; median {median}, 90th percentile {p90}.",
+        "bin": "Time to resolve",
+        "issues": "Issues",
+        "median": "Median",
+        "mean": "Mean",
+        "p90": "90th percentile",
+        "medianMarker": "Median {value}"
+      },
+      "activity": {
+        "title": "When citizens report",
+        "description": "Reports by weekday and hour (India time).",
+        "summary": "The busiest hour is {day} at {hour}:00 with {count, plural, one {# report} other {# reports}}.",
+        "day": "Day",
+        "hour": "Hour",
+        "reports": "Reports",
+        "cell": "{day}, {hour}:00: {count, plural, one {# report} other {# reports}}",
+        "hint": "Point at a cell for its count.",
+        "fewer": "Fewer",
+        "more": "More ({max})"
+      },
+      "hotspots": {
+        "title": "Hotspots",
+        "description": "Issues per map cell (about 0.7 km² each). Darker cells have more issues.",
+        "summary": "{cells, plural, one {# cell} other {# cells}} with issues; the densest has {max}.",
+        "where": "Cell centre (lat, lng)",
+        "issues": "Issues",
+        "open": "Open",
+        "tooltip": "{issues, plural, one {# issue} other {# issues}}, {open} open"
+      },
+      "quality": {
+        "title": "Duplicate matching quality",
+        "description": "Across {count, plural, one {# decided report} other {# decided reports}}.",
+        "auto_link_rate": "Linked automatically",
+        "review_rate": "Sent to review",
+        "duplicate_rate": "Duplicates",
+        "correction_rate": "Marked incorrect",
+        "feedback": "of {count} reviewed",
+        "metric": "Measure",
+        "value": "Rate"
       }
     }
   },
