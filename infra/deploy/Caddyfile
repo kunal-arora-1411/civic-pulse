@@ -1,0 +1,4 @@
+13-207-212-110.sslip.io {
+	encode gzip
+	reverse_proxy api:8000
+}

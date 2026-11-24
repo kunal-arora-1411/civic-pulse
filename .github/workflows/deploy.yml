@@ -1,0 +1,77 @@
+name: Deploy
+
+# Ships main to the demo environment once CI has passed on it:
+# the API stack to the EC2 server (through AWS SSM, no SSH) and the web
+# app to Vercel. See infra/deploy/README.md.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # AWS sign-in through GitHub's OIDC token
+
+env:
+  AWS_REGION: ap-south-1
+  AWS_ROLE_ARN: arn:aws:iam::206238482917:role/civicpulse-github-deploy
+  INSTANCE_ID: i-00c086ee112eff1ad
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  api:
+    name: API (EC2)
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run the deploy script on the server
+        run: |
+          id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --timeout-seconds 1200 \
+            --comment "deploy $SHA" \
+            --parameters "commands=[\"sudo -iu ubuntu bash -c 'git -C ~/civic-pulse fetch -q origin main && git -C ~/civic-pulse checkout -qf $SHA && ~/civic-pulse/infra/deploy/deploy.sh $SHA'\"],executionTimeout=[\"1200\"]" \
+            --query Command.CommandId --output text)
+          echo "SSM command $id"
+          while true; do
+            status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in Pending|InProgress|Delayed) sleep 10 ;; *) break ;; esac
+          done
+          aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
+            --query '[StandardOutputContent,StandardErrorContent]' --output text
+          [ "$status" = Success ]
+
+  web:
+    name: Web (Vercel)
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_xd0IUvMRYKoeuzox8SLF1cfL
+      VERCEL_PROJECT_ID: prj_yFfGxbkbSLqpWQTnv9Sr3k1eDc1t
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Deploy to production
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Add a VERCEL_TOKEN repository secret (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
