@@ -28,6 +28,10 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "AND ST_GeometryType(geom) = 'ST_MultiPolygon'",
         "categories": "SELECT count(*) FROM categories c JOIN tenants t ON t.id = c.tenant_id "
         "WHERE t.slug = 'demo-city' AND c.name_i18n ? 'hi' AND c.default_department_id IS NOT NULL",
+        "sla_targets": "SELECT count(*) FROM sla_targets s JOIN tenants t ON t.id = s.tenant_id "
+        "WHERE t.slug = 'demo-city'",
+        "scheduled": "SELECT count(*) FROM civic_issues "
+        "WHERE address_text LIKE 'Synthetic Street%' AND due_at IS NOT NULL",
         "transitions": "SELECT count(*) FROM status_transitions s JOIN tenants t "
         "ON t.id = s.tenant_id WHERE t.slug IN ('demo-city', 'other-city')",
         "issues": "SELECT count(*) FROM civic_issues i JOIN tenants t ON t.id = i.tenant_id "
@@ -105,6 +109,9 @@ async def test_seed_is_idempotent_and_usable(
         "city": 1,
         "delhi": 6,
         "categories": 5,
+        "sla_targets": 10,
+        # every issue but the 6 seeded as rejected, whose clock never ran
+        "scheduled": 54,
         "transitions": 34,
         "issues": 60,
         # 60 + 5 in duplicate clusters + 2 waiting for review
