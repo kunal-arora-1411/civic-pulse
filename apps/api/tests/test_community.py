@@ -299,9 +299,7 @@ async def test_public_detail_of_a_merged_issue_links_to_the_survivor(
 ) -> None:
     city = ops.city
     first = await _reported(client, city)
-    second = await report(
-        client, city, city.citizen, point=north_of(NE, 200), category=city.waste
-    )
+    second = await report(client, city, city.citizen, point=north_of(NE, 200), category=city.waste)
     survivor = await issue(client, city.operator, first["issue"]["id"])
     merged = await client.post(
         f"{ISSUES}/{survivor['id']}/merge",
