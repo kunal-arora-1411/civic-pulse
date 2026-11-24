@@ -16,6 +16,8 @@ issues across the lifecycle, duplicates and match decisions) so the
 analytics dashboard looks real.
 Running it again converges on the same state: names, geometry, roles and
 categories are reset to these values, and existing issues are left alone.
+Resolution SLA targets are set for every category (tighter for critical
+issues); the trigger schedules issues against them as they are written.
 
 The ward polygons are SYNTHETIC rectangles around central Bengaluru
 (~12.97 N, 77.59 E). A second synthetic area around Ramesh Nagar in West
@@ -54,6 +56,7 @@ from app.domains.org.models import (
 from app.domains.priority.service import recompute_tenant
 from app.domains.rbac.models import UserRole
 from app.domains.rbac.roles import Role
+from app.domains.sla.models import SlaTarget
 from app.domains.tenants.models import Tenant
 from app.domains.users.models import User
 from app.domains.workflow.service import install_default_transitions
@@ -303,6 +306,38 @@ async def _upsert_team(
     return team_id
 
 
+# Resolution targets in hours per category: (any band, critical, escalate
+# to the admins this long after a breach).
+SLA_TARGETS: dict[str, tuple[int, int, int]] = {
+    "pothole": (168, 48, 48),
+    "waste": (48, 12, 24),
+    "waterlogging": (72, 12, 24),
+    "streetlight": (96, 24, 48),
+    "drainage": (120, 24, 48),
+}
+
+
+async def _upsert_sla_targets(
+    db: AsyncSession, tenant_id: uuid.UUID, categories: dict[str, uuid.UUID]
+) -> None:
+    for code, (any_band, critical, escalate) in SLA_TARGETS.items():
+        for band, hours in ((None, any_band), ("critical", critical)):
+            values = {"resolve_hours": hours, "escalate_after_hours": escalate}
+            await db.execute(
+                pg_insert(SlaTarget)
+                .values(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_id,
+                    category_id=categories[code],
+                    priority_band=band,
+                    **values,
+                )
+                .on_conflict_do_update(
+                    constraint="uq_sla_targets_tenant_id_category_id_priority_band", set_=values
+                )
+            )
+
+
 async def run() -> dict[str, int]:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed synthetic data into a production environment.")
@@ -327,6 +362,7 @@ async def run() -> dict[str, int]:
             user_ids[seed.phone] = await _upsert_user(db, seed, tenant_id, department_id)
 
         categories = await phase1.seed_categories(db, demo, departments)
+        await _upsert_sla_targets(db, demo, categories)
         for tenant_id in tenant_ids.values():
             await install_default_transitions(db, tenant_id)
         await _upsert_team(
@@ -369,6 +405,7 @@ async def run() -> dict[str, int]:
         "jurisdictions": len(areas),
         "users": len(USERS),
         "categories": len(categories),
+        "sla targets": 2 * len(SLA_TARGETS),
         "issues": issues,
         "places": places,
         "analytics issues": history,

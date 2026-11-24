@@ -11,7 +11,10 @@ import { useLocalized } from "@/hooks/use-reference-data";
 import { Link } from "@/i18n/navigation";
 import type { Category } from "@/lib/api";
 import type { ReportDraft, ReportStep } from "@/lib/report/draft";
-import type { SubmitErrorInfo } from "@/lib/report/submit-errors";
+import {
+  rateLimitMessage,
+  type SubmitErrorInfo,
+} from "@/lib/report/submit-errors";
 import type { UploadState } from "@/lib/report/validation";
 import type { LivePhoto } from "./use-photo-uploads";
 
@@ -77,6 +80,12 @@ export function ReviewStep({
   onSubmitAsNew: () => void;
 }) {
   const t = useTranslations("report");
+  const rateLimitText = (retryAfter?: number) => {
+    const message = rateLimitMessage(retryAfter);
+    return "values" in message
+      ? t(`submitErrors.${message.key}`, message.values)
+      : t(`submitErrors.${message.key}`);
+  };
   // On phones the action bar is sticky and can cover the error's buttons:
   // bring the error into the middle of the screen when it appears.
   const errorRef = useRef<HTMLDivElement>(null);
@@ -225,10 +234,8 @@ export function ReviewStep({
             title={t("review.errorTitle")}
           >
             <p>
-              {error.key === "rate_limited" && error.retryAfter
-                ? t("submitErrors.rate_limited_wait", {
-                    seconds: error.retryAfter,
-                  })
+              {error.key === "rate_limited"
+                ? rateLimitText(error.retryAfter)
                 : t(`submitErrors.${error.key}`)}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">

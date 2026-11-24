@@ -109,3 +109,44 @@ describe("IssueDetailScreen and merged issues", () => {
     expect(navigation.replace).not.toHaveBeenCalled();
   });
 });
+
+describe("IssueDetailScreen and SLA", () => {
+  it("shows the breach, the deadline, the escalation and its timeline entry", async () => {
+    server.use(
+      http.get(`${API}/issues/iss-1`, () =>
+        HttpResponse.json({
+          ...makeIssueDetail({
+            due_at: "2026-11-21T10:00:00+05:30",
+            overdue: true,
+            sla_state: "overdue",
+            breached_at: "2026-11-21T10:05:00+05:30",
+            escalation_level: 1,
+            timeline: [
+              {
+                id: "ev-9",
+                at: "2026-11-21T10:05:00+05:30",
+                type: "sla_breached",
+                from_status: null,
+                to_status: null,
+                reason: null,
+                public_note: null,
+                visibility: "internal",
+                actor: null,
+              },
+            ],
+          }),
+          merged_into: null,
+        }),
+      ),
+    );
+    await renderIssue("iss-1");
+    expect(await screen.findByText("Overdue")).toBeInTheDocument();
+    expect(screen.getByText("SLA due")).toBeInTheDocument();
+    expect(
+      screen.getByText("Breached: supervisors alerted"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("SLA breached: supervisors alerted"),
+    ).toBeInTheDocument();
+  });
+});

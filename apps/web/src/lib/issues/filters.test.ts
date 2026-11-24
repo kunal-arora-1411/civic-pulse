@@ -19,6 +19,7 @@ describe("issue filters in the URL", () => {
       ward: ["w3"],
       severity: ["high", "critical"],
       band: ["critical"],
+      overdue: true,
       from: "2026-11-01",
       to: "2026-11-24",
       q: "MG Road",
@@ -27,7 +28,7 @@ describe("issue filters in the URL", () => {
     };
     const query = serializeIssueFilters(filters).toString();
     expect(query).toBe(
-      "q=MG+Road&status=reported&status=under_review&category=cat-pothole&category=cat-waste&ward=w3&severity=high&severity=critical&band=critical&from=2026-11-01&to=2026-11-24&sort=-report_count&page=3",
+      "q=MG+Road&status=reported&status=under_review&category=cat-pothole&category=cat-waste&ward=w3&severity=high&severity=critical&band=critical&overdue=1&from=2026-11-01&to=2026-11-24&sort=-report_count&page=3",
     );
     expect(parse(query)).toEqual(filters);
   });

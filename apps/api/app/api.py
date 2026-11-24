@@ -22,6 +22,7 @@ from app.domains.operations.router import router as operations_router
 from app.domains.org.router import router as org_router
 from app.domains.public.router import router as public_router
 from app.domains.reports.router import router as reports_router
+from app.domains.sla.router import router as sla_router
 from app.domains.tenants.router import platform_router
 from app.domains.tenants.router import router as tenants_router
 from app.domains.users.admin_router import router as admin_users_router
@@ -43,6 +44,7 @@ api_router.include_router(geo_router)
 api_router.include_router(reports_router)
 api_router.include_router(issues_router)
 api_router.include_router(config_router)
+api_router.include_router(sla_router)
 api_router.include_router(ai_router)
 api_router.include_router(ai_admin_router)
 api_router.include_router(matching_router)

@@ -59,6 +59,7 @@ from app.domains.priority import service as priority
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 from app.domains.rbac.scope import accessible_jurisdiction_ids, jurisdiction_subtree
+from app.domains.sla.rules import overdue_clause
 from app.domains.users.models import User
 from app.domains.workflow import service as workflow
 from app.domains.workflow.statuses import IssueStatus as S
@@ -524,6 +525,21 @@ async def workload(db: AsyncSession, principal: Principal) -> Workload:
             .group_by(IssueAssignment.team_id, WorkOrder.assignee_id, WorkOrder.state)
         )
     ).all()
+    overdue: dict[uuid.UUID, int] = dict(
+        (
+            await db.execute(
+                select(IssueAssignment.team_id, func.count(func.distinct(CivicIssue.id)))
+                .join(WorkOrder, WorkOrder.assignment_id == IssueAssignment.id)
+                .join(CivicIssue, CivicIssue.id == IssueAssignment.issue_id)
+                .where(
+                    IssueAssignment.team_id.in_([t.id for t in team_rows]),
+                    WorkOrder.state.in_(OPEN_WORK_ORDER_STATES),
+                    overdue_clause(datetime.now(UTC)),
+                )
+                .group_by(IssueAssignment.team_id)
+            )
+        ).all()
+    )
     members = (
         await db.execute(
             select(TeamMember.team_id, User.id, User.display_name)
@@ -552,7 +568,7 @@ async def workload(db: AsyncSession, principal: Principal) -> Workload:
                 open=total(*OPEN_WORK_ORDER_STATES),
                 pending_acceptance=total(WorkOrderState.PENDING_ACCEPTANCE),
                 in_progress=total(WorkOrderState.IN_PROGRESS),
-                overdue=None,
+                overdue=overdue.get(team.id, 0),
                 members=[
                     MemberLoad(
                         user=UserRef(id=uid, display_name=name),

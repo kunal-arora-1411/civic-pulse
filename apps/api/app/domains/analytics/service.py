@@ -47,6 +47,7 @@ from app.domains.analytics.schemas import (
     WardRow,
 )
 from app.domains.categories.schemas import CategoryRef
+from app.domains.rbac.scope import IssueAccess, access_sql
 from app.domains.workflow.statuses import IssueStatus
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -73,6 +74,8 @@ class Scope:
     category_id: uuid.UUID | None = None
     ward_id: uuid.UUID | None = None
     statuses: tuple[str, ...] = ()
+    # The caller's jurisdiction and department scope (None: whole tenant).
+    access: IssueAccess = None
 
     @classmethod
     def build(
@@ -82,6 +85,7 @@ class Scope:
         category_id: uuid.UUID | None,
         ward_id: uuid.UUID | None,
         statuses: Sequence[IssueStatus] | None,
+        access: IssueAccess = None,
     ) -> Scope:
         end = end or today_ist()
         start = start or end - timedelta(days=DEFAULT_DAYS - 1)
@@ -95,6 +99,7 @@ class Scope:
             category_id=category_id,
             ward_id=ward_id,
             statuses=tuple(s.value for s in statuses or ()),
+            access=access,
         )
 
     @property
@@ -119,7 +124,14 @@ class Scope:
             params["ward"] = self.ward_id
         if self.statuses:
             params["statuses"] = list(self.statuses)
+        access_sql(self.access, "x", "x", params)
         return params
+
+    def _access(self, alias: str) -> list[str]:
+        if self.access is None:
+            return []
+        # The bound values are added by params(); keys depend only on access.
+        return [access_sql(self.access, f"{alias}.ward_id", f"{alias}.category_id", {})]
 
     def issues(self, alias: str = "i", *, timed: bool = True) -> str:
         """Surviving issues created in the period, with the filters."""
@@ -132,6 +144,7 @@ class Scope:
             parts.append(f"{alias}.ward_id = :ward")
         if self.statuses:
             parts.append(f"{alias}.status = ANY(:statuses)")
+        parts.extend(self._access(alias))
         return " AND ".join(parts)
 
     def reports(self, alias: str = "r") -> str:
@@ -150,6 +163,7 @@ class Scope:
                 f"EXISTS (SELECT 1 FROM civic_issues fi WHERE fi.id = {alias}.issue_id"
                 " AND fi.status = ANY(:statuses))"
             )
+        parts.extend(self._access(alias))
         return " AND ".join(parts)
 
     def filters(self) -> Filters:
@@ -289,6 +303,16 @@ def _reopen_rate(scope: Scope, b: Bucket) -> str:
     )
 
 
+def _sla_compliance(scope: Scope, b: Bucket) -> str:
+    """Of the issues first resolved in the period that had an SLA deadline,
+    the share resolved on or before it (docs/metrics.md)."""
+    return (
+        f"WITH d AS ({_resolved_first(scope)}) SELECT {bucket_sql('d.at', b)}, "
+        "count(*) FILTER (WHERE d.at <= si.due_at)::float / NULLIF(count(*), 0) "
+        "FROM d JOIN civic_issues si ON si.id = d.id WHERE si.due_at IS NOT NULL GROUP BY 1"
+    )
+
+
 def _resolved(scope: Scope, b: Bucket) -> str:
     return (
         f"WITH d AS ({_resolved_first(scope)}) "
@@ -305,6 +329,7 @@ KPIS: tuple[tuple[str, Literal["count", "hours", "ratio"], Template], ...] = (
     ("duplicate_rate", "ratio", _duplicate_rate),
     ("review_rate", "ratio", _review_rate),
     ("reopen_rate", "ratio", _reopen_rate),
+    ("sla_compliance", "ratio", _sla_compliance),
 )
 
 

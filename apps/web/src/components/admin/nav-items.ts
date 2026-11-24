@@ -10,6 +10,7 @@ import {
   ScrollText,
   SlidersHorizontal,
   Tags,
+  Timer,
   UsersRound,
 } from "lucide-react";
 import type { CurrentUser } from "@/lib/api";
@@ -24,6 +25,7 @@ export type AdminNavKey =
   | "categories"
   | "matching"
   | "priority"
+  | "sla"
   | "ai"
   | "users"
   | "audit";
@@ -39,6 +41,7 @@ export type AdminNavItem = {
     | "/admin/categories"
     | "/admin/settings/matching"
     | "/admin/settings/priority"
+    | "/admin/settings/sla"
     | "/admin/ai"
     | "/admin/users"
     | "/admin/audit";
@@ -87,6 +90,12 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     key: "priority",
     href: "/admin/settings/priority",
     icon: Gauge,
+    permission: "config:read",
+  },
+  {
+    key: "sla",
+    href: "/admin/settings/sla",
+    icon: Timer,
     permission: "config:read",
   },
   { key: "ai", href: "/admin/ai", icon: Cpu, permission: "config:read" },

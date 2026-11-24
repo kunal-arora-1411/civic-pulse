@@ -214,10 +214,16 @@ async def login_new(
     city: City,
     *roles: str,
     jurisdiction_id: uuid.UUID | None = None,
+    department_id: uuid.UUID | None = None,
     display_name: str = "Extra User",
 ) -> Session:
     async with owner_engine.begin() as conn:
         user = await create_user(
-            conn, city.tenant.id, *roles, jurisdiction_id=jurisdiction_id, display_name=display_name
+            conn,
+            city.tenant.id,
+            *roles,
+            jurisdiction_id=jurisdiction_id,
+            department_id=department_id,
+            display_name=display_name,
         )
     return await login(client, sms, user.phone, city.tenant.slug)

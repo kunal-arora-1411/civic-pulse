@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  AlarmClock,
+  ChevronDown,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/issues/category-icon";
@@ -233,6 +239,19 @@ export function IssueFiltersBar({
             label: tSeverity(`level.${level}`),
           }))}
         />
+        <label className="mb-1 flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={filters.overdue}
+            onChange={(event) => onChange({ overdue: event.target.checked })}
+            className="size-4 accent-primary"
+          />
+          <AlarmClock
+            aria-hidden="true"
+            className="size-4 text-muted-foreground"
+          />
+          {t("overdueOnly")}
+        </label>
         <Field label={t("from")} className="w-40">
           {(control) => (
             <Input
@@ -275,6 +294,7 @@ export function IssueFiltersBar({
                 ward: [],
                 severity: [],
                 band: [],
+                overdue: false,
                 from: null,
                 to: null,
                 q: "",

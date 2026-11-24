@@ -30,6 +30,7 @@ from app.domains.outbox.models import OutboxEvent
 from app.domains.places.models import PlaceOfInterest
 from app.domains.rbac.models import UserRole
 from app.domains.reports.models import Report
+from app.domains.sla.models import SlaTarget
 from app.domains.tenants.models import Tenant
 from app.domains.users.models import User
 from app.domains.workflow.models import StatusTransition
@@ -61,6 +62,7 @@ __all__ = [
     "ReferenceCounter",
     "Report",
     "ReviewTask",
+    "SlaTarget",
     "StatusTransition",
     "Team",
     "TeamCategory",
