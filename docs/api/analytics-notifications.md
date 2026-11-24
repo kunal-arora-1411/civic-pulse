@@ -12,6 +12,13 @@ All endpoints are `GET`, read-only, and need **`analytics:read`**
 (municipal admin and supervisor by default). Without it: `403
 permission_denied`. Nothing here is audited: it only reads aggregates.
 
+Every figure is limited to the caller's scope, exactly as the staff
+issue list is ([Phase 1 scope](phase-1-contract.md#scope)): a supervisor
+scoped to a zone or a department sees only its wards or categories, and
+unscoped staff see the whole tenant. Report-based figures use the
+report's own ward and category. A `ward_id` or `category_id` outside the
+scope gives empty figures, not an error.
+
 ### Shared filters
 
 | Query | Type | Default | Meaning |

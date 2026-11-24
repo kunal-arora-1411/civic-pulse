@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from tests.helpers import RecordingSms, Session
-from tests.phase1 import NE, NW, SE, City, make_city
+from tests.phase1 import NE, NW, SE, City, login_new, make_city
 from tests.phase2 import ISSUES, issue, report
 
 ANALYTICS = "/api/v1/analytics"
@@ -154,3 +154,40 @@ async def test_other_tenants_figures_stay_separate(
     # And this city's ward filter finds nothing from the other tenant.
     leaked = await _get(client, other.admin, "by-status", ward_id=str(city.wards["NE"]))
     assert leaked["total"] == 0
+
+
+async def test_figures_follow_the_callers_scope(
+    client: httpx.AsyncClient, sms: RecordingSms, owner_engine: AsyncEngine, city: City
+) -> None:
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE categories SET default_department_id = :d WHERE id = :c"),
+            {"d": city.roads, "c": city.pothole},
+        )
+    north = await login_new(
+        client, sms, owner_engine, city, "supervisor", jurisdiction_id=city.zones["N"]
+    )
+    roads = await login_new(client, sms, owner_engine, city, "supervisor", department_id=city.roads)
+
+    def kpis(body: dict[str, Any]) -> dict[str, Any]:
+        return {k["metric"]: k["value"] for k in body["kpis"]}
+
+    # Zone N holds wards NE and NW: two of the three waste issues.
+    assert kpis(await _get(client, north, "overview"))["reports"] == 2
+    assert (await _get(client, north, "by-status"))["total"] == 2
+    wards = await _get(client, north, "by-ward")
+    assert {w["ward"]["name"] for w in wards["items"]} == {"Ward NE", "Ward NW"}
+    assert sum(h["issues"] for h in (await _get(client, north, "hotspots"))["items"]) == 2
+    assert sum(c["count"] for c in (await _get(client, north, "activity"))["items"]) == 2
+    # Asking for a ward outside the scope finds nothing rather than leaking it.
+    outside = await _get(client, north, "by-status", ward_id=str(city.wards["SE"]))
+    assert outside["total"] == 0
+
+    # Roads covers potholes only, and every issue here is waste.
+    assert kpis(await _get(client, roads, "overview"))["reports"] == 0
+    assert (await _get(client, roads, "by-category"))["items"] == []
+    assert (await _get(client, roads, "matching-quality"))["decided_reports"] == 0
+
+    # Unscoped staff still see the whole city.
+    assert kpis(await _get(client, city.admin, "overview"))["reports"] == 3
+    assert kpis(await _get(client, city.supervisor, "overview"))["reports"] == 3

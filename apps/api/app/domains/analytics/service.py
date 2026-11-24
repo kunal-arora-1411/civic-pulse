@@ -47,6 +47,7 @@ from app.domains.analytics.schemas import (
     WardRow,
 )
 from app.domains.categories.schemas import CategoryRef
+from app.domains.rbac.scope import IssueAccess, access_sql
 from app.domains.workflow.statuses import IssueStatus
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -73,6 +74,8 @@ class Scope:
     category_id: uuid.UUID | None = None
     ward_id: uuid.UUID | None = None
     statuses: tuple[str, ...] = ()
+    # The caller's jurisdiction and department scope (None: whole tenant).
+    access: IssueAccess = None
 
     @classmethod
     def build(
@@ -82,6 +85,7 @@ class Scope:
         category_id: uuid.UUID | None,
         ward_id: uuid.UUID | None,
         statuses: Sequence[IssueStatus] | None,
+        access: IssueAccess = None,
     ) -> Scope:
         end = end or today_ist()
         start = start or end - timedelta(days=DEFAULT_DAYS - 1)
@@ -95,6 +99,7 @@ class Scope:
             category_id=category_id,
             ward_id=ward_id,
             statuses=tuple(s.value for s in statuses or ()),
+            access=access,
         )
 
     @property
@@ -119,7 +124,14 @@ class Scope:
             params["ward"] = self.ward_id
         if self.statuses:
             params["statuses"] = list(self.statuses)
+        access_sql(self.access, "x", "x", params)
         return params
+
+    def _access(self, alias: str) -> list[str]:
+        if self.access is None:
+            return []
+        # The bound values are added by params(); keys depend only on access.
+        return [access_sql(self.access, f"{alias}.ward_id", f"{alias}.category_id", {})]
 
     def issues(self, alias: str = "i", *, timed: bool = True) -> str:
         """Surviving issues created in the period, with the filters."""
@@ -132,6 +144,7 @@ class Scope:
             parts.append(f"{alias}.ward_id = :ward")
         if self.statuses:
             parts.append(f"{alias}.status = ANY(:statuses)")
+        parts.extend(self._access(alias))
         return " AND ".join(parts)
 
     def reports(self, alias: str = "r") -> str:
@@ -150,6 +163,7 @@ class Scope:
                 f"EXISTS (SELECT 1 FROM civic_issues fi WHERE fi.id = {alias}.issue_id"
                 " AND fi.status = ANY(:statuses))"
             )
+        parts.extend(self._access(alias))
         return " AND ".join(parts)
 
     def filters(self) -> Filters:
