@@ -27,6 +27,13 @@ x-api-env: &api-env
   TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-mMLHnH8kUFV7fWcw29AMh4zjPaVTPAsXyuGlw5mP07w=}
   DEV_FIXED_OTP: ${DEV_FIXED_OTP:-true}
   REQUIRE_STAFF_MFA: ${REQUIRE_STAFF_MFA:-false}
+  # OTP request limits, looser than production's 5 per phone and 30 per IP
+  # an hour. Behind Docker's port forwarding every browser on the machine
+  # reaches the API from the same gateway address, so the per-IP limit
+  # becomes one shared budget, and the seeded accounts are shared by the
+  # whole team and the e2e suite. The 30-second resend cooldown stays.
+  OTP_MAX_PER_HOUR: ${OTP_MAX_PER_HOUR:-60}
+  OTP_MAX_PER_IP_PER_HOUR: ${OTP_MAX_PER_IP_PER_HOUR:-1000}
   # Server-side calls go to minio over the compose network; URLs handed to
   # browsers are signed for the host port instead (see app/core/storage.py).
   S3_ENDPOINT: http://minio:9000
