@@ -37,18 +37,26 @@ def has_ai_extra() -> bool:
     return all(importlib.util.find_spec(m) for m in ("onnxruntime", "tokenizers", "cv2"))
 
 
+def _unavailable(reason: str) -> None:
+    # The CI job that downloads the weights sets AI_REQUIRE_MODELS so that a
+    # broken download fails the job instead of quietly skipping every test.
+    if os.environ.get("AI_REQUIRE_MODELS"):
+        pytest.fail(reason)
+    pytest.skip(reason)
+
+
 @pytest.fixture(scope="session")
 def model_dir() -> Path:
     """The verified model directory, or a skip when the weights aren't installed."""
     if not has_ai_extra():
-        pytest.skip("the ai extra is not installed (uv sync --extra ai)")
+        _unavailable("the ai extra is not installed (uv sync --extra ai)")
     path = _model_dir()
     if not (path / LOCK_FILENAME).is_file():
-        pytest.skip(f"no models in {path} (run scripts/download_models.py)")
+        _unavailable(f"no models in {path} (run scripts/download_models.py)")
     try:
         verify_model_dir(path, check_hashes=False)
     except ModelFilesError as exc:
-        pytest.skip(str(exc))
+        _unavailable(str(exc))
     return path
 
 
