@@ -12,6 +12,7 @@ export function LandingHeader() {
     { href: "#how-it-works", label: t("howItWorks") },
     { href: "#live-map", label: t("liveMap") },
     { href: "#for-cities", label: t("forCities") },
+    { href: "/blog", label: t("blog") },
   ];
 
   return (
