@@ -11,6 +11,9 @@ tenants and about 60 synthetic issues with processed placeholder photos.
 scripts/seed_phase2.py then adds severity rules, places of interest, the
 matching and priority configs, duplicate clusters and two open review
 tasks, and computes severity and priority for every issue.
+scripts/seed_analytics.py adds about 90 days of varied history (360 more
+issues across the lifecycle, duplicates and match decisions) so the
+analytics dashboard looks real.
 Running it again converges on the same state: names, geometry, roles and
 categories are reset to these values, and existing issues are left alone.
 
@@ -48,11 +51,13 @@ from app.domains.org.models import (
     TeamJurisdiction,
     TeamMember,
 )
+from app.domains.priority.service import recompute_tenant
 from app.domains.rbac.models import UserRole
 from app.domains.rbac.roles import Role
 from app.domains.tenants.models import Tenant
 from app.domains.users.models import User
 from app.domains.workflow.service import install_default_transitions
+from scripts import seed_analytics as analytics
 from scripts import seed_phase1 as phase1
 from scripts import seed_phase2 as phase2
 
@@ -348,6 +353,16 @@ async def run() -> dict[str, int]:
         wards=wards,
         reporters=[user_ids[p] for p in ("+919000000005", "+919000000006", "+919000000007")],
     )
+    # After the matching examples, so the extra issues can't change what
+    # those reports match.
+    history = await analytics.seed_history(
+        tenant_id=demo,
+        categories=categories,
+        wards=wards,
+        reporters=[user_ids[p] for p in ("+919000000005", "+919000000006", "+919000000007")],
+        operator_id=user_ids["+919000000002"],
+    )
+    await recompute_tenant(demo)
     return {
         "tenants": len(tenant_ids),
         "departments": len(departments),
@@ -356,6 +371,7 @@ async def run() -> dict[str, int]:
         "categories": len(categories),
         "issues": issues,
         "places": places,
+        "analytics issues": history,
         **{f"extra reports {status}": count for status, count in sorted(matching.items())},
     }
 
