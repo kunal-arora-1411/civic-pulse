@@ -10,10 +10,10 @@ For one report:
    Several photos of the same problem vote together, and one odd photo
    pulls the result less than it would if we took the best single photo.
 3. Cosine similarities are divided by a temperature and softmaxed. The
-   temperature is fitted on the evaluation set (see
-   ``docs/eval/phase-2-baseline.md``) so that the confidences mean
-   roughly what they say; CLIP's own scale (100, i.e. T = 0.01) is
-   overconfident on our categories.
+   temperature is fitted on the calibration half of the evaluation set
+   (``docs/eval/phase-2-baseline.md``) so that the confidences mean
+   roughly what they say. It came out close to CLIP's own scale (T = 0.01),
+   slightly sharper; re-fit it whenever the prompts or the model change.
 4. If the best category is below ``threshold`` the reserved ``unknown``
    code comes first, with confidence ``1 - top``. The full softmax follows
    it unchanged, so callers can still offer the top categories as
@@ -34,8 +34,10 @@ from numpy.typing import NDArray
 from app.ai.interfaces import CategoryScore, VisionModel
 from app.ai.prompts import NOT_CIVIC, UNKNOWN
 
-# Fitted on the calibration split; see docs/eval/phase-2-baseline.md.
-DEFAULT_TEMPERATURE = 0.01
+# Fitted on the calibration split for clip-vit-b32@onnx-1 and DEFAULT_PROMPTS;
+# see docs/eval/phase-2-baseline.md. The threshold matches the contract's
+# default classification_threshold, which the evaluation supported.
+DEFAULT_TEMPERATURE = 0.0084
 DEFAULT_THRESHOLD = 0.45
 
 PromptKey = tuple[tuple[str, tuple[str, ...]], ...]

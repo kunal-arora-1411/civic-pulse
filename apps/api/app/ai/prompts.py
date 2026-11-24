@@ -2,9 +2,13 @@
 
 A category can override its prompts through ``categories.ai_prompts``; these
 are the fallback for the five seeded categories plus the reserved
-``not_civic`` class. They were chosen on the calibration half of the
-evaluation set only, so the test half still measures them fairly (see
-``docs/eval/phase-2-baseline.md``).
+``not_civic`` class.
+
+They are hand-written, not searched. ``scripts/eval/tune_prompts.py`` tried
+a greedy search over a pool of alternatives on the calibration half of the
+evaluation set; cross-fitted on calib, the searched prompts scored 85%
+against 91% for these, so the search was overfitting a small split and
+these stayed (``docs/eval/phase-2-baseline.md``).
 """
 
 from __future__ import annotations
