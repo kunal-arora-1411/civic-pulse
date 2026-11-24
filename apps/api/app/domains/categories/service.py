@@ -17,6 +17,7 @@ from app.domains.categories.schemas import (
     CategoryOut,
     CategoryRef,
     CategoryUpdate,
+    ClosurePolicy,
     Dedup,
     Evidence,
     fields_as_json,
@@ -51,6 +52,7 @@ def to_out(category: Category) -> CategoryOut:
             ),
             "ai_prompts": category.ai_prompts,
             "severity_rules": category.severity_rules,
+            "closure": closure_policy(category),
             "sort_order": category.sort_order,
             "is_active": category.is_active,
         }
@@ -65,6 +67,10 @@ def severity_rules(category: Category) -> SeverityRules | None:
     if not category.severity_rules:
         return None
     return SeverityRules.model_validate(category.severity_rules)
+
+
+def closure_policy(category: Category) -> ClosurePolicy:
+    return ClosurePolicy.model_validate(category.closure_policy or {})
 
 
 def to_ref(category: Category) -> CategoryRef:
@@ -163,6 +169,7 @@ async def create(db: AsyncSession, actor: Principal, body: CategoryCreate) -> Ca
         dedup_window_days=body.dedup.window_days,
         ai_prompts=body.ai_prompts,
         severity_rules=_rules_json(body.severity_rules),
+        closure_policy=body.closure.model_dump(mode="json"),
         sort_order=body.sort_order,
         is_active=body.is_active,
     )
@@ -224,6 +231,8 @@ async def update(
         category.ai_prompts = body.ai_prompts
     if "severity_rules" in changes:
         category.severity_rules = _rules_json(body.severity_rules)
+    if body.closure is not None:
+        category.closure_policy = body.closure.model_dump(mode="json")
     keys = {f["key"] for f in category.fields}
     unknown = unknown_rule_fields(severity_rules(category), keys)
     if unknown:

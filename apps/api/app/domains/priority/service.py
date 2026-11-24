@@ -41,7 +41,7 @@ from app.domains.priority.rules import (
     compute_priority,
     compute_severity,
 )
-from app.domains.reports.models import Report
+from app.domains.reports.models import Report, ReportStatus
 from app.domains.workflow.statuses import IssueStatus
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,9 @@ async def recompute(db: AsyncSession, issue_id: uuid.UUID, *, now: datetime | No
 
     reports = (
         await db.execute(
-            select(Report.details, Report.reporter_id).where(Report.issue_id == issue.id)
+            select(Report.details, Report.reporter_id).where(
+                Report.issue_id == issue.id, Report.status == ReportStatus.ACCEPTED
+            )
         )
     ).all()
     unique_reporters = len({reporter for _, reporter in reports})

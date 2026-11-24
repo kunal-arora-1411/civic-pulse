@@ -10,7 +10,21 @@ from app.domains.config.models import TenantConfig
 from app.domains.issues.models import CivicIssue, IssueEvent, IssueRelation, ReferenceCounter
 from app.domains.matching.models import MatchDecision, ReviewTask
 from app.domains.media.models import MediaAsset
-from app.domains.org.models import Department, Jurisdiction
+from app.domains.operations.models import (
+    ClosureRequest,
+    IssueAssignment,
+    IssueVerification,
+    WorkOrder,
+)
+from app.domains.org.models import (
+    Department,
+    Jurisdiction,
+    Team,
+    TeamCategory,
+    TeamJurisdiction,
+    TeamMember,
+)
+from app.domains.outbox.models import OutboxEvent
 from app.domains.places.models import PlaceOfInterest
 from app.domains.rbac.models import UserRole
 from app.domains.reports.models import Report
@@ -25,23 +39,32 @@ __all__ = [
     "Category",
     "CivicIssue",
     "Classification",
+    "ClosureRequest",
     "Department",
     "IdempotencyKey",
+    "IssueAssignment",
     "IssueEvent",
     "IssueRelation",
+    "IssueVerification",
     "Jurisdiction",
     "MatchDecision",
     "MediaAsset",
     "MediaEmbedding",
     "ModelRegistryEntry",
     "OtpChallenge",
+    "OutboxEvent",
     "PlaceOfInterest",
     "ReferenceCounter",
     "Report",
     "ReviewTask",
     "StatusTransition",
+    "Team",
+    "TeamCategory",
+    "TeamJurisdiction",
+    "TeamMember",
     "Tenant",
     "TenantConfig",
     "User",
     "UserRole",
+    "WorkOrder",
 ]

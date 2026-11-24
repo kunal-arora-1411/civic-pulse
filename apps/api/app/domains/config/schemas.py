@@ -150,3 +150,18 @@ class PriorityConfig(_Strict):
     age_saturation_days: int = Field(default=30, ge=1, le=3650)
     recurrence: RecurrenceConfig = Field(default_factory=RecurrenceConfig)
     bands: PriorityBands = Field(default_factory=PriorityBands)
+
+
+class ClosureConfig(_Strict):
+    """Resolution window and the citizen-confirmation threshold (Phase 3)."""
+
+    resolution_window_hours: int = Field(
+        default=168, ge=1, le=2160, description="`resolved` becomes `closed` after this long."
+    )
+    confirmations_required: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        description="Distinct citizens confirming resolution, for categories that don't "
+        "require approval (FR-073).",
+    )

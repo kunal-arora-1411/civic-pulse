@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.domains.media.models import MediaPurpose, MediaStatus
+from app.domains.media.models import MediaPhase, MediaPurpose, MediaStatus
 
 
 class UploadCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     purpose: MediaPurpose
+    phase: MediaPhase | None = Field(
+        default=None, description="Required for `work_evidence`, forbidden otherwise."
+    )
     content_type: str = Field(
         max_length=100,
         examples=["image/jpeg"],
@@ -33,6 +36,12 @@ class UploadCreate(BaseModel):
     @classmethod
     def _lower_checksum(cls, value: str) -> str:
         return value.lower()
+
+    @model_validator(mode="after")
+    def _phase_matches_purpose(self) -> Self:
+        if (self.purpose == MediaPurpose.WORK_EVIDENCE) != (self.phase is not None):
+            raise ValueError("`phase` is required for work_evidence and only for it.")
+        return self
 
 
 class UploadCreated(BaseModel):

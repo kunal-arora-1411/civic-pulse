@@ -81,7 +81,7 @@ async def test_seed_is_idempotent_and_usable(
         "seed_roles": 9,
         "city": 1,
         "categories": 5,
-        "transitions": 14,
+        "transitions": 34,
         "issues": 60,
         # 60 + 5 in duplicate clusters + 2 waiting for review
         "reports": 67,

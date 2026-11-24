@@ -98,6 +98,26 @@ def unknown_rule_fields(rules: SeverityRules | None, field_keys: set[str]) -> li
     return sorted({r.field for r in rules.field_rules} - field_keys)
 
 
+class ClosurePolicy(BaseModel):
+    """How an issue of this category gets closed (Phase 3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    requires_approval: bool = Field(
+        default=True,
+        description="Only a supervisor's approval resolves the issue; citizen confirmations "
+        "are recorded but don't.",
+    )
+    reason_codes: list[Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{1,49}$")]] = Field(
+        default_factory=list,
+        max_length=20,
+        description="Reasons that allow a closure request without an after photo.",
+    )
+    post_closure_policy: Literal["reopen", "recurrence"] = Field(
+        default="reopen", description="Stored now; used once recurrence handling exists."
+    )
+
+
 class CategoryRef(BaseModel):
     """The short form embedded in reports and issues."""
 
@@ -122,6 +142,7 @@ class CategoryOut(BaseModel):
     severity_rules: SeverityRules | None = Field(
         description="How severity is worked out for this category's issues. Null: `medium`."
     )
+    closure: ClosurePolicy
     sort_order: int
     is_active: bool
 
@@ -144,6 +165,7 @@ class CategoryCreate(BaseModel):
     dedup: Dedup = Field(default_factory=Dedup)
     ai_prompts: AiPrompts = None
     severity_rules: SeverityRules | None = None
+    closure: ClosurePolicy = Field(default_factory=ClosurePolicy)
     sort_order: int = Field(default=0, ge=-10_000, le=10_000)
     is_active: bool = True
 
@@ -174,6 +196,7 @@ class CategoryUpdate(BaseModel):
     dedup: Dedup | None = None
     ai_prompts: AiPrompts = None
     severity_rules: SeverityRules | None = None
+    closure: ClosurePolicy | None = None
     sort_order: int | None = Field(default=None, ge=-10_000, le=10_000)
     is_active: bool | None = None
 

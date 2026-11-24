@@ -87,7 +87,7 @@ async def test_admin_lists_transitions_in_lifecycle_order(
         ("reported", "verified"),
         ("reported", "rejected"),
     ]
-    assert pairs[-1] == ("rejected", "under_review")
+    assert pairs[-1] == ("reopened", "assigned")
     first = body["items"][0]
     assert first["allowed_roles"] == ["operator", "supervisor", "municipal_admin"]
     assert set(first) == {

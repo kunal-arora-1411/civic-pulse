@@ -162,6 +162,9 @@ class CivicIssue(TimestampMixin, Base):
     status_changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Phase 3: when the issue last became `resolved`; the resolution window
+    # runs from here.
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     search_document: Mapped[Any] = mapped_column(
         TSVECTOR, server_default=text("''::tsvector"), deferred=True
     )
@@ -183,6 +186,20 @@ class EventType(StrEnum):
     CATEGORY_CHANGED = "category_changed"
     SEVERITY_CHANGED = "severity_changed"
     PRIORITY_CHANGED = "priority_changed"
+    # Phase 3: operations (docs/api/phase-3-contract.md, "Timeline event types")
+    ASSIGNED = "assigned"
+    REASSIGNED = "reassigned"
+    WORK_ORDER_ACCEPTED = "work_order_accepted"
+    WORK_ORDER_DECLINED = "work_order_declined"
+    WORK_STARTED = "work_started"
+    PROGRESS = "progress"
+    CLOSURE_REQUESTED = "closure_requested"
+    CLOSURE_APPROVED = "closure_approved"
+    CLOSURE_REJECTED = "closure_rejected"
+    VERIFICATION = "verification"
+    REOPENED = "reopened"
+    CLOSED = "closed"
+    REPORT_WITHDRAWN = "report_withdrawn"
 
 
 class Visibility(StrEnum):

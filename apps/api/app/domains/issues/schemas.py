@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.core.pagination import Page
 from app.domains.categories.schemas import CategoryRef
 from app.domains.issues.models import EventType, SeveritySource, Visibility
+from app.domains.operations.schemas import OperationsOut
 from app.domains.priority.rules import PriorityBand, SeverityLevel
 from app.domains.reports.schemas import ReportStaffView, WardRef
 from app.domains.workflow.statuses import IssueStatus
@@ -124,6 +125,9 @@ class IssueDetail(IssueListItem):
         description="Set when this issue was merged into another: redirect there."
     )
     related: list[RelatedIssueOut] = Field(description="Issues marked as related (FR-060).")
+    operations: OperationsOut = Field(
+        description="The open assignment and pending closure request (Phase 3)."
+    )
 
 
 def _clean(value: str | None) -> str | None:

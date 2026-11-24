@@ -471,6 +471,8 @@ async def change_status(
 async def get_detail(
     db: AsyncSession, storage: ObjectStorage, principal: Principal, issue_id: uuid.UUID
 ) -> IssueDetail:
+    from app.domains.operations.service import operations_view  # imports this module
+
     issue = await get_in_scope(db, principal, issue_id)
     row = (await db.execute(_list_select().where(CivicIssue.id == issue.id))).one()
     report_rows = await reports.fetch_report_rows(db, Report.issue_id == issue.id)
@@ -484,6 +486,7 @@ async def get_detail(
         allowed_transitions=await allowed_transitions(db, principal, issue),
         merged_into=await _merged_into(db, issue),
         related=await related_issues(db, storage, principal, issue.id),
+        operations=await operations_view(db, storage, issue),
     )
 
 
