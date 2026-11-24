@@ -12,6 +12,7 @@ skip cleanly when either is missing.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import io
 import os
@@ -24,6 +25,7 @@ from PIL import Image
 from app.ai.models_lock import LOCK_FILENAME, ModelFilesError, verify_model_dir
 
 API_ROOT = Path(__file__).resolve().parents[2]
+FIXTURE_CACHE = API_ROOT / ".eval-cache" / "fixtures"
 USER_AGENT = "CivicPulse-tests/0.1 (open-source civic issue reporting; test fixtures)"
 
 
@@ -51,11 +53,15 @@ def model_dir() -> Path:
 
 
 def fetch_image(url: str) -> Image.Image:
-    """Download a test image, or skip the test when offline."""
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-            data = response.read()
-    except OSError as exc:
-        pytest.skip(f"could not fetch {url}: {exc}")
-    return Image.open(io.BytesIO(data)).convert("RGB")
+    """Download a test image once (cached under .eval-cache/fixtures), or skip when offline."""
+    cached = FIXTURE_CACHE / hashlib.sha1(url.encode(), usedforsecurity=False).hexdigest()
+    if not cached.is_file():
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+                data = response.read()
+        except OSError as exc:
+            pytest.skip(f"could not fetch {url}: {exc}")
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(data)
+    return Image.open(io.BytesIO(cached.read_bytes())).convert("RGB")
