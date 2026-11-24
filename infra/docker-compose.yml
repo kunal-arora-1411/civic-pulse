@@ -43,6 +43,8 @@ x-api-env: &api-env
   S3_SECRET_KEY: ${S3_APP_SECRET_KEY:-civicpulse-app-secret}
   # Public Nominatim, kept to 1 request/second; set GEOCODER=none offline.
   GEOCODER: ${GEOCODER:-nominatim}
+  # Vision models: the deterministic fake unless a service says otherwise.
+  AI_PROVIDER: ${AI_PROVIDER:-fake}
 
 services:
   db:
@@ -193,7 +195,16 @@ services:
   worker:
     image: civicpulse-api:dev
     pull_policy: never
-    command: ["celery", "-A", "app.worker:celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    # Also consumes the `ai` queue (with the fake models) until a dedicated
+    # AI worker with the real models takes it over.
+    command:
+      - celery
+      - -A
+      - app.worker:celery_app
+      - worker
+      - --loglevel=INFO
+      - --concurrency=2
+      - --queues=default,ai
     environment:
       <<: *api-env
     depends_on:
