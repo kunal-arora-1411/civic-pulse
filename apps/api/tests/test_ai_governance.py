@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -9,11 +11,13 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.domains.ai.analysis import register_models
 from tests.phase1 import NE, City, make_city
 from tests.phase2 import REVIEW, issue, north_of, report, scene_photo
 
 MODELS = "/api/v1/admin/ai/models"
 QUALITY = "/api/v1/admin/ai/quality"
+LOCK = Path(__file__).resolve().parents[1] / "models.lock.json"
 
 
 @pytest.fixture
@@ -126,3 +130,65 @@ async def test_governance_endpoints_need_config_read(client: httpx.AsyncClient, 
         QUALITY, headers=city.admin.headers, params={"from": "2026-02-01", "to": "2026-01-01"}
     )
     assert reversed_window.status_code == 422
+
+
+# --- the AI worker registers its models at start-up -----------------------------------------
+
+
+class _Consumer:
+    """What Celery's worker_ready hands the signal: just the queue table."""
+
+    def __init__(self, queues: list[str]) -> None:
+        from app.worker import celery_app
+
+        selected = celery_app.amqp.Queues([])
+        for name in queues:
+            selected.select_add(name)
+        self.app = type("App", (), {"amqp": type("Amqp", (), {"queues": selected})()})()
+
+
+def test_only_the_worker_on_the_ai_queue_registers_models() -> None:
+    from app.domains.ai.tasks import consumes_ai_queue
+
+    assert consumes_ai_queue(_Consumer(["ai"]))
+    assert consumes_ai_queue(_Consumer(["default", "ai"]))
+    assert not consumes_ai_queue(_Consumer(["default"]))
+
+
+async def test_registering_the_real_models_records_lock_details_and_metrics(
+    client: httpx.AsyncClient,
+    owner_engine: AsyncEngine,
+    city: City,
+    settings: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    # Only the lock is read to describe the models; no weights needed.
+    shutil.copy(LOCK, tmp_path / "models.lock.json")
+    monkeypatch.setattr(settings, "ai_provider", "onnx")
+    monkeypatch.setattr(settings, "ai_model_dir", str(tmp_path))
+
+    assert await register_models() == ["clip-vit-b32@onnx-1", "yunet-2023mar@onnx-1"]
+
+    body = (await client.get(MODELS, headers=city.admin.headers)).json()
+    by_id = {m["model_id"]: m for m in body["items"]}
+    clip = by_id["clip-vit-b32@onnx-1"]
+    assert (clip["task"], clip["license"], clip["active"]) == ("embedding", "MIT", True)
+    assert clip["source"].startswith("https://huggingface.co/Xenova/clip-vit-base-patch32@")
+    assert clip["metrics"]["matching"] == {"visual_min": 0.92}
+    assert by_id["yunet-2023mar@onnx-1"]["task"] == "face_detection"
+    assert by_id["yunet-2023mar@onnx-1"]["active"] is True
+
+    # A restart registers them again: details refreshed, still one row each.
+    first_deployed = clip["deployed_at"]
+    await register_models()
+    again = {
+        m["model_id"]: m
+        for m in (await client.get(MODELS, headers=city.admin.headers)).json()["items"]
+    }
+    assert again["clip-vit-b32@onnx-1"]["deployed_at"] >= first_deployed
+    async with owner_engine.connect() as conn:
+        count = await conn.scalar(
+            text("SELECT count(*) FROM model_registry WHERE id = 'clip-vit-b32@onnx-1'")
+        )
+    assert count == 1

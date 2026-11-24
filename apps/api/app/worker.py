@@ -40,6 +40,7 @@ celery_app = Celery(
 # AI worker (which has the model weights); everything else stays on
 # `default`. Matching runs on `ai` because it may have to embed photos
 # that haven't been analysed yet.
+AI_QUEUE = "ai"
 AI_TASKS = (
     "civicpulse.ai.analyze_media",
     "civicpulse.ai.classify",
@@ -59,7 +60,7 @@ celery_app.conf.update(
     result_expires=3600,
     broker_connection_retry_on_startup=True,
     task_default_queue="default",
-    task_routes={name: {"queue": "ai"} for name in AI_TASKS},
+    task_routes={name: {"queue": AI_QUEUE} for name in AI_TASKS},
     # Run by the `beat` service in compose. Hourly keeps the short-lived
     # tables small; the job is idempotent, so a missed or doubled run is fine.
     beat_schedule={

@@ -17,10 +17,11 @@ import logging
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import Any
 
 import numpy as np
 from PIL import Image
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +29,7 @@ from app.ai import registry
 from app.ai.faces import blur_regions
 from app.ai.fake import FAKE_MODEL_ID
 from app.ai.interfaces import VisionModel
+from app.ai.metrics import metrics_for
 from app.ai.phash import perceptual_hash, to_signed64
 from app.core.config import get_settings
 from app.core.db import get_session_factory
@@ -58,28 +60,68 @@ def vision_model() -> VisionModel:
     return model
 
 
+_FAKE_ROW: dict[str, Any] = {
+    "task": ModelTask.EMBEDDING,
+    "name": "Fake vision model (deterministic)",
+    "version": FAKE_MODEL_ID.rpartition("@")[2],
+    "source": "apps/api/app/ai/fake.py",
+    "license": "Project code; no third-party weights",
+    "intended_use": "Tests and development only",
+}
+
+
 async def ensure_registered(db: AsyncSession, model: VisionModel) -> None:
     """Make sure the model has a registry row (embeddings reference it).
 
-    The AI worker records full details for the real models at startup; this
-    only fills in a minimal row if that hasn't happened, and never touches
-    an existing one.
+    The AI worker records full details at start-up (`register_models`);
+    this only fills in a minimal row if that hasn't happened, and never
+    touches an existing one.
     """
     model_id = model.model_id
-    fake = model_id == FAKE_MODEL_ID
+    if model_id == FAKE_MODEL_ID:
+        values = dict(_FAKE_ROW)
+    else:
+        values = {
+            "task": ModelTask.EMBEDDING,
+            "name": model_id,
+            "version": model_id.rpartition("@")[2] or model_id,
+            "metrics": metrics_for(model_id),
+        }
     await db.execute(
         pg_insert(ModelRegistryEntry)
-        .values(
-            id=model_id,
-            task=ModelTask.EMBEDDING,
-            name="Fake vision model (deterministic)" if fake else model_id,
-            version=model_id.rpartition("@")[2] or model_id,
-            source="apps/api/app/ai/fake.py" if fake else None,
-            license="Project code; no third-party weights" if fake else None,
-            intended_use="Tests and development only" if fake else None,
-        )
+        .values(id=model_id, **values)
         .on_conflict_do_nothing(index_elements=[ModelRegistryEntry.id])
     )
+
+
+async def register_models() -> list[str]:
+    """Record the models this process runs, as deployed now.
+
+    The AI worker calls this when it starts (PRD §8.6: source, licence and
+    intended use of every deployed model are on record). Real models are
+    described by the lock next to their weights, fakes by their module;
+    both get the evaluation's metrics, including the per-model matching
+    defaults. Re-registering refreshes the details and makes the model the
+    active one for its task again. Returns the model ids.
+    """
+    if get_settings().ai_provider == "fake":
+        rows = [{"model_id": FAKE_MODEL_ID, **_FAKE_ROW}]
+    else:
+        rows = [model.registry_row() for model in registry.deployed_models()]
+    ids: list[str] = []
+    async with get_session_factory()() as db:
+        for row in rows:
+            model_id = row.pop("model_id")
+            ids.append(model_id)
+            values = {**row, "metrics": metrics_for(model_id), "deployed_at": func.now()}
+            await db.execute(
+                pg_insert(ModelRegistryEntry)
+                .values(id=model_id, **values)
+                .on_conflict_do_update(index_elements=[ModelRegistryEntry.id], set_=values)
+            )
+        await db.commit()
+    logger.info("models registered", extra=log_fields(models=",".join(ids)))
+    return ids
 
 
 def _vector_literal(vector: np.ndarray) -> str:
