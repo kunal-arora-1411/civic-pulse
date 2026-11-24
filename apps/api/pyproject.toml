@@ -14,6 +14,8 @@ dependencies = [
     "fastapi>=0.165.0",
     "geoalchemy2>=0.21.0",
     "httpx>=0.28.1",
+    "numpy>=2.3",
+    "pgvector>=0.4",
     "phonenumbers>=9.0.44",
     "pillow>=13.0.0",
     "pydantic>=2.14.4",
@@ -23,6 +25,14 @@ dependencies = [
     "redis>=8.2.0",
     "sqlalchemy[asyncio]>=2.1.9,<2.2",
     "uvicorn[standard]>=0.54.0",
+]
+
+[project.optional-dependencies]
+ai = [
+    "huggingface-hub>=0.36",
+    "onnxruntime>=1.23",
+    "opencv-python-headless>=4.12",
+    "tokenizers>=0.22",
 ]
 
 [dependency-groups]
