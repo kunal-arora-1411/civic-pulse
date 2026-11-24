@@ -135,6 +135,19 @@ Issue detail adds `match_decisions` per report (staff only): every candidate con
 
 Citizens whose reports moved see the new issue in their report detail. The public timeline says "Combined with another report of the same problem", without staff names.
 
+**Timeline event types added in Phase 2.** Staff see all of them; citizens only the public ones. Where the action took a reason, it's in the event's `reason`.
+
+| `type` | Visibility | Written when |
+|---|---|---|
+| `report_linked` | internal | A report joins the issue, automatically or through a review task |
+| `merged` | public | Other issues were merged into this one ("Combined with another report of the same problem") |
+| `merged_into` | internal | This issue was merged into another |
+| `split` | internal | Reports were moved out of, or into, this issue |
+| `category_changed` | internal | An operator corrected the category |
+| `severity_changed` | internal | A severity override was set or cleared |
+| `priority_changed` | internal | A priority override was set or cleared |
+| `related_added`, `related_removed` | internal | A related-issue link was added or removed |
+
 ## E. Severity (FR-038)
 - `category.severity_rules`:
   ```json

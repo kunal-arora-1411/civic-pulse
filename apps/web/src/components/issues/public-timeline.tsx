@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox } from "lucide-react";
+import { Combine, Inbox } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import type { PublicTimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -21,11 +21,17 @@ export function PublicTimeline({ events }: { events: PublicTimelineEvent[] }) {
     <ol className="grid gap-0">
       {sorted.map((event, index) => {
         const status = event.to_status ?? null;
-        const Icon = status ? STATUS_STYLE[status].icon : Inbox;
+        const merged = event.type === "merged";
+        const Icon = merged
+          ? Combine
+          : status
+            ? STATUS_STYLE[status].icon
+            : Inbox;
         const last = index === sorted.length - 1;
-        const title =
-          event.type === "created" ||
-          (!event.from_status && status === "reported")
+        const title = merged
+          ? t("merged")
+          : event.type === "created" ||
+              (!event.from_status && status === "reported")
             ? tStatus("reported")
             : status
               ? t("statusChanged", { status: tStatus(status) })

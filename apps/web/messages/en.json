@@ -750,6 +750,7 @@
   "timeline": {
     "statusChanged": "Status changed to {status}",
     "update": "Update",
+    "merged": "Combined with another report of the same problem",
     "noteFromCity": "Note from the municipality"
   },
   "reports": {
@@ -783,6 +784,22 @@
       "noDescription": "No description.",
       "progress": "Progress",
       "issueRef": "Tracked as issue {reference}"
+    },
+    "matching": {
+      "pendingTitle": "Checking for similar reports…",
+      "pendingBody": "We're seeing whether someone has already reported this problem. It usually takes a few seconds.",
+      "reviewTitle": "A member of staff is checking for similar reports",
+      "reviewBody": "They're deciding whether this problem has already been reported. You'll see its issue here once they have.",
+      "slowTitle": "This is taking longer than usual",
+      "slowBody": "Your report is safe with us. Look in My reports again in a few minutes.",
+      "linkedTitle": "Added to an existing issue {reference}",
+      "linkedBody": "{count, plural, one {# person has} other {# people have}} reported this problem. You'll see the same updates as everyone else.",
+      "linkedBodyNoCount": "Someone had already reported this problem. You'll see the same updates as everyone else.",
+      "newTitle": "New issue {reference} created",
+      "newBody": "You're the first to report this problem.",
+      "placedTitle": "Tracked as issue {reference}",
+      "badgeChecking": "Checking for similar reports",
+      "badgeReview": "Being checked by staff"
     }
   }
 }

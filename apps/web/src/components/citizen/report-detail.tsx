@@ -18,6 +18,12 @@ import { useCategories, useLocalized } from "@/hooks/use-reference-data";
 import { Link } from "@/i18n/navigation";
 import { type Category, getReport, isApiError, type Report } from "@/lib/api";
 import { processingRefetchInterval } from "@/lib/media/processing";
+import {
+  matchingRefetchInterval,
+  matchingView,
+  soonest,
+} from "@/lib/report/matching";
+import { MatchingBadge, MatchingStatus } from "./matching-status";
 
 /** "road_name" → "Road name", for fields of categories since edited. */
 function humanize(key: string): string {
@@ -64,12 +70,19 @@ function Body({ report }: { report: Report }) {
   const details = Object.entries(report.details ?? {}).filter(
     ([, value]) => value !== null && value !== "",
   );
+  const matching = matchingView(report);
 
   return (
     <div className="grid gap-6 motion-safe:animate-rise">
       <header className="grid gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {report.issue ? <StatusBadge status={report.issue.status} /> : null}
+          {report.issue ? (
+            <StatusBadge status={report.issue.status} />
+          ) : (
+            <MatchingBadge
+              state={matching.state === "review" ? "review" : "pending"}
+            />
+          )}
           <span className="font-mono text-sm text-muted-foreground">
             {report.reference}
           </span>
@@ -154,12 +167,15 @@ function Body({ report }: { report: Report }) {
         <Card className="grid content-start gap-4 p-5">
           <div className="grid gap-1">
             <h2 className="font-semibold">{t("progress")}</h2>
-            {report.issue ? (
+            {matching.state === "placed" ? (
               <p className="text-sm text-muted-foreground">
-                {t("issueRef", { reference: report.issue.reference })}
+                {t("issueRef", { reference: matching.reference })}
               </p>
             ) : null}
           </div>
+          {matching.state === "placed" ? null : (
+            <MatchingStatus report={report} />
+          )}
           {report.issue ? (
             <PublicTimeline events={report.issue.timeline} />
           ) : null}
@@ -176,8 +192,12 @@ export function ReportDetail({ params }: { params: Promise<{ id: string }> }) {
   const query = useQuery({
     queryKey: ["reports", "detail", id],
     queryFn: ({ signal }) => getReport(id, signal),
+    // Photos may still be processing, and matching may still be running.
     refetchInterval: ({ state }) =>
-      processingRefetchInterval(state.data?.media, state.dataUpdateCount),
+      soonest(
+        processingRefetchInterval(state.data?.media, state.dataUpdateCount),
+        matchingRefetchInterval(state.data, state.dataUpdateCount),
+      ),
   });
 
   return (
