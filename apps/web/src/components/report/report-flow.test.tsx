@@ -191,6 +191,38 @@ describe("ReportFlow submission", () => {
     ).toBeInTheDocument();
   });
 
+  it("explains a rate limit in friendly units and keeps the draft", async () => {
+    const draft = readyDraft();
+    sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    useReferenceHandlers();
+    server.use(
+      http.post(`${API}/reports`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "rate_limited",
+              message: "Too many requests.",
+              details: { retry_after: 1750 },
+            },
+          },
+          { status: 429, headers: { "Retry-After": "1750" } },
+        ),
+      ),
+    );
+
+    const { user } = renderWithProviders(<ReportFlow />);
+    await user.click(
+      await screen.findByRole("button", { name: /send report/i }),
+    );
+
+    expect(
+      await screen.findByText(/try again in 30 minutes/i),
+    ).toBeInTheDocument();
+    // Retrying now would only be refused again.
+    expect(screen.queryByRole("button", { name: /try again/i })).toBeNull();
+    expect(storedDraft().idempotencyKey).toBe(draft.idempotencyKey);
+  });
+
   it("offers to send as a new report when the key was used for different details", async () => {
     const draft = readyDraft();
     sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));

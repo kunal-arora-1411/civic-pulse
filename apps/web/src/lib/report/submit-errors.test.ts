@@ -3,7 +3,7 @@ import { errorMessageFor } from "@/hooks/use-error-message";
 import { ApiError } from "@/lib/api";
 import messages from "../../../messages/en.json";
 import hiMessages from "../../../messages/hi.json";
-import { submitErrorInfo } from "./submit-errors";
+import { rateLimitMessage, submitErrorInfo } from "./submit-errors";
 
 const apiError = (
   code: string,
@@ -62,6 +62,22 @@ describe("submitErrorInfo", () => {
     ).toEqual({ key: "rate_limited", retryable: true, retryAfter: 30 });
   });
 
+  it("offers no retry while a long rate-limit window runs", () => {
+    expect(
+      submitErrorInfo(apiError("rate_limited", 429, { retryAfter: 1800 })),
+    ).toEqual({ key: "rate_limited", retryable: false, retryAfter: 1800 });
+  });
+
+  it.each([
+    [undefined, { key: "rate_limited" }],
+    [45, { key: "rate_limited_wait", values: { seconds: 45 } }],
+    [61, { key: "rate_limited_minutes", values: { minutes: 2 } }],
+    [3599, { key: "rate_limited_minutes", values: { minutes: 60 } }],
+    [7200, { key: "rate_limited_hours", values: { hours: 2 } }],
+  ])("words a %s-second wait in a natural unit", (seconds, expected) => {
+    expect(rateLimitMessage(seconds)).toEqual(expected);
+  });
+
   it("treats a thrown non-API error as retryable", () => {
     expect(submitErrorInfo(new TypeError("boom"))).toEqual({
       key: "unknown",
@@ -75,6 +91,8 @@ describe("submitErrorInfo", () => {
       "server",
       "rate_limited",
       "rate_limited_wait",
+      "rate_limited_minutes",
+      "rate_limited_hours",
       "out_of_jurisdiction",
       "evidence_required",
       "invalid_media",
