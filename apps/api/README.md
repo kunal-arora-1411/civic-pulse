@@ -75,6 +75,18 @@ Lint and types (CI runs the same):
 uv run ruff check . && uv run ruff format --check . && uv run pyright
 ```
 
+## Vision models
+
+The AI layer (`app/ai/`) runs CLIP ViT-B/32 and YuNet on ONNX Runtime, CPU only. `AI_PROVIDER=fake` (the default) needs nothing extra; for the real models:
+
+```sh
+uv sync --extra ai
+uv run python scripts/download_models.py --model-dir .models     # ~600 MB, checked against models.lock.json
+AI_MODEL_DIR=.models uv run pytest tests/ai --confcutdir=tests/ai  # no database needed
+```
+
+`models.lock.json` pins each model to a Hub commit and records its licence and file hashes; change a pin in `scripts/download_models.py`, then run it with `--update-lock`. The `ai-worker` compose service bakes the weights into its image (`infra/ai-worker/Dockerfile`). The evaluation harness lives in `scripts/eval/` and its results in [`docs/eval/phase-2-baseline.md`](../../docs/eval/phase-2-baseline.md).
+
 ## Migrations
 
 ```sh

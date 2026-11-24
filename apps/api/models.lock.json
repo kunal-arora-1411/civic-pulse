@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "models": {
+    "clip": {
+      "key": "clip",
+      "model_id": "clip-vit-b32@onnx-1",
+      "task": "embedding",
+      "name": "CLIP ViT-B/32 (OpenAI weights), fp32 ONNX export by Xenova",
+      "repo": "Xenova/clip-vit-base-patch32",
+      "revision": "6b7c523703ae26e39be4b03774966f8571c7f523",
+      "license": "MIT",
+      "license_url": "https://github.com/openai/CLIP/blob/main/LICENSE",
+      "intended_use": "Image embeddings for duplicate matching and zero-shot category suggestions. Suggestions are confirmed by the citizen or staff; never the sole basis for a decision.",
+      "files": [
+        {
+          "path": "onnx/vision_model.onnx",
+          "sha256": "fd6e1402a588279d1723c7534d4bcba5bc0b14b47dfab0e46f8c47b8270d7d40",
+          "size": 351685709
+        },
+        {
+          "path": "onnx/text_model.onnx",
+          "sha256": "3f6571f5bad13a97c469c1622e1cfc4d9aef78b79fdbfcff804ca357bfada8cc",
+          "size": 254058553
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "f7f3b7af117d467b58374797691a6438d3e6b9e9cef800dfd5dced7f697a90cd",
+          "size": 2224119
+        },
+        {
+          "path": "preprocessor_config.json",
+          "sha256": "6f638fb9401a6d6296feff533ee7efe657b787c49f954f82f5906b36ef2a1b1f",
+          "size": 520
+        }
+      ],
+      "config": {
+        "dim": 512,
+        "image_size": 224,
+        "resize": "shortest_edge_center_crop",
+        "interpolation": "bicubic",
+        "mean": [
+          0.48145466,
+          0.4578275,
+          0.40821073
+        ],
+        "std": [
+          0.26862954,
+          0.26130258,
+          0.27577711
+        ],
+        "context_length": 77,
+        "pad_to_context": false,
+        "pad_id": 49407,
+        "text_dtype": "int64",
+        "vision_input": "pixel_values",
+        "text_input": "input_ids",
+        "max_batch": 16,
+        "logit_scale": 100.0,
+        "files": {
+          "vision": "onnx/vision_model.onnx",
+          "text": "onnx/text_model.onnx",
+          "tokenizer": "tokenizer.json"
+        }
+      }
+    },
+    "yunet": {
+      "key": "yunet",
+      "model_id": "yunet-2023mar@onnx-1",
+      "task": "face_detection",
+      "name": "YuNet face detector (OpenCV Zoo, 2023mar)",
+      "repo": "opencv/face_detection_yunet",
+      "revision": "3cc26e7f1014a5ee5d74a42acee58bafc9d0a310",
+      "license": "MIT",
+      "license_url": "https://huggingface.co/opencv/face_detection_yunet/blob/3cc26e7f1014a5ee5d74a42acee58bafc9d0a310/LICENSE",
+      "intended_use": "Find faces in public copies of citizen photos so they can be blurred.",
+      "files": [
+        {
+          "path": "face_detection_yunet_2023mar.onnx",
+          "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+          "size": 232589
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "c83b8120c50ccbd4c4f96edf53141bdd566ebb8f8e9227e415326aa1b1aba958",
+          "size": 1085
+        }
+      ],
+      "config": {
+        "files": {
+          "detector": "face_detection_yunet_2023mar.onnx"
+        }
+      }
+    }
+  }
+}
