@@ -4662,6 +4662,374 @@
           }
         }
       }
+    },
+    "/api/v1/admin/matching-config": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Matching Config",
+        "description": "Duplicate-matching weights and thresholds in effect (defaults if never set).",
+        "operationId": "admin_get_matching_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchingConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Matching Config",
+        "description": "Replace the whole document; a field left out goes back to its default.\nWeights must add up to 1 and `review` can't exceed `auto`. Audited.",
+        "operationId": "admin_update_matching_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchingConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchingConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/priority-config": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Priority Config",
+        "description": "Priority weights, scaling and bands in effect (defaults if never set).",
+        "operationId": "admin_get_priority_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriorityConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Priority Config",
+        "description": "Replace the whole document; a field left out goes back to its default.\nWeights must add up to 100 and the bands must fall from critical to\nmedium. Audited.",
+        "operationId": "admin_update_priority_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriorityConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6487,6 +6855,106 @@
         "title": "MapConfig",
         "description": "Initial map view. Coordinates are `[lng, lat]`, in GeoJSON order."
       },
+      "MatchingConfig": {
+        "properties": {
+          "auto_link_enabled": {
+            "type": "boolean",
+            "title": "Auto Link Enabled",
+            "default": true
+          },
+          "weights": {
+            "$ref": "#/components/schemas/MatchingWeights"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/MatchingThresholds"
+          },
+          "classification_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Classification Threshold",
+            "description": "Below this top-category confidence the citizen is asked to choose.",
+            "default": 0.45
+          },
+          "fallback_review_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Fallback Review Threshold",
+            "description": "Without the visual signal, a score this high opens a review task.",
+            "default": 0.4
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MatchingConfig"
+      },
+      "MatchingThresholds": {
+        "properties": {
+          "auto": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Auto",
+            "description": "Score needed to link on its own.",
+            "default": 0.85
+          },
+          "review": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Review",
+            "description": "Score that asks a person.",
+            "default": 0.6
+          },
+          "visual_min": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Visual Min",
+            "description": "Visual similarity an automatic link also needs.",
+            "default": 0.8
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MatchingThresholds"
+      },
+      "MatchingWeights": {
+        "properties": {
+          "geo": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Geo",
+            "default": 0.4
+          },
+          "visual": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Visual",
+            "default": 0.4
+          },
+          "category": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Category",
+            "default": 0.1
+          },
+          "time": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Time",
+            "default": 0.1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MatchingWeights"
+      },
       "MediaAssetOut": {
         "properties": {
           "id": {
@@ -7082,6 +7550,109 @@
         ],
         "title": "PointOut"
       },
+      "PriorityBands": {
+        "properties": {
+          "critical": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Critical",
+            "default": 80
+          },
+          "high": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "High",
+            "default": 60
+          },
+          "medium": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Medium",
+            "default": 35
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PriorityBands"
+      },
+      "PriorityConfig": {
+        "properties": {
+          "weights": {
+            "$ref": "#/components/schemas/PriorityWeights"
+          },
+          "severity_points": {
+            "$ref": "#/components/schemas/SeverityPoints"
+          },
+          "reporters_saturation": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Reporters Saturation",
+            "default": 10
+          },
+          "age_saturation_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Age Saturation Days",
+            "default": 30
+          },
+          "recurrence": {
+            "$ref": "#/components/schemas/RecurrenceConfig"
+          },
+          "bands": {
+            "$ref": "#/components/schemas/PriorityBands"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PriorityConfig"
+      },
+      "PriorityWeights": {
+        "properties": {
+          "severity": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Severity",
+            "default": 40
+          },
+          "reporters": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Reporters",
+            "default": 20
+          },
+          "age": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Age",
+            "default": 15
+          },
+          "recurrence": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Recurrence",
+            "default": 15
+          },
+          "near_places": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Near Places",
+            "default": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PriorityWeights"
+      },
       "PublicTimelineEvent": {
         "properties": {
           "at": {
@@ -7163,6 +7734,34 @@
           "checks"
         ],
         "title": "ReadinessOut"
+      },
+      "RecurrenceConfig": {
+        "properties": {
+          "radius_m": {
+            "type": "integer",
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Radius M",
+            "default": 50
+          },
+          "lookback_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Lookback Days",
+            "default": 180
+          },
+          "saturation": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Saturation",
+            "default": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecurrenceConfig"
       },
       "RefreshIn": {
         "properties": {
@@ -7717,6 +8316,41 @@
           "roles"
         ],
         "title": "RolesUpdate"
+      },
+      "SeverityPoints": {
+        "properties": {
+          "low": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Low",
+            "default": 0.1
+          },
+          "medium": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Medium",
+            "default": 0.4
+          },
+          "high": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "High",
+            "default": 0.75
+          },
+          "critical": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Critical",
+            "default": 1.0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SeverityPoints"
       },
       "StatusChange": {
         "properties": {

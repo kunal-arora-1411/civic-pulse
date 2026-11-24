@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
 from app.domains.categories.router import router as categories_router
+from app.domains.config.router import router as config_router
 from app.domains.geo.router import router as geo_router
 from app.domains.issues.router import router as issues_router
 from app.domains.media.router import router as media_router
@@ -32,3 +33,4 @@ api_router.include_router(media_router)
 api_router.include_router(geo_router)
 api_router.include_router(reports_router)
 api_router.include_router(issues_router)
+api_router.include_router(config_router)
