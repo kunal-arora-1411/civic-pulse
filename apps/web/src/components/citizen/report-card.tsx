@@ -37,7 +37,7 @@ export function ReportCard({ report }: { report: MyReport }) {
             />
             <span className="truncate">{category}</span>
           </p>
-          <StatusBadge status={report.issue.status} />
+          {report.issue ? <StatusBadge status={report.issue.status} /> : null}
         </div>
         <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
           <MapPin aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />

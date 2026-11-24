@@ -7,14 +7,18 @@
 export { apiRequest, refreshSession } from "./client";
 export { API_BASE, API_URL, TENANT } from "./config";
 export * from "./endpoints/admin";
+export * from "./endpoints/ai";
 export * from "./endpoints/auth";
 export * from "./endpoints/categories";
 export * from "./endpoints/issues";
 export * from "./endpoints/media";
 export * from "./endpoints/reports";
+export * from "./endpoints/review";
 export * from "./endpoints/tenant";
 export * from "./endpoints/users";
 export { ApiError, type ErrorCode, isApiError } from "./errors";
 export * from "./schemas";
+export * from "./schemas-ai";
 export * from "./schemas-phase1";
+export * from "./schemas-phase2";
 export { type SessionSnapshot, type SessionStatus, session } from "./session";

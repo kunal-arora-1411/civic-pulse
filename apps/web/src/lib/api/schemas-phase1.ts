@@ -1,5 +1,13 @@
 import { z } from "zod";
 import { jurisdictionSchema, lngLatSchema } from "./schemas";
+import {
+  matchDecisionSchema,
+  matchingStatusSchema,
+  priorityBandSchema,
+  prioritySchema,
+  reportMatchSchema,
+  severitySchema,
+} from "./schemas-ai";
 
 /*
  * Response schemas for the Phase 1 contract (docs/api/phase-1-contract.md):
@@ -187,28 +195,43 @@ const reportCoreSchema = z.object({
   status: z.string(),
   /** Tells the owner and staff shapes apart. */
   view: z.enum(["owner", "staff"]).nullish(),
+  /**
+   * Phase 2: where duplicate matching has got to. Absent from Phase 1
+   * responses, where every report had its own issue from the start.
+   */
+  matching_status: matchingStatusSchema.nullish(),
 });
+
+const reporterSchema = z
+  .object({ id: z.string(), display_name: z.string().nullable() })
+  .nullish();
 
 /** `GET /reports/{id}` and the `POST /reports` response (owner view). */
 export const reportSchema = reportCoreSchema.extend({
-  issue: z.object({
-    id: z.string(),
-    reference: z.string(),
-    status: issueStatusSchema,
-    timeline: z.array(publicTimelineEventSchema).default([]),
-  }),
+  /** Null while matching is pending or waiting for a reviewer. */
+  issue: z
+    .object({
+      id: z.string(),
+      reference: z.string(),
+      status: issueStatusSchema,
+      report_count: z.number().nullish(),
+      unique_reporter_count: z.number().nullish(),
+      timeline: z.array(publicTimelineEventSchema).default([]),
+    })
+    .nullable(),
   /** Present in the staff view only. */
-  reporter: z
-    .object({ id: z.string(), display_name: z.string().nullable() })
-    .nullish(),
+  reporter: reporterSchema,
+  /** Staff view only: the decision that placed the report. */
+  match: reportMatchSchema.nullish(),
 });
 export type Report = z.infer<typeof reportSchema>;
 
-/** A report inside an issue detail (staff view, no nested issue). */
+/** A report inside an issue detail or a review task (staff view). */
 export const staffReportSchema = reportCoreSchema.extend({
-  reporter: z
-    .object({ id: z.string(), display_name: z.string().nullable() })
-    .nullish(),
+  reporter: reporterSchema,
+  match: reportMatchSchema.nullish(),
+  /** Issue detail only: every candidate considered for this report. */
+  match_decisions: z.array(matchDecisionSchema).default([]),
 });
 export type StaffReport = z.infer<typeof staffReportSchema>;
 
@@ -219,7 +242,11 @@ export const myReportSchema = z.object({
   category: categorySummarySchema,
   thumb_url: z.string().nullish(),
   address_text: z.string().nullish(),
-  issue: z.object({ reference: z.string(), status: issueStatusSchema }),
+  /** Null while matching is pending or waiting for a reviewer. */
+  issue: z
+    .object({ reference: z.string(), status: issueStatusSchema })
+    .nullable(),
+  matching_status: matchingStatusSchema.nullish(),
 });
 export type MyReport = z.infer<typeof myReportSchema>;
 
@@ -233,8 +260,8 @@ export const issueListItemSchema = z.object({
   ward: wardRefSchema.nullish(),
   report_count: z.number(),
   unique_reporter_count: z.number(),
-  severity: z.unknown().nullish(),
-  priority: z.unknown().nullish(),
+  severity: severitySchema.nullish(),
+  priority: prioritySchema.nullish(),
   thumb_url: z.string().nullish(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -263,12 +290,37 @@ export const allowedTransitionSchema = z.object({
 });
 export type AllowedTransition = z.infer<typeof allowedTransitionSchema>;
 
+export const issueRefSchema = z.object({
+  id: z.string(),
+  reference: z.string(),
+});
+export type IssueRef = z.infer<typeof issueRefSchema>;
+
+export const relatedIssueSchema = z.object({
+  issue: issueListItemSchema,
+  note: z.string().nullish(),
+});
+export type RelatedIssue = z.infer<typeof relatedIssueSchema>;
+
 export const issueDetailSchema = issueListItemSchema.extend({
   reports: z.array(staffReportSchema).default([]),
   timeline: z.array(issueTimelineEventSchema).default([]),
   allowed_transitions: z.array(allowedTransitionSchema).default([]),
+  related: z.array(relatedIssueSchema).default([]),
 });
 export type IssueDetail = z.infer<typeof issueDetailSchema>;
+
+/**
+ * `GET /issues/{id}` for an issue that was merged away. The contract
+ * returns 200 with `merged_into` so the client can redirect; only the
+ * fields needed for that are relied on.
+ */
+export const mergedIssueSchema = z.object({
+  id: z.string(),
+  reference: z.string(),
+  merged_into: issueRefSchema,
+});
+export type MergedIssue = z.infer<typeof mergedIssueSchema>;
 
 export const issueFeatureSchema = z.object({
   type: z.literal("Feature"),
@@ -282,6 +334,8 @@ export const issueFeatureSchema = z.object({
     status: issueStatusSchema,
     category_code: z.string(),
     report_count: z.number(),
+    /** Phase 2: the effective band, so the map can style by priority. */
+    priority_band: priorityBandSchema.nullish(),
   }),
 });
 export type IssueFeature = z.infer<typeof issueFeatureSchema>;

@@ -27,6 +27,9 @@ export type KnownErrorCode =
   | "version_conflict"
   | "invalid_transition"
   | "reason_required"
+  // Phase 2: merge and split
+  | "invalid_merge"
+  | "cannot_empty_issue"
   // Client-side: the PUT to object storage failed (network, expiry, CORS).
   | "upload_failed"
   // Client-side: the request never got a response.

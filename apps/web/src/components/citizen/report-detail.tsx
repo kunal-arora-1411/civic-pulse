@@ -69,7 +69,7 @@ function Body({ report }: { report: Report }) {
     <div className="grid gap-6 motion-safe:animate-rise">
       <header className="grid gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={report.issue.status} />
+          {report.issue ? <StatusBadge status={report.issue.status} /> : null}
           <span className="font-mono text-sm text-muted-foreground">
             {report.reference}
           </span>
@@ -154,11 +154,15 @@ function Body({ report }: { report: Report }) {
         <Card className="grid content-start gap-4 p-5">
           <div className="grid gap-1">
             <h2 className="font-semibold">{t("progress")}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t("issueRef", { reference: report.issue.reference })}
-            </p>
+            {report.issue ? (
+              <p className="text-sm text-muted-foreground">
+                {t("issueRef", { reference: report.issue.reference })}
+              </p>
+            ) : null}
           </div>
-          <PublicTimeline events={report.issue.timeline} />
+          {report.issue ? (
+            <PublicTimeline events={report.issue.timeline} />
+          ) : null}
         </Card>
       </div>
     </div>
