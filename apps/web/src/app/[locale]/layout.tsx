@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
+import { InlineScript } from "@/components/inline-script";
 import { AppProviders } from "@/components/providers";
 import { themeScript } from "@/components/theme-switcher";
 import { locales, routing } from "@/i18n/routing";
@@ -45,10 +46,7 @@ export default async function LocaleLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed, first-party script that applies the saved theme before first paint
-          dangerouslySetInnerHTML={{ __html: themeScript }}
-        />
+        <InlineScript html={themeScript} />
       </head>
       <body className="flex min-h-full flex-col">
         <a
