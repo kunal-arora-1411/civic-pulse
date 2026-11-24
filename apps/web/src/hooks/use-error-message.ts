@@ -34,6 +34,8 @@ const TRANSLATED = [
   "version_conflict",
   "invalid_transition",
   "reason_required",
+  "invalid_merge",
+  "cannot_empty_issue",
 ] as const;
 
 export type ErrorMessageKey =

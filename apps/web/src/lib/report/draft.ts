@@ -1,4 +1,5 @@
 import type { LocationSource } from "@/lib/api";
+import type { DraftSuggestion } from "./suggestion";
 
 /*
  * The report draft, kept in sessionStorage so a reload, a trip to the
@@ -60,6 +61,19 @@ export type ReportDraft = {
   addressText: string | null;
   wardName: string | null;
   categoryId: string | null;
+  /**
+   * Who picked `categoryId`: the AI suggestion, pre-selected for the
+   * citizen, or the citizen. A citizen's choice is never overridden.
+   */
+  categorySource?: "ai" | "citizen" | null;
+  /**
+   * The classification whose suggestion was shown on the category step.
+   * It's sent with the report so the server can tell an accepted
+   * suggestion from a corrected one; left unset when none was shown.
+   */
+  classificationId?: string | null;
+  /** The last finished classification, so a reload doesn't ask again. */
+  suggestion?: DraftSuggestion | null;
   details: Record<string, string | boolean>;
   description: string;
 };

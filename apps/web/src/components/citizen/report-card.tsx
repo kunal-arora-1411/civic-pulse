@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLocalized } from "@/hooks/use-reference-data";
 import { Link } from "@/i18n/navigation";
 import type { MyReport } from "@/lib/api";
+import { MatchingBadge } from "./matching-status";
 
 export function ReportCard({ report }: { report: MyReport }) {
   const t = useTranslations("reports");
@@ -37,7 +38,13 @@ export function ReportCard({ report }: { report: MyReport }) {
             />
             <span className="truncate">{category}</span>
           </p>
-          <StatusBadge status={report.issue.status} />
+          {report.issue ? (
+            <StatusBadge status={report.issue.status} />
+          ) : (
+            <MatchingBadge
+              state={report.matching_status === "review" ? "review" : "pending"}
+            />
+          )}
         </div>
         <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
           <MapPin aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />

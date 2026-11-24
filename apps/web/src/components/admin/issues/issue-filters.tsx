@@ -5,6 +5,7 @@ import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/issues/category-icon";
+import { PRIORITY_STYLE } from "@/components/issues/priority-badge";
 import { STATUS_STYLE } from "@/components/issues/status-badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -18,6 +19,8 @@ import {
   listAdminCategories,
   listCategories,
   listJurisdictions,
+  PRIORITY_BANDS,
+  SEVERITY_LEVELS,
 } from "@/lib/api";
 import { hasPermission } from "@/lib/auth/access";
 import { useSession } from "@/lib/auth/use-session";
@@ -66,6 +69,8 @@ export function IssueFiltersBar({
 }) {
   const t = useTranslations("admin.issues.filters");
   const tStatus = useTranslations("issueStatus");
+  const tPriority = useTranslations("priority");
+  const tSeverity = useTranslations("severity");
   const localized = useLocalized();
   const wards = useWards();
   const categories = useFilterCategories();
@@ -193,6 +198,41 @@ export function IssueFiltersBar({
         />
       </div>
       <div className={cn("flex flex-wrap items-end gap-3", collapsible)}>
+        <MultiSelect
+          className="w-full sm:w-48"
+          label={t("priority")}
+          allLabel={t("allPriorities")}
+          selectedLabel={selectedLabel}
+          value={filters.band}
+          onChange={(band) => onChange({ band: band as IssueFilters["band"] })}
+          options={PRIORITY_BANDS.map((band) => {
+            const Icon = PRIORITY_STYLE[band].icon;
+            return {
+              value: band,
+              label: tPriority(`band.${band}`),
+              icon: (
+                <Icon
+                  aria-hidden="true"
+                  className="size-4 text-muted-foreground"
+                />
+              ),
+            };
+          })}
+        />
+        <MultiSelect
+          className="w-full sm:w-48"
+          label={t("severity")}
+          allLabel={t("allSeverities")}
+          selectedLabel={selectedLabel}
+          value={filters.severity}
+          onChange={(severity) =>
+            onChange({ severity: severity as IssueFilters["severity"] })
+          }
+          options={[...SEVERITY_LEVELS].reverse().map((level) => ({
+            value: level,
+            label: tSeverity(`level.${level}`),
+          }))}
+        />
         <Field label={t("from")} className="w-40">
           {(control) => (
             <Input
@@ -233,6 +273,8 @@ export function IssueFiltersBar({
                 status: [],
                 category: [],
                 ward: [],
+                severity: [],
+                band: [],
                 from: null,
                 to: null,
                 q: "",

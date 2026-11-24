@@ -12,7 +12,9 @@ import { useFormatter, useNow, useTranslations } from "next-intl";
 import { useId } from "react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Pagination } from "@/components/admin/pagination";
+import { useOpenReviewCount } from "@/components/admin/review/use-open-review-count";
 import { CategoryIcon } from "@/components/issues/category-icon";
+import { PriorityBadge } from "@/components/issues/priority-badge";
 import { StatusBadge } from "@/components/issues/status-badge";
 import { RemoteImage } from "@/components/media/remote-image";
 import { Alert } from "@/components/ui/alert";
@@ -41,7 +43,7 @@ import { IssueFiltersBar } from "./issue-filters";
 import { useIssueFilters } from "./use-issue-filters";
 
 const PAGE_SIZE = 25;
-const COLUMNS = 7;
+const COLUMNS = 8;
 
 function SortHeader({
   label,
@@ -96,6 +98,9 @@ export function IssuesScreen() {
   const errorMessage = useErrorMessage();
   const router = useRouter();
   const { filters, setFilters } = useIssueFilters();
+  // Reports waiting for a duplicate decision have no issue yet, so they
+  // aren't in this list; say how many there are and where to find them.
+  const openReviews = useOpenReviewCount();
   const sortId = useId();
   const params = toListParams(filters, PAGE_SIZE);
 
@@ -130,6 +135,20 @@ export function IssuesScreen() {
           </Link>
         }
       />
+
+      {openReviews > 0 ? (
+        <Alert variant="info" className="mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p>{t("waitingForReview", { count: openReviews })}</p>
+            <Link
+              href="/admin/review"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              {t("openReview")}
+            </Link>
+          </div>
+        </Alert>
+      ) : null}
 
       <IssueFiltersBar
         filters={filters}
@@ -191,6 +210,12 @@ export function IssuesScreen() {
             <TableHead className="w-16 pe-0">
               <span className="sr-only">{t("colPhoto")}</span>
             </TableHead>
+            <SortHeader
+              label={t("colPriority")}
+              sort={filters.sort}
+              descending="-priority"
+              onSort={(sort) => setFilters({ sort })}
+            />
             <TableHead>{t("colReference")}</TableHead>
             <TableHead>{t("colCategory")}</TableHead>
             <TableHead>{t("colWard")}</TableHead>
@@ -246,6 +271,20 @@ export function IssuesScreen() {
                     height={40}
                     className="size-10 max-w-none shrink-0 rounded-md"
                   />
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {issue.priority ? (
+                    <PriorityBadge
+                      band={issue.priority.band}
+                      score={issue.priority.score}
+                      overridden={issue.priority.overridden}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">{t("noPriority")}</span>
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   <Link

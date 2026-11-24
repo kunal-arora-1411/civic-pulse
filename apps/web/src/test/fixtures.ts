@@ -181,7 +181,7 @@ export function makeIssueDetail(
   });
   return {
     ...makeIssue(),
-    reports: [report],
+    reports: [{ ...report, match_decisions: [] }],
     timeline: [
       {
         id: "ev-1",
@@ -200,6 +200,7 @@ export function makeIssueDetail(
       { to_status: "verified", requires_reason: false },
       { to_status: "rejected", requires_reason: true },
     ],
+    related: [],
     ...overrides,
   };
 }

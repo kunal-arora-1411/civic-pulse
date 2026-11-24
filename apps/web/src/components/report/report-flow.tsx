@@ -29,6 +29,12 @@ import {
   submitErrorInfo,
 } from "@/lib/report/submit-errors";
 import {
+  applySuggestion,
+  type DraftSuggestion,
+  SUGGESTION_TIMING,
+  type SuggestionTiming,
+} from "@/lib/report/suggestion";
+import {
   buildReportBody,
   type GeoCheck,
   hasDetailsIssues,
@@ -44,6 +50,7 @@ import { PhotosStep } from "./photos-step";
 import { ReportDone } from "./report-done";
 import { ReportProgress, STEP_KEYS } from "./report-progress";
 import { ReviewStep } from "./review-step";
+import { useCategorySuggestion } from "./use-category-suggestion";
 import { usePhotoUploads } from "./use-photo-uploads";
 
 function stepFromUrl(): ReportStep | null {
@@ -68,7 +75,12 @@ function geoKey(location: DraftLocation | null) {
  * integrates with its router, so the phone's back gesture moves between
  * steps instead of leaving the page.
  */
-export function ReportFlow() {
+export function ReportFlow({
+  suggestionTiming = SUGGESTION_TIMING,
+}: {
+  /** Test seam: the suggestion's debounce, poll interval and timeout. */
+  suggestionTiming?: SuggestionTiming;
+} = {}) {
   const t = useTranslations("report");
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<ReportDraft>(() => loadDraft());
@@ -97,6 +109,34 @@ export function ReportFlow() {
     [],
   );
   const uploads = usePhotoUploads(draft.photos, onPhotosChange);
+
+  // Ask the AI for a category as soon as photos are uploaded. It never
+  // blocks anything: the result only pre-selects a tile on step 3.
+  const uploadedIds = uploads.photos.flatMap((photo) =>
+    photo.status === "done" && photo.mediaId ? [photo.mediaId] : [],
+  );
+  const onSuggestion = useCallback(
+    (suggestion: DraftSuggestion) =>
+      setDraft((current) => ({ ...current, suggestion })),
+    [],
+  );
+  const suggestion = useCategorySuggestion({
+    mediaIds: uploadedIds,
+    stored: draft.suggestion,
+    onResult: onSuggestion,
+    timing: suggestionTiming,
+  });
+  // undefined while still loading: nothing to apply yet.
+  const settledSuggestion =
+    suggestion.status === "done"
+      ? suggestion.suggestion
+      : suggestion.status === "loading"
+        ? undefined
+        : null;
+  const shownSuggestion =
+    draft.classificationId && draft.suggestion?.id === draft.classificationId
+      ? draft.suggestion
+      : null;
 
   // Reverse geocode the pin, debounced so dragging doesn't fire a request
   // per frame.
@@ -132,6 +172,21 @@ export function ReportFlow() {
         : { ...current, addressText, wardName },
     );
   }, [geoQuery.data, geoStale]);
+
+  // Pre-select the suggestion when the citizen reaches the category step,
+  // or when it arrives while they're there. applySuggestion leaves a
+  // category the citizen picked themselves alone.
+  useEffect(() => {
+    if (
+      draft.step !== 3 ||
+      settledSuggestion === undefined ||
+      !categories.length
+    )
+      return;
+    setDraft((current) =>
+      applySuggestion(current, settledSuggestion, categories),
+    );
+  }, [draft.step, settledSuggestion, categories]);
 
   // ---- validation
 
@@ -335,10 +390,14 @@ export function ReportFlow() {
             draft={draft}
             photoCount={uploads.photos.length}
             issues={showErrors ? detailsIssues : null}
+            suggestionStatus={suggestion.status}
+            shownSuggestion={shownSuggestion}
+            notCivic={settledSuggestion?.notCivic ?? false}
             onCategory={(next) =>
               setDraft((current) => ({
                 ...current,
                 categoryId: next.id,
+                categorySource: "citizen",
                 // Keep answers to fields the new category also has.
                 details: Object.fromEntries(
                   Object.entries(current.details).filter(([key]) =>

@@ -1,14 +1,17 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, CircleCheckBig, Copy, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { MatchingStatus } from "@/components/citizen/matching-status";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
-import type { Report } from "@/lib/api";
+import { getReport, type Report } from "@/lib/api";
+import { matchingRefetchInterval } from "@/lib/report/matching";
 
 export function ReportDone({
-  report,
+  report: submitted,
   onAnother,
 }: {
   report: Report;
@@ -17,6 +20,20 @@ export function ReportDone({
   const t = useTranslations("report.done");
   const heading = useRef<HTMLHeadingElement>(null);
   const [copied, setCopied] = useState(false);
+
+  // Matching runs after the report is accepted, so the response usually
+  // says "pending". Follow the report until it has an issue. Seeding the
+  // cache also makes "View your report" open instantly.
+  const query = useQuery({
+    queryKey: ["reports", "detail", submitted.id],
+    queryFn: ({ signal }) => getReport(submitted.id, signal),
+    initialData: submitted,
+    // The response is fresh; only the polling below should refetch.
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchInterval: ({ state }) =>
+      matchingRefetchInterval(state.data, state.dataUpdateCount),
+  });
+  const report = query.data;
 
   useEffect(() => {
     heading.current?.focus();
@@ -76,6 +93,8 @@ export function ReportDone({
         <p className="text-sm text-muted-foreground">{t("referenceHelp")}</p>
         <output className="sr-only">{copied ? t("copied") : ""}</output>
       </div>
+
+      <MatchingStatus report={report} className="w-full max-w-sm" />
 
       <div className="grid w-full max-w-sm gap-2">
         <Link

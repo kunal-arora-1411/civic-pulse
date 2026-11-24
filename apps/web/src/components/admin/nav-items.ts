@@ -1,9 +1,13 @@
 import {
+  Cpu,
+  Gauge,
+  GitCompareArrows,
   Inbox,
   LayoutDashboard,
   type LucideIcon,
   Map as MapIcon,
   ScrollText,
+  SlidersHorizontal,
   Tags,
   UsersRound,
 } from "lucide-react";
@@ -13,8 +17,12 @@ import { hasPermission } from "@/lib/auth/access";
 export type AdminNavKey =
   | "overview"
   | "issues"
+  | "review"
   | "map"
   | "categories"
+  | "matching"
+  | "priority"
+  | "ai"
   | "users"
   | "audit";
 
@@ -23,13 +31,19 @@ export type AdminNavItem = {
   href:
     | "/admin"
     | "/admin/issues"
+    | "/admin/review"
     | "/admin/map"
     | "/admin/categories"
+    | "/admin/settings/matching"
+    | "/admin/settings/priority"
+    | "/admin/ai"
     | "/admin/users"
     | "/admin/audit";
   icon: LucideIcon;
   /** Hidden unless the user has this permission. No value: any staff. */
   permission?: string;
+  /** Shows a count next to the label, e.g. open review tasks. */
+  badge?: "openReviews";
 };
 
 export const ADMIN_NAV: readonly AdminNavItem[] = [
@@ -40,6 +54,13 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: Inbox,
     permission: "issue:read",
   },
+  {
+    key: "review",
+    href: "/admin/review",
+    icon: GitCompareArrows,
+    permission: "issue:triage",
+    badge: "openReviews",
+  },
   { key: "map", href: "/admin/map", icon: MapIcon, permission: "issue:read" },
   {
     key: "categories",
@@ -47,6 +68,19 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: Tags,
     permission: "config:read",
   },
+  {
+    key: "matching",
+    href: "/admin/settings/matching",
+    icon: SlidersHorizontal,
+    permission: "config:read",
+  },
+  {
+    key: "priority",
+    href: "/admin/settings/priority",
+    icon: Gauge,
+    permission: "config:read",
+  },
+  { key: "ai", href: "/admin/ai", icon: Cpu, permission: "config:read" },
   {
     key: "users",
     href: "/admin/users",

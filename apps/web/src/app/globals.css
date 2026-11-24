@@ -309,6 +309,43 @@
   outline: 3px solid var(--accent);
 }
 
+/* Priority markers: a shape per band (see priority-shapes.tsx), tinted
+   like the band's badge, with a light outline to stand off the tiles. */
+.cp-band {
+  display: block;
+  overflow: visible;
+  fill: var(--tone, var(--primary));
+  stroke: var(--card);
+  stroke-width: 2;
+  paint-order: stroke;
+  filter: drop-shadow(0 1px 1.5px hsl(var(--shadow-color) / 0.5));
+}
+
+.cp-band[data-band="critical"] {
+  --tone: var(--destructive);
+}
+.cp-band[data-band="high"] {
+  --tone: var(--warning-soft-foreground);
+}
+.cp-band[data-band="medium"] {
+  --tone: var(--info-soft-foreground);
+}
+.cp-band[data-band="low"] {
+  --tone: var(--muted-foreground);
+}
+
+/* In a marker the shape fills the icon box; the legend sizes its own
+   with utilities (unlayered CSS here would override them). */
+.cp-dot-icon .cp-band {
+  width: 100%;
+  height: 100%;
+}
+
+.cp-dot-icon.is-selected .cp-band {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
 .leaflet-marker-icon:focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: 2px;
@@ -335,4 +372,67 @@
 .cp-ward {
   stroke: var(--primary);
   fill: var(--primary);
+}
+
+/* Review comparison map: labelled tags rather than bare pins, so which
+   point is the new report and which the issue never rests on colour.
+   The tag's dot marks the exact spot. */
+.cp-tag-icon {
+  background: none;
+  border: 0;
+}
+
+.cp-tag {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 10px));
+  white-space: nowrap;
+  padding: 2px 8px;
+  border: 2px solid var(--card);
+  border-radius: 9999px;
+  font: 600 12px / 1.4 var(--font-sans);
+  box-shadow: 0 1px 3px hsl(var(--shadow-color) / 0.45);
+}
+
+.cp-tag::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -15px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%);
+  border: 2px solid var(--card);
+  border-radius: 9999px;
+  background: inherit;
+}
+
+.cp-tag[data-tone="report"],
+.cp-tag-inline[data-tone="report"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.cp-tag[data-tone="issue"],
+.cp-tag-inline[data-tone="issue"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* The same tags in the side-by-side panels, tying each to its point. */
+.cp-tag-inline {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.cp-radius {
+  stroke: var(--primary);
+  fill: var(--primary);
+}
+
+.cp-link-line {
+  stroke: var(--foreground);
 }

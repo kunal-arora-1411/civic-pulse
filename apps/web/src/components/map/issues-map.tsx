@@ -13,11 +13,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import { STATUS_STYLE } from "@/components/issues/status-badge";
-import type {
-  IssueFeature,
-  IssueStatus,
-  JurisdictionWithGeometry,
-} from "@/lib/api";
+import type { IssueFeature, JurisdictionWithGeometry } from "@/lib/api";
 import type { Bbox } from "@/lib/issues/map-selection";
 import {
   type LatLng,
@@ -25,6 +21,7 @@ import {
   TILE_URL,
   toLeaflet,
 } from "./map-config";
+import { priorityShapeSvg } from "./priority-shapes";
 
 /*
  * The staff map: clustered issue markers and ward outlines. Loaded only
@@ -43,14 +40,27 @@ export type IssuesMapProps = {
   onBoundsChange: (bbox: Bbox) => void;
   initialView: { center: LatLng; zoom: number };
   label: string;
-  /** "CP-26-000123, Reported": each marker's accessible name. */
-  markerLabel: (reference: string, status: IssueStatus) => string;
+  /** "CP-26-000123, Reported, High priority": each marker's name. */
+  markerLabel: (properties: IssueFeature["properties"]) => string;
+  /** Tint markers by status (the default) or shape them by priority band. */
+  styleBy?: MarkerStyle;
 };
 
-function markerIcon(status: IssueStatus, selected: boolean) {
+export type MarkerStyle = "status" | "priority";
+
+function markerIcon(
+  properties: IssueFeature["properties"],
+  selected: boolean,
+  styleBy: MarkerStyle,
+) {
+  const band = properties.priority_band;
+  const html =
+    styleBy === "priority" && band
+      ? priorityShapeSvg(band)
+      : `<span class="cp-dot" data-tone="${STATUS_STYLE[properties.status].variant}"></span>`;
   return L.divIcon({
     className: `cp-dot-icon${selected ? " is-selected" : ""}`,
-    html: `<span class="cp-dot" data-tone="${STATUS_STYLE[status].variant}"></span>`,
+    html,
     iconSize: selected ? [26, 26] : [18, 18],
     iconAnchor: selected ? [13, 13] : [9, 9],
   });
@@ -75,6 +85,7 @@ function Markers({
   onBoundsChange,
   markerLabel,
   label,
+  styleBy = "status",
 }: Omit<IssuesMapProps, "wards" | "initialView">) {
   const map = useMap();
   const group = useRef<L.MarkerClusterGroup | null>(null);
@@ -126,12 +137,12 @@ function Markers({
     clusters.clearLayers();
     markers.current.clear();
     const layers = features.map((feature) => {
-      const { id, reference, status } = feature.properties;
+      const { id } = feature.properties;
       const [lng, lat] = feature.geometry.coordinates;
       const marker = L.marker([lat, lng], {
-        icon: markerIcon(status, id === selectedId),
-        title: markerLabel(reference, status),
-        alt: markerLabel(reference, status),
+        icon: markerIcon(feature.properties, id === selectedId, styleBy),
+        title: markerLabel(feature.properties),
+        alt: markerLabel(feature.properties),
         keyboard: true,
         riseOnHover: true,
         issueId: id,
@@ -141,21 +152,23 @@ function Markers({
       return marker;
     });
     clusters.addLayers(layers);
-  }, [features, markerLabel]);
+  }, [features, markerLabel, styleBy]);
 
   const previous = useRef<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: styleBy changes rebuild every marker above
   useEffect(() => {
     const byId = (id: string | null) => (id ? markers.current.get(id) : null);
-    const status = (id: string) =>
-      features.find((feature) => feature.properties.id === id)?.properties
-        .status;
+    const properties = (id: string) =>
+      features.find((feature) => feature.properties.id === id)?.properties;
     const old = byId(previous.current);
-    const oldStatus = previous.current ? status(previous.current) : undefined;
-    if (old && oldStatus) old.setIcon(markerIcon(oldStatus, false));
+    const oldProps = previous.current
+      ? properties(previous.current)
+      : undefined;
+    if (old && oldProps) old.setIcon(markerIcon(oldProps, false, styleBy));
     const current = byId(selectedId);
-    const currentStatus = selectedId ? status(selectedId) : undefined;
-    if (current && currentStatus) {
-      current.setIcon(markerIcon(currentStatus, true));
+    const currentProps = selectedId ? properties(selectedId) : undefined;
+    if (current && currentProps) {
+      current.setIcon(markerIcon(currentProps, true, styleBy));
       current.setZIndexOffset(1000);
     }
     previous.current = selectedId;

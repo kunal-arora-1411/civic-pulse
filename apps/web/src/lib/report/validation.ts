@@ -197,5 +197,8 @@ export function buildReportBody(
     details: buildDetails(category, draft.details),
     media_ids: mediaIds,
     client_created_at: now.toISOString(),
+    ...(draft.classificationId
+      ? { classification_id: draft.classificationId }
+      : {}),
   };
 }

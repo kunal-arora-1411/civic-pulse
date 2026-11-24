@@ -36,6 +36,12 @@ export type CreateReportBody = {
   details: Record<string, string | number | boolean>;
   media_ids: string[];
   client_created_at: string;
+  /**
+   * Phase 2: the classification whose suggestion the citizen was shown.
+   * The server compares it with the chosen category to record whether
+   * the suggestion was accepted or corrected (FR-021).
+   */
+  classification_id?: string;
 };
 
 /**

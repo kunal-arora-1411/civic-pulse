@@ -75,12 +75,12 @@ Three engineers work in parallel:
 - `not_civic` is true when that reserved code wins. The client shows a soft warning but never blocks the citizen (PRD §8.6).
 - `needs_manual` is true when the top category confidence is below `matching_config.classification_threshold` (default 0.45), or the result is `unknown`.
 
-**Report creation additions:** `POST /reports` accepts an optional `classification_id`. The server sets `category_source`:
+**Report creation additions:** `POST /reports` accepts an optional `classification_id`. The web app sends it only when the citizen was shown that classification's suggestion (pre-selected on the category step). It leaves it out after a failure, a timeout, `needs_manual` or `not_civic`, so a choice is never recorded as accepting or correcting a suggestion the citizen didn't see. The server sets `category_source`:
 - `ai_accepted`: the chosen category equals the top suggestion
 - `ai_corrected`: it differs (this becomes a correction label, FR-021)
 - `citizen`: no classification
 
-**Operator correction:** `PATCH /api/v1/issues/{id}/category { category_id, reason, version }` (`issue:update`). This sets `category_source = operator` on the issue's reports, recomputes severity and priority, and is audited.
+**Operator correction:** `PATCH /api/v1/issues/{id}/category { category_id, reason, version }` (`issue:update`). This sets `category_source = operator` on the issue's reports, recomputes severity and priority, and is audited. Like the status change it returns `200` with the updated issue detail, and a blank reason is `422 reason_required`.
 
 ## D. Duplicate matching (FR-024 to FR-037)
 
@@ -115,13 +115,14 @@ Three engineers work in parallel:
 ### D.4 Endpoints
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| GET | `/api/v1/review-tasks` | `issue:triage` | `?status=open` (default). Jurisdiction-scoped. Items: `{ id, created_at, report: <staff report view>, candidates: [ { match_decision_id, score, signals, issue: <issue list item> } ] }`, best candidate first. |
+| GET | `/api/v1/review-tasks` | `issue:triage` | `?status=open` (default). Jurisdiction-scoped, in the standard page envelope; the web app reads `total` for the open count in the nav. Items: `{ id, created_at, report: <staff report view>, candidates: [ { match_decision_id, score, signals, issue: <issue list item> } ] }`, best candidate first. |
 | GET | `/api/v1/review-tasks/{id}` | `issue:triage` | Same shape as a list item |
 | POST | `/api/v1/review-tasks/{id}/resolve` | `issue:triage` | `{ action: "link", issue_id }` or `{ action: "new_issue" }`. Applies D.1 step 5 under the same lock. The chosen decision is marked `chosen_by_reviewer`, the others `not_chosen` (FR-035 feedback). A task that's already resolved returns `409 conflict`. |
 | POST | `/api/v1/match-decisions/{id}/feedback` | `issue:triage` | `{ correct: bool, note? }`. Mainly used on auto-links, from the issue detail page. |
-| GET | `/api/v1/reports/{id}` | (as before) | Report views add `matching_status` and, for staff, `match: { decision, score, signals, match_decision_id } \| null`. The owner view shows `issue` once linked. While pending, the owner view says so; the citizen sees "Checking for similar reports". |
+| GET | `/api/v1/reports/{id}` | (as before) | Report views add `matching_status` and, for staff, `match: { decision, score, signals, match_decision_id } \| null`. The owner view shows `issue` once linked; while `matching_status` is `pending` or `review`, `issue` is `null` and the citizen sees "Checking for similar reports". The owner view's `issue` also carries `report_count` and `unique_reporter_count`, so the confirmation can say how many people reported the problem. |
+| GET | `/api/v1/users/me/reports` | (as before) | Items add `matching_status`, and their `issue` is `null` until the report is placed. |
 
-Issue detail adds `match_decisions` per report (staff only).
+Issue detail adds `match_decisions` per report (staff only): every candidate considered for that report, best first, as `[ { id, candidate_issue: { id, reference }, rank, score, signals, decision, decided_by: { id, display_name } | null, decided_at, feedback: "correct" | "incorrect" | null } ]`. The web app uses it to show how each report got onto the issue and to collect feedback on auto-links.
 
 ### D.5 Merge, split and related issues (FR-033, FR-034, FR-060)
 | Method | Path | Permission | Notes |
@@ -134,6 +135,19 @@ Issue detail adds `match_decisions` per report (staff only).
 
 Citizens whose reports moved see the new issue in their report detail. The public timeline says "Combined with another report of the same problem", without staff names.
 
+**Timeline event types added in Phase 2.** Staff see all of them; citizens only the public ones. Where the action took a reason, it's in the event's `reason`.
+
+| `type` | Visibility | Written when |
+|---|---|---|
+| `report_linked` | internal | A report joins the issue, automatically or through a review task |
+| `merged` | public | Other issues were merged into this one ("Combined with another report of the same problem") |
+| `merged_into` | internal | This issue was merged into another |
+| `split` | internal | Reports were moved out of, or into, this issue |
+| `category_changed` | internal | An operator corrected the category |
+| `severity_changed` | internal | A severity override was set or cleared |
+| `priority_changed` | internal | A priority override was set or cleared |
+| `related_added`, `related_removed` | internal | A related-issue link was added or removed |
+
 ## E. Severity (FR-038)
 - `category.severity_rules`:
   ```json
@@ -144,7 +158,7 @@ Citizens whose reports moved see the new issue in their report detail. The publi
   ```
   Levels run `low < medium < high < critical`. Raises are capped at `critical`, and when several field rules match, the highest wins.
 - Computed whenever an issue's reports or category change. A `severity_source = override` value stays until it's cleared.
-- `PATCH /api/v1/issues/{id}/severity { severity: level | null, reason, version }` (`issue:update`). `null` clears the override. A reason is required when setting one. Audited, with a timeline event.
+- `PATCH /api/v1/issues/{id}/severity { severity: level | null, reason, version }` (`issue:update`). `null` clears the override. A reason is required when setting one. Audited, with a timeline event. Returns `200` with the updated issue detail, whose `severity` carries the override's `reason` while there is one.
 
 ## F. Priority (FR-039 to FR-044, PRD §8.4)
 - Rules only, no ML. Tenant `priority_config` (defaults shown):
@@ -167,22 +181,22 @@ Citizens whose reports moved see the new issue in their report detail. The publi
   ```
   The client localises each `explanation_key`.
 - **Recomputed** on report link/unlink, merge/split, severity or category change, status change, and nightly for ageing (Celery Beat).
-- **Override:** `PATCH /api/v1/issues/{id}/priority { band: "critical|high|medium|low" | null, reason, version }` (`issue:set_priority`). The effective band is the override when present. Audited, with a timeline event.
+- **Override:** `PATCH /api/v1/issues/{id}/priority { band: "critical|high|medium|low" | null, reason, version }` (`issue:set_priority`). The effective band is the override when present. Audited, with a timeline event. Returns `200` with the updated issue detail. Merge (D.5) returns the survivor's detail the same way.
 
 **Issue list item and detail change to:**
 ```json
 "severity": { "level": "high", "source": "rule" },
 "priority": { "score": 67.5, "band": "high", "computed_band": "high", "overridden": false, "override_reason": null, "factors": [ ... ] }
 ```
-`factors` appear on the detail only. The issue list adds `sort=-priority` (the new default for staff) and filters `severity` and `priority_band` (both repeatable).
+`factors` appear on the detail only. The issue list adds `sort=-priority` (the new default for staff) and filters `severity` and `priority_band` (both repeatable). `GET /issues/geojson` takes the same two filters, and each feature's properties add `priority_band` (the effective band, or `null` while unscored) so the staff map can shape its markers by band.
 
 ## G. Configuration and governance
 | Method | Path | Permission |
 |---|---|---|
 | GET / PUT | `/api/v1/admin/matching-config` | `config:read` / `config:manage` |
 | GET / PUT | `/api/v1/admin/priority-config` | `config:read` / `config:manage` |
-| GET | `/api/v1/admin/ai/models` | `config:read`: model registry rows, plus which model is active per task |
-| GET | `/api/v1/admin/ai/quality` | `config:read`: counts over a `from`/`to` window: classifications done/failed, accepted vs corrected by category, auto-link / review / new-issue counts, review outcomes, auto-link feedback marked correct/incorrect. Feeds a simple table now; fuller dashboards come in Phase 5. |
+| GET | `/api/v1/admin/ai/models` | `config:read`: model registry rows, plus which model is active per task: `{ items: [ { model_id, task, name, version, source, license, deployed_at, intended_use, metrics } ], active: { embedding, classification, face_detection } }`, where each `active` value is a `model_id` or `null` |
+| GET | `/api/v1/admin/ai/quality` | `config:read`: counts over a `from`/`to` window: classifications done/failed, accepted vs corrected by category, auto-link / review / new-issue counts, review outcomes, auto-link feedback marked correct/incorrect. Feeds a simple table now; fuller dashboards come in Phase 5. Shape: `{ from, to, classifications: { done, failed }, category_choices: [ { category_id, code, accepted, corrected } ], matching: { auto_linked, sent_to_review, new_issue }, reviews: { linked, new_issue }, auto_link_feedback: { correct, incorrect } }` |
 
 `matching_config` JSON: `{ auto_link_enabled, weights, thresholds: { auto, review, visual_min }, classification_threshold, fallback_review_threshold }`. Validated, with sane bounds, and every PUT is audited.
 

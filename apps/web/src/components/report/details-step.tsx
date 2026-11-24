@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ImagePlus } from "lucide-react";
+import { Check, ImagePlus, Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 import { CategoryIcon } from "@/components/issues/category-icon";
@@ -14,12 +14,84 @@ import { useLocalized } from "@/hooks/use-reference-data";
 import type { Category, CategoryField } from "@/lib/api";
 import type { ReportDraft } from "@/lib/report/draft";
 import {
+  confidenceWording,
+  type DraftSuggestion,
+  orderCategories,
+} from "@/lib/report/suggestion";
+import {
   DESCRIPTION_MAX,
   DESCRIPTION_MIN_WITHOUT_PHOTO,
   type DetailsIssues,
   type FieldIssue,
 } from "@/lib/report/validation";
 import { cn } from "@/lib/utils";
+import type { SuggestionState } from "./use-category-suggestion";
+
+function CategoryTile({
+  category,
+  checked,
+  invalid,
+  suggested,
+  onSelect,
+}: {
+  category: Category;
+  checked: boolean;
+  invalid: boolean;
+  /** The pre-selected suggestion carries a badge. */
+  suggested: boolean;
+  onSelect: () => void;
+}) {
+  const t = useTranslations("report.details");
+  const localized = useLocalized();
+  return (
+    <label
+      className={cn(
+        "relative flex min-h-28 cursor-pointer flex-col items-start justify-between gap-3 rounded-xl border-2 bg-card p-4 transition-[border-color,box-shadow,background-color]",
+        "hover:border-primary/50 has-focus-visible:ring-3 has-focus-visible:ring-ring/40",
+        checked
+          ? "border-primary bg-primary-soft shadow-card"
+          : "border-border",
+        invalid && "border-destructive/60",
+      )}
+    >
+      <input
+        type="radio"
+        name="category"
+        value={category.id}
+        checked={checked}
+        onChange={onSelect}
+        className="sr-only"
+      />
+      <span
+        className={cn(
+          "grid size-11 place-items-center rounded-xl",
+          checked
+            ? "bg-primary text-primary-foreground"
+            : "bg-secondary text-secondary-foreground",
+        )}
+      >
+        <CategoryIcon icon={category.icon} className="size-6" />
+      </span>
+      <span className="grid gap-1.5">
+        <span className="text-[0.9375rem] leading-snug font-semibold">
+          {localized(category.name_i18n)}
+        </span>
+        {suggested ? (
+          <span className="inline-flex w-fit items-start gap-1 rounded-md bg-accent-soft px-1.5 py-0.5 text-xs leading-snug font-semibold text-accent-foreground [&>svg]:mt-px [&>svg]:shrink-0">
+            <Sparkles aria-hidden="true" className="size-3.5" />
+            {t("suggestedBadge")}
+          </span>
+        ) : null}
+      </span>
+      {checked ? (
+        <Check
+          aria-hidden="true"
+          className="absolute end-3 top-3 size-5 text-primary"
+        />
+      ) : null}
+    </label>
+  );
+}
 
 function DetailField({
   field,
@@ -128,6 +200,9 @@ function DetailField({
 export function DetailsStep({
   categories,
   categoriesState,
+  suggestionStatus,
+  shownSuggestion,
+  notCivic,
   draft,
   photoCount,
   issues,
@@ -139,6 +214,11 @@ export function DetailsStep({
 }: {
   categories: Category[];
   categoriesState: "pending" | "error" | "success";
+  suggestionStatus: SuggestionState["status"];
+  /** The suggestion that was pre-selected, once it has been. */
+  shownSuggestion: DraftSuggestion | null;
+  /** The AI couldn't see a civic problem in the photos. */
+  notCivic: boolean;
   draft: ReportDraft;
   photoCount: number;
   /** Null until the citizen has tried to continue. */
@@ -155,6 +235,27 @@ export function DetailsStep({
   const selected = categories.find((c) => c.id === draft.categoryId) ?? null;
   const length = draft.description.length;
   const nearLimit = length > DESCRIPTION_MAX - 200;
+  const { suggested, others } = orderCategories(
+    categories,
+    shownSuggestion,
+    Boolean(shownSuggestion),
+  );
+  const top = shownSuggestion?.suggestions[0];
+  const topCategory = suggested[0];
+  const looking =
+    suggestionStatus === "loading" &&
+    draft.categorySource !== "citizen" &&
+    !shownSuggestion;
+  const tile = (category: Category) => (
+    <CategoryTile
+      key={category.id}
+      category={category}
+      checked={category.id === draft.categoryId}
+      invalid={Boolean(issues?.category)}
+      suggested={category === topCategory}
+      onSelect={() => onCategory(category)}
+    />
+  );
 
   return (
     <div className="grid gap-8">
@@ -185,52 +286,66 @@ export function DetailsStep({
             </Button>
           </Alert>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {categories.map((category) => {
-              const checked = category.id === draft.categoryId;
-              return (
-                <label
-                  key={category.id}
-                  className={cn(
-                    "relative flex min-h-28 cursor-pointer flex-col items-start justify-between gap-3 rounded-xl border-2 bg-card p-4 transition-[border-color,box-shadow,background-color]",
-                    "hover:border-primary/50 has-focus-visible:ring-3 has-focus-visible:ring-ring/40",
-                    checked
-                      ? "border-primary bg-primary-soft shadow-card"
-                      : "border-border",
-                    issues?.category && "border-destructive/60",
-                  )}
+          <>
+            {looking ? (
+              <output className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2
+                  aria-hidden="true"
+                  className="size-4 motion-safe:animate-spin"
+                />
+                {t("suggestionLoading")}
+              </output>
+            ) : null}
+            {notCivic ? (
+              <Alert variant="info" title={t("notCivicTitle")}>
+                <p>{t("notCivicBody")}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={onEditPhotos}
                 >
-                  <input
-                    type="radio"
-                    name="category"
-                    value={category.id}
-                    checked={checked}
-                    onChange={() => onCategory(category)}
-                    className="sr-only"
-                  />
-                  <span
-                    className={cn(
-                      "grid size-11 place-items-center rounded-xl",
-                      checked
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground",
-                    )}
-                  >
-                    <CategoryIcon icon={category.icon} className="size-6" />
+                  <ImagePlus aria-hidden="true" />
+                  {t("editPhotos")}
+                </Button>
+              </Alert>
+            ) : null}
+            {top && topCategory ? (
+              <output className="flex items-start gap-3 rounded-xl border border-accent/60 bg-accent-soft p-4 text-sm">
+                <Sparkles
+                  aria-hidden="true"
+                  className="mt-0.5 size-5 shrink-0 text-accent-foreground"
+                />
+                <span className="grid gap-0.5">
+                  <span className="font-semibold">{t("suggestedTitle")}</span>
+                  <span>
+                    {t(`suggestion_${confidenceWording(top.confidence)}`, {
+                      category: localized(topCategory.name_i18n),
+                    })}{" "}
+                    {t("suggestionYourChoice")}
                   </span>
-                  <span className="text-[0.9375rem] leading-snug font-semibold">
-                    {localized(category.name_i18n)}
-                  </span>
-                  {checked ? (
-                    <Check
-                      aria-hidden="true"
-                      className="absolute end-3 top-3 size-5 text-primary"
-                    />
-                  ) : null}
-                </label>
-              );
-            })}
-          </div>
+                </span>
+              </output>
+            ) : null}
+            {suggested.length > 0 ? (
+              <>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  {t("suggestedGroup")}
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {suggested.map(tile)}
+                </div>
+                {others.length > 0 ? (
+                  <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                    {t("otherGroup")}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {others.map(tile)}
+            </div>
+          </>
         )}
         {issues?.category ? (
           <p
