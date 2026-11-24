@@ -10,11 +10,17 @@ export const TENANT = process.env.E2E_TENANT ?? "demo-city";
 /** The dev OTP accepted when the API runs with DEV_FIXED_OTP=true. */
 export const DEV_OTP = "000000";
 
-/** Seeded accounts (docs/api/phase-0-contract.md, "Seed data"). */
+/**
+ * Seeded accounts (docs/api/phase-0-contract.md, "Seed data"). Each one is
+ * used by a single test: an OTP request starts a 30-second per-phone
+ * cooldown, so two tests signing in the same number in parallel would
+ * race for it. Everything else signs in with a fresh citizen number.
+ */
 export const SEEDED = {
-  municipalAdmin: "+919000000001",
-  operator: "+919000000002",
-  citizen: "+919000000005",
+  municipalAdmin: "+919000000001", // console.spec.ts
+  operator: "+919000000002", // staff.spec.ts
+  supervisor: "+919000000003", // map.spec.ts
+  citizen: "+919000000005", // report.spec.ts (AC-01)
 } as const;
 
 /**

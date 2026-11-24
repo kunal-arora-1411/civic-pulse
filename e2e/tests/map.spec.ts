@@ -11,7 +11,8 @@ test("the issue map shows the seeded issues and picking a marker selects its row
   context,
   api,
 }) => {
-  await giveSession(context, await api.login(SEEDED.municipalAdmin));
+  // The Roads supervisor has no ward scope, so sees every issue.
+  await giveSession(context, await api.login(SEEDED.supervisor));
   await page.goto("/admin/map");
   await expect(page.getByRole("heading", { name: "Issue map" })).toBeVisible();
 

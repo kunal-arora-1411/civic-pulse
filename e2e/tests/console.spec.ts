@@ -9,11 +9,10 @@ import { expect, giveSession, test } from "../support/fixtures";
  */
 
 const SCREENS = [
-  { path: "/admin", heading: /^Welcome back/ },
-  { path: "/admin/issues", heading: "Work queue", table: "Issues" },
-  { path: "/admin/categories", heading: "Categories", table: "Categories" },
-  { path: "/admin/users", heading: "Users", table: "Users" },
-  { path: "/admin/audit", heading: "Audit log", table: "Audit events" },
+  { nav: "Work queue", heading: "Work queue", table: "Issues" },
+  { nav: "Categories", heading: "Categories", table: "Categories" },
+  { nav: "Users", heading: "Users", table: "Users" },
+  { nav: "Audit log", heading: "Audit log", table: "Audit events" },
 ] as const;
 
 test("each admin screen loads for a municipal admin", async ({
@@ -22,28 +21,35 @@ test("each admin screen loads for a municipal admin", async ({
   api,
 }) => {
   await giveSession(context, await api.login(SEEDED.municipalAdmin));
+  await page.goto("/admin");
+  await expect(
+    page.getByRole("heading", { level: 1, name: /^Welcome back/ }),
+  ).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Admin sections" });
 
   for (const screen of SCREENS) {
-    await test.step(screen.path, async () => {
-      await page.goto(screen.path);
+    await test.step(screen.nav, async () => {
+      await nav.getByRole("link", { name: screen.nav }).click();
       await expect(
         page.getByRole("heading", { level: 1, name: screen.heading }),
       ).toBeVisible();
-      if ("table" in screen) {
-        const rows = page
-          .getByRole("table", { name: screen.table })
-          .or(
-            page.getByRole("region", { name: screen.table }).getByRole("table"),
-          )
-          .getByRole("row");
-        // A header row plus at least one data row from the seed.
-        await expect(rows.nth(1)).toBeVisible();
-      }
-      await expect(page.getByText(/^Couldn't load/)).toHaveCount(0);
+      // Earlier screens stay mounted but hidden (<Activity>), hence the
+      // visibility filters.
+      const table = page
+        .getByRole("table", { name: screen.table })
+        .or(page.getByRole("region", { name: screen.table }).getByRole("table"))
+        .filter({ visible: true });
+      // A header row plus at least one data row from the seed.
+      await expect(table.getByRole("row").nth(1)).toBeVisible();
+      await expect(
+        page.getByText(/^Couldn't load/).filter({ visible: true }),
+      ).toHaveCount(0);
     });
   }
 
   // The seeded categories come back with their Hindi names.
-  await page.goto("/admin/categories");
-  await expect(page.getByText("गड्ढा / सड़क क्षति")).toBeVisible();
+  await nav.getByRole("link", { name: "Categories" }).click();
+  await expect(
+    page.getByText("गड्ढा / सड़क क्षति").filter({ visible: true }),
+  ).toBeVisible();
 });
