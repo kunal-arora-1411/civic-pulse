@@ -261,9 +261,12 @@
         "-created_at": "Newest first",
         "created_at": "Oldest first",
         "-updated_at": "Recently updated",
-        "-report_count": "Most reports"
+        "-report_count": "Most reports",
+        "-priority": "Highest priority first"
       },
       "colPhoto": "Photo",
+      "colPriority": "Priority",
+      "noPriority": "Not scored yet",
       "colReference": "Reference",
       "colCategory": "Category",
       "colWard": "Ward",
@@ -289,7 +292,11 @@
         "rangeInvalid": "The end date is before the start date.",
         "clear": "Clear filters ({count})",
         "moreFilters": "Filters",
-        "moreFiltersCount": "Filters ({count})"
+        "moreFiltersCount": "Filters ({count})",
+        "priority": "Priority",
+        "allPriorities": "All priorities",
+        "severity": "Severity",
+        "allSeverities": "All severities"
       }
     },
     "issueDetail": {
@@ -554,6 +561,27 @@
     "version_conflict": "Someone else changed this while you were looking at it. Reload to see the latest version.",
     "invalid_transition": "That status change isn't allowed from the current status.",
     "reason_required": "This change needs a reason."
+  },
+  "priority": {
+    "label": "Priority",
+    "score": "score",
+    "manual": "set by hand",
+    "band": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    }
+  },
+  "severity": {
+    "label": "Severity",
+    "manual": "set by hand",
+    "level": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    }
   },
   "issueStatus": {
     "reported": "Reported",

@@ -261,9 +261,12 @@
         "-created_at": "सबसे नए पहले",
         "created_at": "सबसे पुराने पहले",
         "-updated_at": "हाल में अपडेट हुए",
-        "-report_count": "सबसे ज़्यादा रिपोर्टें"
+        "-report_count": "सबसे ज़्यादा रिपोर्टें",
+        "-priority": "सबसे ऊँची प्राथमिकता पहले"
       },
       "colPhoto": "फ़ोटो",
+      "colPriority": "प्राथमिकता",
+      "noPriority": "अभी स्कोर नहीं हुआ",
       "colReference": "संदर्भ",
       "colCategory": "श्रेणी",
       "colWard": "वार्ड",
@@ -289,7 +292,11 @@
         "rangeInvalid": "अंतिम तारीख़ शुरुआती तारीख़ से पहले है।",
         "clear": "फ़िल्टर हटाएँ ({count})",
         "moreFilters": "फ़िल्टर",
-        "moreFiltersCount": "फ़िल्टर ({count})"
+        "moreFiltersCount": "फ़िल्टर ({count})",
+        "priority": "प्राथमिकता",
+        "allPriorities": "सभी प्राथमिकताएँ",
+        "severity": "गंभीरता",
+        "allSeverities": "सभी स्तर"
       }
     },
     "issueDetail": {
@@ -554,6 +561,27 @@
     "version_conflict": "आपके देखते समय किसी और ने इसे बदल दिया। नया संस्करण देखने के लिए फिर से लोड करें।",
     "invalid_transition": "मौजूदा स्थिति से यह बदलाव नहीं किया जा सकता।",
     "reason_required": "इस बदलाव के लिए कारण बताना ज़रूरी है।"
+  },
+  "priority": {
+    "label": "प्राथमिकता",
+    "score": "स्कोर",
+    "manual": "हाथ से तय",
+    "band": {
+      "critical": "अत्यावश्यक",
+      "high": "उच्च",
+      "medium": "मध्यम",
+      "low": "निम्न"
+    }
+  },
+  "severity": {
+    "label": "गंभीरता",
+    "manual": "हाथ से तय",
+    "level": {
+      "low": "हल्की",
+      "medium": "मध्यम",
+      "high": "गंभीर",
+      "critical": "अति गंभीर"
+    }
   },
   "issueStatus": {
     "reported": "दर्ज",

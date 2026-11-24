@@ -5,6 +5,10 @@ import {
   type IssueListParams,
   type IssueSort,
   type IssueStatus,
+  PRIORITY_BANDS,
+  type PriorityBand,
+  SEVERITY_LEVELS,
+  type SeverityLevel,
 } from "@/lib/api";
 
 /*
@@ -18,6 +22,9 @@ export type IssueFilters = {
   status: IssueStatus[];
   category: string[];
   ward: string[];
+  severity: SeverityLevel[];
+  /** Effective priority band; `band` in the URL. */
+  band: PriorityBand[];
   /** Calendar dates, YYYY-MM-DD, inclusive. */
   from: string | null;
   to: string | null;
@@ -27,12 +34,15 @@ export type IssueFilters = {
   page: number;
 };
 
-export const DEFAULT_SORT: IssueSort = "-created_at";
+/** Most urgent first: what staff should look at next is at the top. */
+export const DEFAULT_SORT: IssueSort = "-priority";
 
 export const EMPTY_FILTERS: IssueFilters = {
   status: [],
   category: [],
   ward: [],
+  severity: [],
+  band: [],
   from: null,
   to: null,
   q: "",
@@ -55,14 +65,23 @@ function unique<T>(values: T[]): T[] {
 
 type ReadableParams = Pick<URLSearchParams, "get" | "getAll">;
 
-export function parseIssueFilters(params: ReadableParams): IssueFilters {
-  const status = unique(
+/** Repeated values of `key` that belong to `allowed`, in URL order. */
+function oneOf<T extends string>(
+  params: ReadableParams,
+  key: string,
+  allowed: readonly T[],
+): T[] {
+  return unique(
     params
-      .getAll("status")
-      .filter((value): value is IssueStatus =>
-        (ISSUE_STATUSES as readonly string[]).includes(value),
+      .getAll(key)
+      .filter((value): value is T =>
+        (allowed as readonly string[]).includes(value),
       ),
   );
+}
+
+export function parseIssueFilters(params: ReadableParams): IssueFilters {
+  const status = oneOf(params, "status", ISSUE_STATUSES);
   const ids = (key: string) =>
     unique(params.getAll(key).filter((value) => ID.test(value)));
   const sort = params.get("sort");
@@ -73,6 +92,8 @@ export function parseIssueFilters(params: ReadableParams): IssueFilters {
     status,
     category: ids("category"),
     ward: ids("ward"),
+    severity: oneOf(params, "severity", SEVERITY_LEVELS),
+    band: oneOf(params, "band", PRIORITY_BANDS),
     from: isDate(from) ? from : null,
     to: isDate(to) ? to : null,
     q: (params.get("q") ?? "").trim().slice(0, 200),
@@ -101,6 +122,8 @@ export function serializeIssueFilters(
   for (const status of unique(value.status)) params.append("status", status);
   for (const id of unique(value.category)) params.append("category", id);
   for (const id of unique(value.ward)) params.append("ward", id);
+  for (const level of unique(value.severity)) params.append("severity", level);
+  for (const band of unique(value.band)) params.append("band", band);
   if (value.from) params.set("from", value.from);
   if (value.to) params.set("to", value.to);
   if (value.sort !== DEFAULT_SORT) params.set("sort", value.sort);
@@ -123,6 +146,8 @@ export function activeFilterCount(filters: IssueFilters): number {
     filters.status.length +
     filters.category.length +
     filters.ward.length +
+    filters.severity.length +
+    filters.band.length +
     (filters.from ? 1 : 0) +
     (filters.to ? 1 : 0) +
     (filters.q ? 1 : 0)
@@ -140,6 +165,8 @@ export function toFilterParams(filters: IssueFilters): IssueFilterParams {
     status: filters.status.length ? filters.status : undefined,
     category_id: filters.category.length ? filters.category : undefined,
     ward_id: filters.ward.length ? filters.ward : undefined,
+    severity: filters.severity.length ? filters.severity : undefined,
+    priority_band: filters.band.length ? filters.band : undefined,
     from: inverted ? undefined : (filters.from ?? undefined),
     to: inverted ? undefined : (filters.to ?? undefined),
     q: filters.q || undefined,

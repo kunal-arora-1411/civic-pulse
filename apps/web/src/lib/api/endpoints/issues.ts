@@ -14,7 +14,9 @@ import {
 } from "../schemas-phase1";
 import { type SplitResult, splitResultSchema } from "../schemas-phase2";
 
+/** `-priority` is the staff default from Phase 2. */
 export const ISSUE_SORTS = [
+  "-priority",
   "-created_at",
   "created_at",
   "-updated_at",

@@ -13,6 +13,7 @@ import { useId } from "react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Pagination } from "@/components/admin/pagination";
 import { CategoryIcon } from "@/components/issues/category-icon";
+import { PriorityBadge } from "@/components/issues/priority-badge";
 import { StatusBadge } from "@/components/issues/status-badge";
 import { RemoteImage } from "@/components/media/remote-image";
 import { Alert } from "@/components/ui/alert";
@@ -41,7 +42,7 @@ import { IssueFiltersBar } from "./issue-filters";
 import { useIssueFilters } from "./use-issue-filters";
 
 const PAGE_SIZE = 25;
-const COLUMNS = 7;
+const COLUMNS = 8;
 
 function SortHeader({
   label,
@@ -191,6 +192,12 @@ export function IssuesScreen() {
             <TableHead className="w-16 pe-0">
               <span className="sr-only">{t("colPhoto")}</span>
             </TableHead>
+            <SortHeader
+              label={t("colPriority")}
+              sort={filters.sort}
+              descending="-priority"
+              onSort={(sort) => setFilters({ sort })}
+            />
             <TableHead>{t("colReference")}</TableHead>
             <TableHead>{t("colCategory")}</TableHead>
             <TableHead>{t("colWard")}</TableHead>
@@ -246,6 +253,20 @@ export function IssuesScreen() {
                     height={40}
                     className="size-10 max-w-none shrink-0 rounded-md"
                   />
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {issue.priority ? (
+                    <PriorityBadge
+                      band={issue.priority.band}
+                      score={issue.priority.score}
+                      overridden={issue.priority.overridden}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">{t("noPriority")}</span>
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   <Link

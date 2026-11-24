@@ -128,7 +128,63 @@ describe("IssuesScreen", () => {
 
     await user.click(screen.getByRole("button", { name: /^age/i }));
 
-    // Newest first is the default, so the first click sorts oldest first.
-    expect(window.location.search).toBe("?status=verified&sort=created_at");
+    // Priority is the default now, so Age starts newest first.
+    expect(window.location.search).toBe("?status=verified&sort=-created_at");
+  });
+
+  it("sorts by priority by default and shows each band with an icon and a word", async () => {
+    let requested: URL | undefined;
+    server.use(
+      http.get(`${API}/issues`, ({ request }) => {
+        requested = new URL(request.url);
+        return HttpResponse.json(
+          page([
+            makeIssue({
+              priority: {
+                score: 84.2,
+                band: "critical",
+                computed_band: "high",
+                overridden: true,
+                override_reason: "School gate",
+              },
+            }),
+            makeIssue({ id: "iss-2", reference: "CP-26-000124" }),
+          ]),
+        );
+      }),
+    );
+    renderWithProviders(<IssuesScreen />);
+    await screen.findByRole("link", { name: "CP-26-000123" });
+
+    expect(requested?.searchParams.get("sort")).toBe("-priority");
+    expect(
+      screen.getByRole("columnheader", { name: /priority/i }),
+    ).toHaveAttribute("aria-sort", "descending");
+    const rows = screen.getAllByRole("row");
+    expect(rows[1]).toHaveTextContent(
+      /Priority: Critical·score84\(set by hand\)/,
+    );
+    expect(rows[2]).toHaveTextContent("Not scored yet");
+  });
+
+  it("round-trips the severity and priority filters through the URL to the API", async () => {
+    window.history.replaceState(null, "", "/admin/issues?band=critical");
+    const requests: URL[] = [];
+    server.use(
+      http.get(`${API}/issues`, ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json(page([makeIssue()]));
+      }),
+    );
+    const { user } = renderWithProviders(<IssuesScreen />);
+    await screen.findByRole("link", { name: "CP-26-000123" });
+    expect(requests[0].searchParams.getAll("priority_band")).toEqual([
+      "critical",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: /^severity/i }));
+    await user.click(await screen.findByRole("checkbox", { name: "High" }));
+
+    expect(window.location.search).toBe("?severity=high&band=critical");
   });
 });
