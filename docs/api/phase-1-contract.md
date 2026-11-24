@@ -1,23 +1,53 @@
 # Phase 1 API contract: core reporting loop
 
-This builds on [`phase-0-contract.md`](phase-0-contract.md). All its conventions still apply: tenant resolution, the error envelope, pagination, `X-Request-ID`, `Idempotency-Key` and phone formats. If either side needs to change this file, change it in the same commit and say so.
+This builds on [`phase-0-contract.md`](phase-0-contract.md). All its conventions still apply: tenant resolution, the error envelope, pagination, `X-Request-ID`, `Idempotency-Key` and phone formats. It describes what `apps/api` implements and `apps/web` uses; [`apps/api/openapi.json`](../../apps/api/openapi.json) is the precise, generated form. If either side needs to change it, change this file in the same commit and say so.
 
 **Phase 1 goal:** a citizen submits a report with photos and location. Each report creates its own civic issue (duplicate matching arrives in Phase 2). Staff see issues in a queue and on a map, and move them through the lifecycle.
 
-## New permissions in use
-Already defined in Phase 0: `report:create`, `report:read_own`, `report:read`, `issue:read`, `issue:triage`, `issue:update`, `config:read`, `config:manage`. Staff issue access is limited by the principal's jurisdiction scope (ward/zone), using the Phase 0 helper.
+## Conventions added in Phase 1
 
-## Localised text
+### Permissions in use
+Already defined in Phase 0: `report:create`, `report:read_own`, `report:read`, `issue:read`, `issue:triage`, `issue:update`, `config:read`, `config:manage`. Staff access to issues and reports is limited by the principal's jurisdiction scope (see [Scope](#scope)).
+
+### Localised text
 Fields ending in `_i18n` are objects keyed by locale, for example `{ "en": "Pothole", "hi": "गड्ढा" }`. The API returns the full object. The client picks the user's locale and falls back to `en`.
+
+### Timestamps and coordinates
+- Every timestamp is returned in UTC (`2026-11-24T02:42:00Z`), including a photo's `captured_at`. Clients show them in the user's time zone (IST for Phase 1). Where a date is an input (`from`/`to` filters), it's a whole day in Asia/Kolkata.
+- Coordinates in GeoJSON and map settings are `[lng, lat]`, following GeoJSON order. Request and response bodies that name them use `lat` and `lng` fields.
+
+### Scope
+Staff see the issues and reports in the jurisdiction subtree of their grants: a role scoped to a zone covers its wards, and a role with no jurisdiction covers the whole tenant. Issues with no ward are visible only to tenant-wide staff. Anything outside a caller's scope answers `404 not_found`, exactly like something that doesn't exist, so nothing about its existence leaks.
+
+### New error codes
+| Code | Status | When |
+|---|---|---|
+| `unsupported_media_type` | 422 | Upload content type isn't JPEG, PNG or WebP |
+| `file_too_large` | 422 | Upload is over the size limit |
+| `too_many_uploads` | 429 | The caller already holds 20 unexpired, incomplete uploads (`details.limit`; no `Retry-After`) |
+| `upload_verification_failed` | 422 | The uploaded object doesn't match what was declared (`details.reason`) |
+| `out_of_jurisdiction` | 422 | The report's point is outside the city |
+| `evidence_required` | 422 | Wrong number of photos for the category, or no photo and too short a description |
+| `invalid_media` | 422 | A `media_ids` entry can't be attached (`details.media`) |
+| `version_conflict` | 409 | The issue changed since the caller read it (`details.version`) |
+| `invalid_transition` | 422 | The status move isn't allowed for this caller (`details.allowed_transitions`) |
+| `reason_required` | 422 | The status move needs a reason (`details.to_status`) |
+
+Field-level problems are `422 validation_error` with `details.errors`, each with a `loc` such as `["body", "details", "size"]`.
+
+### Audit actions
+`category.created`, `category.updated`, `report.created`, `issue.created`, `issue.status_changed`, each written in the same transaction as the change.
 
 ---
 
 ## 1. Tenant (extended)
-`GET /api/v1/tenants/current` adds:
+`GET /api/v1/tenants/current` adds the city's map view:
 ```json
-{ "...": "...", "map": { "center": [77.5946, 12.9716], "zoom": 12, "bounds": [77.50, 12.90, 77.70, 13.05] } }
+{ "...": "...", "map": { "center": [77.59, 12.97], "zoom": 12, "bounds": [77.55, 12.93, 77.63, 13.01] } }
 ```
-Coordinates are always `[lng, lat]`, following GeoJSON order. The bounds come from the tenant's city jurisdiction geometry.
+- `bounds` is the bounding box of the tenant's city jurisdiction (`[minLng, minLat, maxLng, maxLat]`).
+- `center` is the city's centroid when that lies inside the city, otherwise a point that does. `zoom` is derived from the bounds (12 for the seeded city).
+- `map` is `null` for a tenant without boundary geometry. The web maps then start over all of India at zoom 5 and say why.
 
 ## 2. Categories
 ```json
@@ -28,7 +58,7 @@ Coordinates are always `[lng, lat]`, following GeoJSON order. The bounds come fr
   "icon": "construction",
   "evidence": { "min_photos": 1, "max_photos": 5 },
   "fields": [
-    { "key": "road_name", "type": "text", "required": false, "label_i18n": {...} },
+    { "key": "road_name", "type": "text", "required": false, "label_i18n": {...}, "options": null },
     { "key": "size", "type": "select", "required": false, "label_i18n": {...},
       "options": [{ "value": "small", "label_i18n": {...} }, { "value": "large", "label_i18n": {...} }] }
   ],
@@ -37,24 +67,23 @@ Coordinates are always `[lng, lat]`, following GeoJSON order. The bounds come fr
   "sort_order": 10, "is_active": true
 }
 ```
-- Field `type` is one of `text`, `number`, `select`, `boolean`.
-- `icon` is a lucide icon name.
-- `dedup` is stored now but only used from Phase 2 onward.
+- `icon` is a lucide icon name. `dedup` is stored now and used from Phase 2 onward.
+- Field `type` is one of `text`, `number`, `select`, `boolean`. Keys match `^[a-z][a-z0-9_]{0,39}$` and are unique; `label_i18n.en` is required; at most 20 fields. `options` is required (with unique values) for `select` and `null` for every other type.
+- `evidence.max_photos` is at most 10.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/v1/categories` | `X-Tenant` or bearer | Active categories only, as a plain JSON array (not paginated) ordered by `sort_order`. Used by the report form. |
-| GET | `/api/v1/admin/categories` | `config:read` | Includes inactive categories. Paginated like other admin lists. |
-| POST | `/api/v1/admin/categories` | `config:manage` | Create. `code` is unique per tenant. Audited. |
-| PATCH | `/api/v1/admin/categories/{id}` | `config:manage` | Partial update, including `is_active` and `fields`. Audited. |
+| GET | `/api/v1/categories` | `X-Tenant` or bearer | Active categories only, ordered by `sort_order`, as a **plain JSON array** (no page envelope): the report form needs the whole list. |
+| GET | `/api/v1/admin/categories` | `config:read` | Includes inactive categories. Standard page envelope. Filter `is_active`; `sort`: `sort_order` (default), `code`, `created_at`. |
+| POST | `/api/v1/admin/categories` | `config:manage` | Create, `201`. A duplicate `code` is `409 conflict`. Audited. |
+| PATCH | `/api/v1/admin/categories/{id}` | `config:manage` | Partial update, including `is_active` and `fields`. Only `parent_id` and `default_department_id` accept `null`. Re-parenting into a cycle is `422`. Audited. |
 
-Seed the five launch categories: `pothole`, `waste`, `waterlogging`, `streetlight`, `drainage`. Each gets English and Hindi names and 1–3 sensible fields, and is linked to the matching seeded department.
+The web app treats `code` as permanent once a category exists, because stored reports refer to it.
 
 ## 3. Media upload
 Uploads go directly to object storage with pre-signed URLs. The API never streams image bytes on upload.
 
-**Step 1: create an upload**
-`POST /api/v1/media/uploads` (requires `report:create` or `evidence:upload`)
+**Step 1: create an upload.** `POST /api/v1/media/uploads` (requires `report:create` or `evidence:upload`)
 ```json
 { "purpose": "report_evidence", "content_type": "image/jpeg", "size_bytes": 482113, "checksum_sha256": "hex" }
 ```
@@ -62,48 +91,48 @@ Returns `201`:
 ```json
 { "upload_id": "uuid", "method": "PUT", "url": "http://localhost:9000/...signed...", "headers": { "Content-Type": "image/jpeg" }, "expires_in": 600, "max_size_bytes": 10485760 }
 ```
-- Allowed types: `image/jpeg`, `image/png`, `image/webp`. Maximum 10 MB (configurable).
-- If not, the API returns `422 unsupported_media_type` or `422 file_too_large`.
-- Each user may hold at most 20 incomplete uploads at once.
+- Allowed types: `image/jpeg`, `image/png`, `image/webp`; otherwise `422 unsupported_media_type`. Maximum 10 MB (configurable); otherwise `422 file_too_large`.
+- Each user may hold at most 20 incomplete uploads whose URL hasn't expired; the next is `429 too_many_uploads`.
 
-**Step 2:** the client `PUT`s the file bytes to `url` with the given headers. MinIO/S3 must accept this from the web origin (CORS).
+**Step 2: upload the bytes.** The client `PUT`s the file to `url` with exactly the returned `headers`. The signature covers `Content-Type` **and `Content-Length`**, so the body must be exactly `size_bytes` long; storage answers `403` to anything else, including an expired URL. Browsers set `Content-Length` themselves. The URL is signed for the public storage host, and storage allows the web origins with CORS.
 
-**Step 3: complete the upload**
-`POST /api/v1/media/uploads/{upload_id}/complete`, with no body.
-- The server checks that the object exists, that its size matches, that the checksum matches, and that the content really is an image of the declared type (inspecting the bytes, not trusting the header).
-- On failure: `422 upload_verification_failed`, and the object is deleted.
-- On success: `200` with a media asset:
-```json
-{ "id": "uuid", "status": "processing", "content_type": "image/jpeg", "width": 3024, "height": 4032,
-  "variants": { "thumb": null, "display": null }, "captured_at": "2026-11-24T08:12:00+05:30" }
-```
-- `captured_at` comes from EXIF when present.
+**Step 3: complete the upload.** `POST /api/v1/media/uploads/{upload_id}/complete`, with no body. The server checks that the object exists, that its size and checksum match, and that the bytes really are an image of the declared type (not trusting the header).
+- On success, `200` with a media asset:
+  ```json
+  { "id": "uuid", "status": "processing", "content_type": "image/jpeg", "width": 3024, "height": 4032,
+    "variants": { "thumb": null, "display": null }, "captured_at": "2026-11-24T02:42:00Z" }
+  ```
+  The asset's `id` is what a report lists in `media_ids`. `captured_at` comes from EXIF when present. `width`/`height` are as displayed (EXIF orientation applied).
+- On failure, `422 upload_verification_failed` with `details.reason`: `object_missing`, `size_mismatch`, `checksum_mismatch`, `content_type_mismatch`, `not_an_image` or `image_too_large` (over 50 megapixels). The object is deleted and the upload stays failed: the client starts a new one.
+- Completing an already verified upload is safe and returns it again.
 
-**Processing:** a Celery job reads EXIF capture time and GPS (stored privately) and makes `display` (max 1600 px, WebP) and `thumb` (max 400 px, WebP) copies with **all metadata removed**. The asset status becomes `ready`, or `failed` with the reason recorded. The original file keeps its metadata and is visible to staff only.
+**Processing.** A background job reads the EXIF capture time and GPS (stored privately) and makes `display` (max 1600 px, WebP) and `thumb` (max 400 px, WebP) copies with **all metadata removed**. The asset becomes `ready`, or `failed` with the reason recorded. The original keeps its metadata and is visible to staff only. Processing usually finishes within seconds; an asset stuck in `processing` for 15 minutes is queued again by housekeeping.
 
-**Reading media:** media appears embedded in report and issue responses as:
+**Reading media.** Media appears embedded in report and issue responses as:
 ```json
 { "id": "uuid", "status": "ready", "width": 1200, "height": 1600,
-  "thumb_url": "signed GET url|null", "display_url": "signed GET url|null", "original_url": "signed GET url|null (staff only)",
+  "thumb_url": "signed GET url|null", "display_url": "signed GET url|null", "original_url": "signed GET url|null",
   "captured_at": "...|null" }
 ```
-- Signed GET URLs expire after 10 minutes.
-- The URLs use the **public** storage endpoint (`S3_PUBLIC_ENDPOINT`, `http://localhost:9000` in development), not the internal Docker hostname.
+- `thumb_url` and `display_url` are `null` until the asset is `ready`. Pages that show photos refetch every few seconds while any are still `processing`.
+- `original_url` is filled only for staff with `report:read`.
+- `width`/`height` are the display variant's once `ready`.
+- Signed URLs expire after 10 minutes and use the **public** storage endpoint (`S3_PUBLIC_ENDPOINT`, `http://localhost:9000` in development), never the internal Docker hostname.
 
 ## 4. Geocoding and jurisdiction lookup
 `GET /api/v1/geo/reverse?lat=12.97&lng=77.59` (`X-Tenant` or bearer)
 ```json
 { "address_text": "MG Road, Shivajinagar, Bengaluru", "in_jurisdiction": true,
-  "ward": { "id": "uuid", "name": "Ward 3 (synthetic)", "code": "W03" }, "zone": { "id": "uuid", "name": "..." } }
+  "ward": { "id": "uuid", "name": "Synthetic Ward 2 (North-East)", "code": "SYN-W02" }, "zone": { "id": "uuid", "name": "..." } }
 ```
-- `ward` and `zone` come from PostGIS and are always present when the point is inside the city.
-- `address_text` comes from the geocoder behind a provider interface (`GEOCODER=nominatim|none`). It's `null` when the geocoder is off or fails, and the call still returns `200`.
-- Results are cached in Redis by coordinates rounded to ~11 m.
-- The Nominatim provider sends a generic User-Agent and stays within 1 request per second.
+- `in_jurisdiction`, `ward` and `zone` come from PostGIS and our own boundaries, so the report form keeps working when the geocoder is off or down. Inside the city, `ward` and `zone` are always present. A point on a shared edge gets exactly one ward (the smallest one covering it). Outside the city, `in_jurisdiction` is `false` and `ward`/`zone` are `null`.
+- `address_text` comes from the geocoder behind a provider interface (`GEOCODER=nominatim|none`). It's `null` when the geocoder is off or fails, and the call still returns `200`. It's looked up outside the city too.
+- Addresses are cached in Redis by coordinates rounded to four decimals (about 11 m); failures are cached for a minute.
+- The Nominatim provider sends a generic User-Agent and stays within one request per second across all API processes. A caller waits at most 2.5 s for its turn and otherwise gets `address_text: null`.
 
 ## 5. Reports
 
-**Create:** `POST /api/v1/reports` (`report:create`). The **`Idempotency-Key` header is required**; without it the API returns `422`.
+**Create:** `POST /api/v1/reports` (`report:create`). The **`Idempotency-Key` header is required**, because a dropped response on a phone network is the normal way to submit twice. Without it the API returns `422 validation_error` with `loc: ["header", "Idempotency-Key"]`.
 ```json
 {
   "category_id": "uuid",
@@ -115,27 +144,29 @@ Returns `201`:
   "client_created_at": "2026-11-24T08:15:00+05:30"
 }
 ```
-- `location.source` is `gps`, `pin` or `manual` (provenance is kept, PRD §10.2).
-- Validation errors:
-  - Point outside the city: `422 out_of_jurisdiction`.
-  - Photo count outside the category's `min_photos`/`max_photos`: `422 evidence_required`.
-  - Media not owned by the caller, not completed, already attached elsewhere, or failed: `422 invalid_media`.
-  - `details` that don't match the category fields: `422 validation_error`, with per-field details.
-  - Description: 0–2000 characters. Phase 1 deployment policy is "at least one photo **or** a description of 10+ characters", enforced after the category evidence rule.
-- In **one transaction**, the server:
-  - stores the report
-  - assigns `ward_id` (the smallest ward containing the point)
-  - creates the civic issue (temporary Phase 1 rule: one issue per report)
-  - sets `report_count = 1` and `unique_reporter_count = 1`
-  - writes the issue's `created` timeline event and an audit event
-- Returns `201`, a report object (below).
+- `location.source` is `gps`, `pin` or `manual`; provenance is kept (PRD §10.2). The web app sends `gps` with the fix's accuracy, and `pin` with no accuracy once the citizen moves the pin.
+- `description` is 0–2000 characters and `address_text` is optional; both are trimmed, and blank is stored as `null`.
+- `media_ids` are media asset ids, unique, at most 10.
+- `client_created_at` must include an offset. It's when the citizen first pressed Send: a retry with the same key must repeat it, along with the rest of the body (see [Retries](#retries)).
 
-**Reference formats:** human-friendly sequences per tenant: reports `R-26-000123`, issues `CP-26-000123` (`26` = year). Sequential, unique per tenant, and never reused.
+**Validation** runs in this order, and nothing is written until all of it passes:
+1. Unknown or inactive category: `422 validation_error`, `loc: ["body", "category_id"]`.
+2. Point outside the city: `422 out_of_jurisdiction`.
+3. Photo count outside the category's range: `422 evidence_required`, `details: { min_photos, max_photos, received }`.
+4. Media that can't be attached: `422 invalid_media`, `details.media: [{ id, reason }]`, reason one of `not_found` (also someone else's upload), `wrong_purpose`, `not_completed`, `failed`, `already_attached`.
+5. `details` that don't match the category's fields: `422 validation_error`. Unknown keys, wrong types, values outside a select's options and missing required answers are all reported at once in `details.errors`, `loc: ["body", "details", "<key>"]`. Text answers are trimmed (max 500 characters) and blank counts as missing; numbers can't be booleans.
+6. The Phase 1 deployment policy, "at least one photo **or** a description of 10+ characters": `422 evidence_required` with `details.min_description_length: 10`.
 
-**Report object** (owner view):
+**In one transaction**, the server then stores the report, assigns `ward_id` (the smallest ward containing the point), creates the civic issue (temporary Phase 1 rule: one issue per report) with `report_count = 1` and `unique_reporter_count = 1`, attaches the photos, and writes the issue's `created` timeline event and the audit events. It returns `201` with the owner view of the report.
+
+<a id="retries"></a>**Retries.** Repeating the request with the same key and the same body (compared after parsing, so key order and whitespace don't matter) returns `201` with `Idempotent-Replayed: true` and the same report, **re-rendered** (fresh signed URLs, current status) rather than the stored bytes. The same key with a different body is `422 idempotency_key_reused`. A failed request stores nothing, so it can be retried with its key. The web app keeps the key and the first attempt's `client_created_at` in the saved draft, so "Try again" after a lost response replays instead of creating a second report; "Send as a new report" takes a new key.
+
+**References** are human-friendly and sequential per tenant, kind and year: reports `R-26-000123`, issues `CP-26-000123` (`26` is the year in Asia/Kolkata). They come from a counter row in the submitting transaction, so they're unique and never reused; a failed submission gives its number back.
+
+**Report object, owner view** (`POST /reports`, and `GET /reports/{id}` for the reporter):
 ```json
 {
-  "id": "uuid", "reference": "R-26-000123", "created_at": "...",
+  "id": "uuid", "reference": "R-26-000123", "created_at": "...", "view": "owner",
   "category": { "id": "uuid", "code": "pothole", "name_i18n": {...}, "icon": "construction" },
   "description": "...", "details": {...},
   "location": { "lat": 12.9716, "lng": 77.5946, "accuracy_m": 12.5, "source": "gps" },
@@ -144,18 +175,20 @@ Returns `201`:
   "status": "accepted",
   "issue": {
     "id": "uuid", "reference": "CP-26-000123", "status": "reported",
-    "timeline": [ { "at": "...", "type": "status_changed", "from_status": null, "to_status": "reported", "public_note": null } ]
+    "timeline": [ { "at": "...", "type": "created", "from_status": null, "to_status": "reported", "public_note": null } ]
   }
 }
 ```
-- `status` (the report's own state) is `accepted` or `withdrawn` in Phase 1.
-- `issue.timeline` contains **public events only**: no internal notes, no staff identities.
+- `status` is the report's own state: `accepted` or `withdrawn` in Phase 1. The status citizens follow is `issue.status`.
+- `issue.timeline` has **public events only**, oldest first, and never a `reason` or the actor: the shape has no field for them, and internal events never leave the database for a citizen. The first event has `type: "created"`; staff status changes are `status_changed`, with the `public_note` staff chose to share.
+
+**Staff view** (`GET /reports/{id}` for staff, and inside issue details): the same fields with `"view": "staff"`, plus `reporter: { id, display_name }`, `client_created_at`, and `issue: { id, reference, status }` without a timeline (the issue detail has the full one). `reporter.phone` and `reporter.email` are present only for callers with `user:manage`. `original_url` is filled on media.
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
 | POST | `/api/v1/reports` | `report:create` | See above |
-| GET | `/api/v1/users/me/reports` | `report:read_own` | Own reports, newest first, paginated (`limit`/`offset`). List items: `{ id, reference, created_at, category, thumb_url, address_text, issue: { reference, status } }`. Filter `status`. |
-| GET | `/api/v1/reports/{id}` | owner, or `report:read` within scope | Owner view as above. Staff get the staff view (reporter `{ id, display_name }` but **never** phone or email unless they hold `user:manage`). |
+| GET | `/api/v1/users/me/reports` | `report:read_own` | The caller's reports, newest first, in the standard page envelope. Items: `{ id, reference, created_at, category, thumb_url, address_text, issue: { reference, status } }`; `thumb_url` is the cover photo's once processed. Filter `status` (repeatable) by the **issue's** status, the one the list shows. |
+| GET | `/api/v1/reports/{id}` | owner, or `report:read` within scope | Owner view for the reporter, staff view for staff whose scope covers the report's ward. Anyone else gets `404`: other citizens, staff out of scope or without `report:read`, other tenants. |
 
 ## 6. Civic issues (staff)
 
@@ -178,35 +211,42 @@ Returns `201`:
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| GET | `/api/v1/issues` | `issue:read` | Paginated. Filters below. `sort`: `-created_at` (default), `created_at`, `-updated_at`, `-report_count`. |
-| GET | `/api/v1/issues/geojson` | `issue:read` | Same filters, plus a required `bbox`. Returns a GeoJSON `FeatureCollection` of points with properties `{ id, reference, status, category_code, report_count }`, capped at 5000 features with `"truncated": true` when capped. Used for the map. |
+| GET | `/api/v1/issues` | `issue:read` | Standard page envelope. Filters below. `sort`: `-created_at` (default), `created_at`, `-updated_at`, `updated_at`, `-report_count`, `report_count`; anything else is `422`. |
+| GET | `/api/v1/issues/geojson` | `issue:read` | Same filters, plus a required `bbox`. A GeoJSON `FeatureCollection` of points, newest first, each with the issue id as the feature `id` and properties `{ id, reference, status, category_code, report_count }`. At most 5000 features, with `"truncated": true` when capped. Used for the map. |
 | GET | `/api/v1/issues/{id}` | `issue:read` within scope | Issue detail, below |
-| PATCH | `/api/v1/issues/{id}/status` | per the transition rule | `{ to_status, reason?, public_note?, version }`. Returns `200` with the updated issue detail. Version mismatch → `409 version_conflict` with the current `version` in `details`. Disallowed transition → `422 invalid_transition` with the allowed targets in `details`. Missing required reason → `422 reason_required`. |
+| PATCH | `/api/v1/issues/{id}/status` | per the transition rules | `{ to_status, reason?, public_note?, version }`. Returns `200` with the updated issue detail. Errors below. |
 
 **Filters** (all optional, combined with AND):
-- `status` (repeatable), `category_id` (repeatable), `ward_id` (repeatable)
-- `from` / `to` (created_at, ISO dates, inclusive, Asia/Kolkata)
-- `q`: search over issue reference, report reference, address and report descriptions, using Postgres full text with the `simple` config so Hindi text works too
-- `bbox`: `minLng,minLat,maxLng,maxLat`
+- `status`, `category_id`, `ward_id`: each repeatable.
+- `from` / `to`: creation date, inclusive whole days in Asia/Kolkata. `from` after `to` is `422`.
+- `q`: search over the issue reference, report references, address and report descriptions. Every word matches by **prefix** (`poth` finds "pothole"), using Postgres full text with the `simple` configuration so Hindi works the same way. References also match as case-insensitive substrings, since the tokenizer splits `CP-26-000123`.
+- `bbox`: `minLng,minLat,maxLng,maxLat`, in range with min < max, else `422`.
 
-Results are always limited to the caller's jurisdiction scope. An issue outside scope returns `404`, not `403`, so nothing about its existence leaks.
+Results are always limited to the caller's [scope](#scope).
 
 **Issue detail:**
 ```json
 {
   "...list item fields...": "",
   "reports": [ /* staff report views, oldest first, with media */ ],
-  "timeline": [ { "id": "uuid", "at": "...", "type": "status_changed|created|note", "from_status": "...", "to_status": "...",
+  "timeline": [ { "id": "uuid", "at": "...", "type": "created|status_changed|note", "from_status": "...|null", "to_status": "...|null",
                   "reason": "...|null", "public_note": "...|null", "visibility": "public|internal",
                   "actor": { "id": "uuid", "display_name": "..." } } ],
   "allowed_transitions": [ { "to_status": "under_review", "requires_reason": false } ]
 }
 ```
+- The timeline is oldest first and includes internal events. `actor` is `null` for events the platform made itself.
+- `allowed_transitions` lists the moves the caller can make right now. Only roles whose grant covers the issue's ward count: a supervisor for Zone North is not a supervisor in Zone South.
+
+**Changing status.** The issue row is locked before the version is compared, so two staff acting on the same version can't both win. Every accepted change increments `version` and writes a timeline event (from, to, actor, reason, public note) and an audit event in the same transaction (FR-054). The event is **public**: citizens see the move and the `public_note`, never the `reason`. Errors:
+- `409 version_conflict`, `details: { version }` with the current version. The web app doesn't retry with the newer version, which would overwrite a colleague's change; it explains and offers to reload.
+- `422 invalid_transition`, `details: { from_status, to_status, allowed_transitions: [{ to_status, requires_reason }] }`. This also covers system-only moves and a move to the current status.
+- `422 reason_required`, `details: { to_status }`. A blank reason counts as missing.
 
 ## 7. Workflow (configurable transitions)
-Transitions are stored per tenant in a `status_transitions` table: `from_status`, `to_status`, `allowed_roles[]`, `requires_reason`, `system_only`. System-only transitions are performed by the platform itself (for example `verified → assigned` during assignment in Phase 3). The status endpoint rejects them with `422 invalid_transition`.
+Transitions are stored per tenant in a `status_transitions` table: `from_status`, `to_status`, `allowed_roles[]`, `requires_reason`, `system_only`. System-only transitions are performed by the platform itself (for example `verified → assigned` during assignment in Phase 3); the status endpoint rejects them with `422 invalid_transition`.
 
-Default transitions seeded per tenant for Phase 1:
+Default transitions, installed for every tenant (existing rows are left alone):
 
 | From | To | Roles | Reason required |
 |---|---|---|---|
@@ -217,76 +257,16 @@ Default transitions seeded per tenant for Phase 1:
 | verified | assigned | system only (Phase 3) | — |
 | *(later phases add the rest)* | | | |
 
-Every transition writes a timeline event (previous status, new status, actor, timestamp, reason) and an audit event, and increments `version` (FR-054).
-
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| GET | `/api/v1/admin/workflow/transitions` | `config:read` | Read-only in Phase 1. Editing comes with FR-081 later. |
+| GET | `/api/v1/admin/workflow/transitions` | `config:read` | Standard page envelope, in lifecycle order: `{ id, from_status, to_status, allowed_roles, requires_reason, system_only }`. Read-only in Phase 1; editing comes with FR-081. |
 
 ## 8. Development seed additions
-- The five categories with Hindi names, as described above.
+- `demo-city` gets a city jurisdiction `SYN-CITY` (kind `city`, the union of the zones) as the parent of both zones, so the admin jurisdictions list has 7 rows. Reports outside it are rejected, and the maps start from it. Ward pickers and map overlays use `kind=ward` only.
+- The five launch categories, `pothole`, `waste`, `waterlogging`, `streetlight` and `drainage`, with English and Hindi names, a few optional fields each, linked to the matching department. `streetlight` needs no photo (0–3); the others need 1–5.
 - The default transitions, for both tenants.
-- **About 60 synthetic issues** across the four `demo-city` wards. Each has one report from the seeded citizen, a mix of categories and statuses (`reported`, `under_review`, `verified`, `rejected`), creation times spread over the last 30 days, and one generated placeholder image (a flat colour with the category name and "SYNTHETIC" drawn on it), uploaded to MinIO and processed into variants.
-- Re-running the seed does not create duplicates.
+- **60 synthetic issues** across the four `demo-city` wards over the last 30 days. Half are `reported` and the rest `under_review`, `verified` or `rejected`, each with a timeline that leads there. Each has one report from the seeded citizen, an address like `Synthetic Street N, Ward W (synthetic)`, an English or Hindi description (so search can be tried in both), and one generated placeholder photo (a flat colour with the category name and "SYNTHETIC" on it) that goes through the same processing as real uploads.
+- Re-running the seed creates nothing new: ids are deterministic, and a photo a previous run left half-done is finished.
 
-## 9. Housekeeping included in Phase 1
-- A Celery Beat job deletes expired OTP challenges, expired or revoked sessions older than 30 days, idempotency keys older than 24 hours, and incomplete uploads older than 24 hours (including their objects).
-
----
-
-## Implementation notes (backend)
-
-Details the backend settled while implementing this contract. `apps/api/openapi.json` is the precise, generated form. Items marked **(change)** differ from, or add to, the text above.
-
-### Conventions
-- **Timestamps** are returned in UTC (`...Z`), including `captured_at`. The offset a photo was taken at is kept privately.
-- **New error codes:** `unsupported_media_type`, `file_too_large`, `upload_verification_failed`, `out_of_jurisdiction`, `evidence_required`, `invalid_media` (all 422), `too_many_uploads` (429, no `Retry-After`), `version_conflict` (409), `invalid_transition`, `reason_required` (422).
-- **Audit actions:** `category.created`, `category.updated`, `report.created`, `issue.created`, `issue.status_changed`.
-
-### Tenant
-- **(change)** `map` is `null` for a tenant with no jurisdiction geometry. The center is the city's centroid when it lies inside the city, otherwise a point that does. The zoom is derived from the bounds (12 for the seeded city).
-
-### Categories
-- **(change)** `GET /categories` returns a bare JSON array (no page envelope), because the form needs the whole list. `GET /admin/categories` and `GET /admin/workflow/transitions` use the standard page envelope. Admin category sorts: `sort_order` (default), `code`, `created_at`. Filter `is_active`.
-- Field definitions are validated on save: keys `^[a-z][a-z0-9_]{0,39}$` and unique, `options` required and unique for `select` and not allowed otherwise, `label_i18n.en` required, at most 20 fields. Non-select fields come back with `"options": null`.
-- `evidence.max_photos` is at most 10. `PATCH` accepts `null` only for `parent_id` and `default_department_id`. Re-parenting into a cycle is `422`. A duplicate `code` is `409 conflict`.
-- `details` validation: unknown keys, wrong types, values outside a select's options and missing required answers are all reported at once in `details.errors` (`loc: ["body", "details", "<key>"]`). Text answers are trimmed, max 500 characters, and blank counts as missing. Numbers can't be booleans.
-
-### Media
-- `POST /media/uploads`: the URL signs `Content-Type` **and `Content-Length`**, so the PUT must send exactly `size_bytes` bytes with the returned `Content-Type`. Storage rejects anything else with `403` (browsers set `Content-Length` themselves). The URL is signed for the public storage host.
-- `too_many_uploads` counts only uploads whose URL hasn't expired yet. `details.limit` is 20.
-- `complete` is idempotent: completing an already verified upload returns it again (`processing` or `ready`). After a failure, the upload stays failed: completing again returns the same `422 upload_verification_failed`, and the client starts a new upload. `details.reason` is one of `object_missing`, `size_mismatch`, `checksum_mismatch`, `content_type_mismatch`, `not_an_image`, `image_too_large` (over 50 megapixels).
-- `width`/`height` are as displayed, with EXIF orientation applied: the original's at completion, then the display variant's once `ready`. The aspect ratio is the same.
-- `variants` / `thumb_url` / `display_url` are `null` until the asset is `ready`. `original_url` is only filled for staff with `report:read`.
-
-### Geocoding
-- Outside the city, `in_jurisdiction` is `false` and `ward`/`zone` are `null`. `address_text` is still looked up.
-- Ward matching counts boundary points (`ST_Covers`) and picks the smallest ward, so a point on a shared edge gets exactly one ward.
-
-### Reports
-- Without `Idempotency-Key` the response is `422 validation_error`, with `loc: ["header", "Idempotency-Key"]`. A replay returns `201` with `Idempotent-Replayed: true` and the report **re-rendered** (fresh signed URLs, current status), not the stored bytes.
-- Validation order: unknown or inactive category (`422 validation_error`, `loc: ["body", "category_id"]`), then `out_of_jurisdiction`, then `evidence_required` (category photo range; `details: {min_photos, max_photos, received}`), then `invalid_media` (`details.media: [{id, reason}]`, reason one of `not_found`, `wrong_purpose`, `not_completed`, `failed`, `already_attached`), then details, then the photo-or-description policy (`evidence_required` with `details.min_description_length: 10`). Someone else's upload reads as `not_found`.
-- `description` and `address_text` are trimmed, and a blank value is stored as `null`. `client_created_at` must include an offset. `media_ids` must be unique (at most 10).
-- **(change)** Report views carry `"view": "owner"` or `"view": "staff"`, so a generated client can narrow `GET /reports/{id}`. The staff view also has `reporter`, `client_created_at` and `issue: {id, reference, status}`, without a timeline (the issue detail has the full one). `reporter.phone`/`email` are present only for callers with `user:manage`.
-- **(change)** The first timeline event has `"type": "created"` (`from_status: null`, `to_status: "reported"`), as the contract text says. The example in §5 shows `status_changed`.
-- The citizen timeline has public events only, and never `reason` or the actor.
-- **(change)** `GET /users/me/reports?status=` filters by the **linked issue's** status (the status the list shows), is repeatable, and accepts issue statuses.
-- A report the caller can't see is `404` (other citizens, staff outside the report's ward scope, staff without `report:read`, other tenants).
-- References are `R-YY-NNNNNN` / `CP-YY-NNNNNN` from a per-tenant, per-year counter in the submitting transaction. A failed submission gives its number back.
-
-### Issues
-- Scope is the jurisdiction subtree of the caller's `issue:read` grants. Issues with no ward are visible only to tenant-wide staff.
-- `sort` also accepts `updated_at` and `report_count` ascending. Unknown sorts are `422`.
-- `q` matches every word by **prefix** (`poth` finds "pothole"; Hindi works the same way). Issue and report references match as substrings, case-insensitive.
-- `from`/`to` are whole days in Asia/Kolkata, and `from > to` is `422`. `bbox` must be in range with min < max, else `422`.
-- GeoJSON features are newest first and also carry the issue id as the feature `id`.
-- `allowed_transitions` only counts the caller's roles whose grant covers the issue's ward. A supervisor for Zone North is not a supervisor in Zone South.
-- `PATCH .../status` returns the updated issue detail. Errors:
-  - `409 version_conflict`, with `details: {version}`.
-  - `422 invalid_transition`, with `details: {from_status, to_status, allowed_transitions: [{to_status, requires_reason}]}`. This also covers system-only moves and moves to the same status.
-  - `422 reason_required`, with `details: {to_status}`. A blank reason counts as missing.
-- A status change is a **public** timeline event: citizens see the move and the `public_note`, never the `reason`.
-
-### Seed
-- **(change to Phase 0 seed data)** `demo-city` now has a city jurisdiction `SYN-CITY` (kind `city`, the union of the zones), which is the parent of both zones. The admin jurisdictions list shows 7 rows.
-- Seeded issues have addresses `Synthetic Street N, Ward W (synthetic)` and English or Hindi descriptions, so search can be tried in both languages.
+## 9. Housekeeping
+An hourly Celery Beat job deletes expired OTP challenges (an hour after expiry), sessions that expired or were revoked more than 30 days ago, idempotency keys older than 24 hours, and uploads that were never completed or failed verification and are over a day old, together with their objects. It also re-queues media stuck in `processing` for 15 minutes.
