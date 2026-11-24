@@ -146,14 +146,18 @@ Example: resolved in 2 d, 5 d and 20 d: mean 9 d, median 5 d.
 ## SLA compliance
 
 Share of resolved issues whose first resolution is on or before their SLA
-due time. SLA targets per category/priority and a per-issue due time are
-**pending Phase 3/4 schema**; no SLA table exists in the current models.
-Definition once available:
+due time (`civic_issues.due_at`, set from `sla_targets`; see
+[`docs/api/sla-escalation.md`](api/sla-escalation.md)). Issues with no
+target are left out. The period is the first resolution's IST day.
 
 ```
-SLA compliance = resolved issues with first resolved event <= due time
-               / resolved issues            (rejected and merged excluded)
+SLA compliance = resolved issues with first resolved event <= due_at
+               / resolved issues with a due_at   (rejected and merged excluded)
 ```
+
+`due_at` freezes at resolution, but a reopen restarts the clock, so an
+issue resolved, reopened and resolved again is measured against its latest
+deadline.
 
 Open issues already past due are reported as a separate "open breaches"
 count, not in the ratio. Example: 40 resolved, 34 on time: 85%.
@@ -226,7 +230,8 @@ Example: 20 issues resolved in November, 2 reopened: 10%.
 Every analytics response names the entries it draws on (`metric` /
 `metrics`). The ids are the snake_case of the headings above
 (`reports`, `issues`, `unique_reporters`, `acknowledgement_time`,
-`resolution_time`, `duplicate_rate`, `review_rate`, `reopen_rate`), plus
+`resolution_time`, `sla_compliance`, `duplicate_rate`, `review_rate`,
+`reopen_rate`), plus
 `issues_by_category`, `issues_by_ward` and the entries below.
 
 ## Issues by status (`issues_by_status`)

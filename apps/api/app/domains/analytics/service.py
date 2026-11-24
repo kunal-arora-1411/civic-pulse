@@ -289,6 +289,16 @@ def _reopen_rate(scope: Scope, b: Bucket) -> str:
     )
 
 
+def _sla_compliance(scope: Scope, b: Bucket) -> str:
+    """Of the issues first resolved in the period that had an SLA deadline,
+    the share resolved on or before it (docs/metrics.md)."""
+    return (
+        f"WITH d AS ({_resolved_first(scope)}) SELECT {bucket_sql('d.at', b)}, "
+        "count(*) FILTER (WHERE d.at <= si.due_at)::float / NULLIF(count(*), 0) "
+        "FROM d JOIN civic_issues si ON si.id = d.id WHERE si.due_at IS NOT NULL GROUP BY 1"
+    )
+
+
 def _resolved(scope: Scope, b: Bucket) -> str:
     return (
         f"WITH d AS ({_resolved_first(scope)}) "
@@ -305,6 +315,7 @@ KPIS: tuple[tuple[str, Literal["count", "hours", "ratio"], Template], ...] = (
     ("duplicate_rate", "ratio", _duplicate_rate),
     ("review_rate", "ratio", _review_rate),
     ("reopen_rate", "ratio", _reopen_rate),
+    ("sla_compliance", "ratio", _sla_compliance),
 )
 
 
