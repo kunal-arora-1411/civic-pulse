@@ -30,7 +30,7 @@ from app.core.db import get_session_factory
 from app.core.logging import log_fields
 from app.core.tenancy import set_tenant, system_session
 from app.domains.ai.analysis import AIUnavailable, ensure_embeddings
-from app.domains.ai.models import Classification, ClassificationStatus
+from app.domains.ai.models import Classification, ClassificationStatus, ModelRegistryEntry
 from app.domains.audit import service as audit
 from app.domains.categories.models import Category
 from app.domains.config.schemas import MatchingConfig
@@ -216,6 +216,18 @@ async def measure_candidates(
 # --- deciding -------------------------------------------------------------------------------
 
 
+async def model_visual_floor(db: AsyncSession, model_id: str | None) -> float | None:
+    """The auto-link visual floor measured for this model, from its registry
+    metrics (`matching.visual_min`), or None when none was recorded."""
+    if model_id is None:
+        return None
+    metrics = await db.scalar(
+        select(ModelRegistryEntry.metrics).where(ModelRegistryEntry.id == model_id)
+    )
+    value = ((metrics or {}).get("matching") or {}).get("visual_min")
+    return float(value) if isinstance(value, int | float) else None
+
+
 async def decide_and_apply(
     report_id: uuid.UUID,
     tenant_id: uuid.UUID,
@@ -241,7 +253,11 @@ async def decide_and_apply(
             await db.rollback()
             return MatchOutcome("already_decided")
 
-        config = await matching_config(db)
+        # Similarity scales differ between models, so unless the tenant set
+        # its own, the visual floor is the one measured for this model.
+        config = (await matching_config(db)).with_visual_floor(
+            await model_visual_floor(db, model_id)
+        )
         category = await db.get(Category, report.category_id)
         assert category is not None
         lat = float(

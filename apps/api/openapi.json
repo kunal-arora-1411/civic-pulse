@@ -9441,12 +9441,18 @@
             "default": 0.6
           },
           "visual_min": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Visual Min",
-            "description": "Visual similarity an automatic link also needs.",
-            "default": 0.8
+            "description": "Visual similarity an automatic link also needs. Null follows the floor measured for the active vision model (0.92 for the shipped CLIP model); a number overrides it."
           }
         },
         "additionalProperties": false,

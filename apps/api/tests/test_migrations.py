@@ -147,3 +147,40 @@ def test_phase2_migrations_downgrade_and_upgrade_again(migrated: dict[str, uuid.
         _run("SELECT count(*) AS n FROM reports WHERE matching_status = 'new_issue'")
     )
     assert count[0]["n"] == 3
+
+
+def test_the_old_visual_floor_default_follows_the_model_again(
+    migrated: dict[str, uuid.UUID],
+) -> None:
+    """0006: a stored 0.80 was the old default written out, so it becomes
+    null (the model's floor); a value someone chose is kept."""
+    _alembic("0005", down=True)
+    asyncio.run(
+        _run(
+            """
+            WITH t AS (INSERT INTO tenants (slug, name) VALUES ('mig-city-2', 'Second City')
+                       RETURNING id)
+            INSERT INTO tenant_configs (tenant_id, key, value)
+            SELECT id, 'matching', $1::jsonb FROM tenants WHERE slug = 'mig-city'
+            UNION ALL
+            SELECT id, 'matching', $2::jsonb FROM t
+            """,
+            '{"thresholds": {"auto": 0.85, "review": 0.6, "visual_min": 0.8}}',
+            '{"thresholds": {"auto": 0.85, "review": 0.6, "visual_min": 0.88}}',
+        )
+    )
+    _alembic("head")
+    rows = asyncio.run(
+        _run(
+            "SELECT t.slug, c.value #> '{thresholds,visual_min}' AS floor "
+            "FROM tenant_configs c JOIN tenants t ON t.id = c.tenant_id ORDER BY t.slug"
+        )
+    )
+    assert [(r["slug"], r["floor"]) for r in rows] == [("mig-city", "null"), ("mig-city-2", "0.88")]
+
+    _alembic("0005", down=True)
+    rows = asyncio.run(
+        _run("SELECT value #> '{thresholds,visual_min}' AS floor FROM tenant_configs")
+    )
+    assert sorted(r["floor"] for r in rows) == ["0.8", "0.88"]
+    _alembic("head")

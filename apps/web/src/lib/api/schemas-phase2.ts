@@ -83,7 +83,8 @@ export const matchingConfigSchema = z.object({
   thresholds: z.object({
     auto: z.number(),
     review: z.number(),
-    visual_min: z.number(),
+    /** Null: the floor measured for the active vision model applies. */
+    visual_min: z.number().nullable(),
   }),
   classification_threshold: z.number(),
   fallback_review_threshold: z.number(),

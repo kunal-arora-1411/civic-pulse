@@ -23,8 +23,21 @@ describe("matching settings", () => {
       validateMatching({ ...form(), "thresholds.auto": "1.2" }),
     ).toMatchObject({ "thresholds.auto": "range01" });
     expect(
-      validateMatching({ ...form(), "thresholds.visual_min": "" }),
-    ).toMatchObject({ "thresholds.visual_min": "number" });
+      validateMatching({ ...form(), classification_threshold: "" }),
+    ).toMatchObject({ classification_threshold: "number" });
+    expect(
+      validateMatching({ ...form(), "thresholds.visual_min": "1.5" }),
+    ).toMatchObject({ "thresholds.visual_min": "range01" });
+  });
+
+  it("treats an empty visual floor as the model's", () => {
+    const values = { ...form(), "thresholds.visual_min": "" };
+    expect(validateMatching(values)).toEqual({});
+    expect(fromMatchingForm(values).thresholds.visual_min).toBeNull();
+    expect(
+      fromMatchingForm({ ...values, "thresholds.visual_min": "0.9" }).thresholds
+        .visual_min,
+    ).toBe(0.9);
   });
 
   it("requires the weights to add up to 1", () => {

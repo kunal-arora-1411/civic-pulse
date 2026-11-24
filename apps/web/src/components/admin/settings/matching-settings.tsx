@@ -1,9 +1,11 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/admin/page-header";
-import { getMatchingConfig, updateMatchingConfig } from "@/lib/api";
+import { getMatchingConfig, listModels, updateMatchingConfig } from "@/lib/api";
 import {
+  activeModelFloor,
   DEFAULT_MATCHING_CONFIG,
   fromMatchingForm,
   MATCHING_WEIGHTS,
@@ -39,6 +41,12 @@ export function MatchingSettings() {
     form.errors[path] ? tErr(form.errors[path] as "number") : undefined;
   const total = form.values ? weightTotal(form.values, MATCHING_WEIGHTS) : 0;
   const d = DEFAULT_MATCHING_CONFIG;
+  // Only to say what an empty visual floor means; the page works without it.
+  const models = useQuery({
+    queryKey: ["admin", "ai", "models"],
+    queryFn: ({ signal }) => listModels(signal),
+  });
+  const modelFloor = activeModelFloor(models.data);
 
   return (
     <div className="motion-safe:animate-rise">
@@ -89,8 +97,18 @@ export function MatchingSettings() {
               form={form}
               path="thresholds.visual_min"
               label={t("visualMin")}
-              help={t("visualMinHelp")}
-              defaultValue={d.thresholds.visual_min}
+              help={
+                <>
+                  {t("visualMinHelp")}
+                  {modelFloor
+                    ? ` ${t("visualMinModelFloor", {
+                        model: modelFloor.model,
+                        floor: modelFloor.floor,
+                      })}`
+                    : null}
+                </>
+              }
+              defaultValue={t("visualMinDefault")}
               errorText={error("thresholds.visual_min")}
             />
             <NumberField

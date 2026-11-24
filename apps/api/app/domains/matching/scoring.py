@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from app.domains.config.schemas import MatchingConfig
+from app.domains.config.schemas import DEFAULT_VISUAL_MIN, MatchingConfig
 
 # A pHash Hamming distance this small means the same photo (recompressed,
 # resized or re-uploaded), whatever the embeddings say.
@@ -134,6 +134,13 @@ def combined_score(signals: Signals, config: MatchingConfig) -> float:
     return min(1.0, max(0.0, score))
 
 
+def visual_floor(config: MatchingConfig) -> float:
+    """The auto-link visual floor in force. The matching service fills in
+    the model's floor first (`MatchingConfig.with_visual_floor`)."""
+    floor = config.thresholds.visual_min
+    return DEFAULT_VISUAL_MIN if floor is None else floor
+
+
 def can_auto_link(scored: Scored[Any], config: MatchingConfig) -> bool:
     """Auto-link needs a high score *and* strong visual evidence *and* the
     point inside the radius. Never on distance alone (AC-05)."""
@@ -143,7 +150,7 @@ def can_auto_link(scored: Scored[Any], config: MatchingConfig) -> bool:
         config.auto_link_enabled
         and scored.score >= t.auto
         and visual is not None
-        and visual >= t.visual_min
+        and visual >= visual_floor(config)
         and scored.signals.distance_m <= scored.signals.radius_m
     )
 
@@ -187,7 +194,7 @@ def signals_json(scored: Scored[Any], config: MatchingConfig, *, fallback: bool)
     thresholds: dict[str, float] = {
         "auto": config.thresholds.auto,
         "review": config.thresholds.review,
-        "visual_min": config.thresholds.visual_min,
+        "visual_min": visual_floor(config),
     }
     if fallback:
         thresholds["fallback_review"] = config.fallback_review_threshold

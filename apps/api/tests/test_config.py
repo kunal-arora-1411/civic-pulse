@@ -17,7 +17,8 @@ PRIORITY = "/api/v1/admin/priority-config"
 DEFAULT_MATCHING = {
     "auto_link_enabled": True,
     "weights": {"geo": 0.4, "visual": 0.4, "category": 0.1, "time": 0.1},
-    "thresholds": {"auto": 0.85, "review": 0.6, "visual_min": 0.8},
+    # No visual floor of the tenant's own: matching uses the active model's.
+    "thresholds": {"auto": 0.85, "review": 0.6, "visual_min": None},
     "classification_threshold": 0.45,
     "fallback_review_threshold": 0.4,
 }

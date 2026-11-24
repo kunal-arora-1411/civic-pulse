@@ -14,6 +14,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.ai import registry
+from app.ai.fake import FAKE_MODEL_ID
 from app.ai.interfaces import perceptual_hash_distance
 from app.ai.phash import to_signed64
 from app.domains.ai.analysis import ensure_embeddings, refresh_phashes
@@ -186,6 +187,52 @@ async def test_without_a_photo_a_report_is_never_auto_linked(
     staff = await view(client, city.operator, same_spot["id"])
     assert staff["match"]["signals"]["reason"] == "no_photos"
     assert staff["match"]["decision"] == "sent_to_review"
+
+
+# --- the auto-link visual floor follows the model ---------------------------------------------
+
+
+async def _set_model_metrics(engine: AsyncEngine, model_id: str, metrics: str) -> None:
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE model_registry SET metrics = CAST(:m AS jsonb) WHERE id = :i"),
+            {"m": metrics, "i": model_id},
+        )
+
+
+async def test_the_visual_floor_comes_from_the_model_unless_the_tenant_sets_one(
+    client: httpx.AsyncClient, owner_engine: AsyncEngine, city: City
+) -> None:
+    first = await report(
+        client, city, city.citizen, media_ids=[await scene_photo(client, city.citizen, 31)]
+    )
+
+    async def floor_for_next(seed_offset: int) -> float:
+        nxt = await report(
+            client,
+            city,
+            city.citizen,
+            point=north_of(NE, 2 + seed_offset * 0.1),
+            media_ids=[await scene_photo(client, city.citizen, 31, variant=seed_offset)],
+        )
+        assert nxt["matching_status"] == "linked"
+        assert nxt["issue"]["id"] == first["issue"]["id"]
+        staff = await view(client, city.operator, nxt["id"])
+        return staff["match"]["signals"]["thresholds"]["visual_min"]
+
+    # Nothing recorded for the model: the built-in default.
+    assert await floor_for_next(1) == 0.92
+    # The floor measured for the model, from its registry metrics.
+    await _set_model_metrics(owner_engine, FAKE_MODEL_ID, '{"matching": {"visual_min": 0.95}}')
+    assert await floor_for_next(2) == 0.95
+    # A tenant's own floor wins over the model's.
+    saved = await client.put(
+        "/api/v1/admin/matching-config",
+        headers=city.admin.headers,
+        json={"thresholds": {"auto": 0.85, "review": 0.6, "visual_min": 0.9}},
+    )
+    assert saved.status_code == 200, saved.text
+    assert await floor_for_next(3) == 0.9
 
 
 # --- the same-photo rule with the full 64 bits ------------------------------------------------

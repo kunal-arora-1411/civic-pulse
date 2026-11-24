@@ -192,3 +192,23 @@ async def test_registering_the_real_models_records_lock_details_and_metrics(
             text("SELECT count(*) FROM model_registry WHERE id = 'clip-vit-b32@onnx-1'")
         )
     assert count == 1
+
+
+async def test_matching_uses_the_registered_model_floor(
+    owner_engine: AsyncEngine,
+    city: City,
+    settings: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.db import get_session_factory
+    from app.domains.matching.service import model_visual_floor
+
+    shutil.copy(LOCK, tmp_path / "models.lock.json")
+    monkeypatch.setattr(settings, "ai_provider", "onnx")
+    monkeypatch.setattr(settings, "ai_model_dir", str(tmp_path))
+    await register_models()
+    async with get_session_factory()() as db:
+        assert await model_visual_floor(db, "clip-vit-b32@onnx-1") == 0.92
+        assert await model_visual_floor(db, "yunet-2023mar@onnx-1") is None
+        assert await model_visual_floor(db, None) is None

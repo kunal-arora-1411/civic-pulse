@@ -1,5 +1,6 @@
 import type {
   MatchingConfig,
+  ModelRegistry,
   PriorityBand,
   PriorityConfig,
   SeverityLevel,
@@ -15,7 +16,8 @@ import type {
 export const DEFAULT_MATCHING_CONFIG: MatchingConfig = {
   auto_link_enabled: true,
   weights: { geo: 0.4, visual: 0.4, category: 0.1, time: 0.1 },
-  thresholds: { auto: 0.85, review: 0.6, visual_min: 0.8 },
+  // Null follows the active vision model's floor (0.92 for CLIP).
+  thresholds: { auto: 0.85, review: 0.6, visual_min: null },
   classification_threshold: 0.45,
   fallback_review_threshold: 0.4,
 };
@@ -48,7 +50,7 @@ export function toForm(config: object, prefix = ""): FormValues {
     if (value && typeof value === "object") {
       Object.assign(out, toForm(value, path));
     } else {
-      out[path] = String(value);
+      out[path] = value === null || value === undefined ? "" : String(value);
     }
   }
   return out;
@@ -110,11 +112,14 @@ export function validateMatching(values: FormValues): FormErrors {
   for (const path of [
     "thresholds.auto",
     "thresholds.review",
-    "thresholds.visual_min",
     "classification_threshold",
     "fallback_review_threshold",
   ]) {
     checkRange(values, errors, path, 0, 1);
+  }
+  // Optional: empty means "the model's floor".
+  if ((values["thresholds.visual_min"] ?? "").trim() !== "") {
+    checkRange(values, errors, "thresholds.visual_min", 0, 1);
   }
   if (
     !errors["thresholds.auto"] &&
@@ -138,11 +143,32 @@ export function fromMatchingForm(values: FormValues): MatchingConfig {
     thresholds: {
       auto: num(values, "thresholds.auto"),
       review: num(values, "thresholds.review"),
-      visual_min: num(values, "thresholds.visual_min"),
+      visual_min:
+        (values["thresholds.visual_min"] ?? "").trim() === ""
+          ? null
+          : num(values, "thresholds.visual_min"),
     },
     classification_threshold: num(values, "classification_threshold"),
     fallback_review_threshold: num(values, "fallback_review_threshold"),
   };
+}
+
+/**
+ * The auto-link visual floor recorded for the active embedding model
+ * (`metrics.matching.visual_min`), and the model's name, if known.
+ */
+export function activeModelFloor(
+  registry: ModelRegistry | undefined,
+): { model: string; floor: number } | null {
+  const model = registry?.items.find(
+    (item) => item.task === "embedding" && item.active,
+  );
+  const matching = model?.metrics?.matching as
+    | { visual_min?: unknown }
+    | undefined;
+  return model && typeof matching?.visual_min === "number"
+    ? { model: model.name, floor: matching.visual_min }
+    : null;
 }
 
 export const PRIORITY_WEIGHTS = [

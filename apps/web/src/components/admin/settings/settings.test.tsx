@@ -24,11 +24,29 @@ function signIn(manage = true) {
   );
 }
 
+const MODELS = {
+  items: [
+    {
+      model_id: "clip-vit-b32@onnx-1",
+      task: "embedding",
+      name: "CLIP ViT-B/32",
+      version: "6b7c523703ae",
+      source: null,
+      license: "MIT",
+      deployed_at: "2026-11-20T00:00:00Z",
+      intended_use: null,
+      metrics: { matching: { visual_min: 0.92 } },
+      active: true,
+    },
+  ],
+};
+
 describe("MatchingSettings", () => {
   it("validates each threshold next to its field and won't save until fixed", async () => {
     signIn();
     const saved: unknown[] = [];
     server.use(
+      http.get(`${API}/admin/ai/models`, () => HttpResponse.json(MODELS)),
       http.get(`${API}/admin/matching-config`, () =>
         HttpResponse.json({
           ...DEFAULT_MATCHING_CONFIG,
@@ -79,10 +97,47 @@ describe("MatchingSettings", () => {
     });
   });
 
+  it("leaves the visual floor to the model when it is empty", async () => {
+    signIn();
+    const saved: unknown[] = [];
+    server.use(
+      http.get(`${API}/admin/ai/models`, () => HttpResponse.json(MODELS)),
+      http.get(`${API}/admin/matching-config`, () =>
+        HttpResponse.json(DEFAULT_MATCHING_CONFIG),
+      ),
+      http.put(`${API}/admin/matching-config`, async ({ request }) => {
+        const body = await request.json();
+        saved.push(body);
+        return HttpResponse.json(body);
+      }),
+    );
+    const { user } = renderWithProviders(<MatchingSettings />);
+
+    const floor = await screen.findByLabelText(
+      "Minimum photo similarity for auto-linking",
+    );
+    expect(floor).toHaveValue(null);
+    expect(
+      await screen.findByText(
+        /The model in use \(CLIP ViT-B\/32\) has a floor of 0.92/,
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    await screen.findByText("Matching settings saved");
+    expect(saved[0]).toMatchObject({ thresholds: { visual_min: null } });
+
+    await user.type(floor, "0.95");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    await vi.waitFor(() => expect(saved).toHaveLength(2));
+    expect(saved[1]).toMatchObject({ thresholds: { visual_min: 0.95 } });
+  });
+
   it("restores the defaults into the form without saving", async () => {
     signIn();
     const saved: unknown[] = [];
     server.use(
+      http.get(`${API}/admin/ai/models`, () => HttpResponse.json(MODELS)),
       http.get(`${API}/admin/matching-config`, () =>
         HttpResponse.json({
           ...DEFAULT_MATCHING_CONFIG,
@@ -116,6 +171,7 @@ describe("MatchingSettings", () => {
   it("is read-only without config:manage", async () => {
     signIn(false);
     server.use(
+      http.get(`${API}/admin/ai/models`, () => HttpResponse.json(MODELS)),
       http.get(`${API}/admin/matching-config`, () =>
         HttpResponse.json(DEFAULT_MATCHING_CONFIG),
       ),

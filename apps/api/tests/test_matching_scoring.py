@@ -7,7 +7,12 @@ import math
 
 import pytest
 
-from app.domains.config.schemas import MatchingConfig, MatchingWeights
+from app.domains.config.schemas import (
+    DEFAULT_VISUAL_MIN,
+    MatchingConfig,
+    MatchingThresholds,
+    MatchingWeights,
+)
 from app.domains.matching.scoring import (
     CATEGORY_SAME,
     CATEGORY_SIBLING,
@@ -26,7 +31,12 @@ from app.domains.matching.scoring import (
 DEFAULT = MatchingConfig()
 # With all the weight on one signal the score *is* that signal, which puts
 # a candidate exactly on a threshold without floating-point guesswork.
-VISUAL_ONLY = MatchingConfig(weights=MatchingWeights(geo=0, visual=1, category=0, time=0))
+# (Its visual floor sits below the automatic score, so that the score
+# threshold alone decides.)
+VISUAL_ONLY = MatchingConfig(
+    weights=MatchingWeights(geo=0, visual=1, category=0, time=0),
+    thresholds=MatchingThresholds(visual_min=0.80),
+)
 GEO_ONLY = MatchingConfig(weights=MatchingWeights(geo=1, visual=0, category=0, time=0))
 
 
@@ -120,9 +130,20 @@ def test_review_threshold_is_inclusive() -> None:
 
 def test_visual_minimum_is_inclusive_for_auto_link() -> None:
     # Score = geo = 1.0 here, so only the visual check decides.
-    assert outcome(measured(cosine=0.80), GEO_ONLY) is Outcome.AUTO_LINK
+    assert outcome(measured(cosine=0.92), GEO_ONLY) is Outcome.AUTO_LINK
     # A high score that fails the visual check goes to review, never new.
-    assert outcome(measured(cosine=0.7999999), GEO_ONLY) is Outcome.REVIEW
+    assert outcome(measured(cosine=0.9199999), GEO_ONLY) is Outcome.REVIEW
+
+
+def test_the_visual_floor_is_the_tenant_s_then_the_model_s_then_the_default() -> None:
+    assert DEFAULT.thresholds.visual_min is None
+    assert DEFAULT.with_visual_floor(None).thresholds.visual_min == DEFAULT_VISUAL_MIN == 0.92
+    from_model = GEO_ONLY.with_visual_floor(0.75)
+    assert from_model.thresholds.visual_min == 0.75
+    assert outcome(measured(cosine=0.75), from_model) is Outcome.AUTO_LINK
+    assert outcome(measured(cosine=0.7499), from_model) is Outcome.REVIEW
+    own = GEO_ONLY.model_copy(update={"thresholds": MatchingThresholds(visual_min=0.97)})
+    assert own.with_visual_floor(0.75).thresholds.visual_min == 0.97
 
 
 def test_never_auto_link_on_distance_alone() -> None:
@@ -212,7 +233,7 @@ def test_signals_json_has_the_contract_shape() -> None:
         "time": 0.9324,
         "age_days": 2.1,
         "weights": {"geo": 0.4, "visual": 0.4, "category": 0.1, "time": 0.1},
-        "thresholds": {"auto": 0.85, "review": 0.6, "visual_min": 0.8},
+        "thresholds": {"auto": 0.85, "review": 0.6, "visual_min": 0.92},
         "reason": None,
     }
     fallback = decide([("i", measured())], DEFAULT, fallback=True)

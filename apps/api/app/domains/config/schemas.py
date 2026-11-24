@@ -15,6 +15,16 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 _TOLERANCE = 1e-6
 
+DEFAULT_VISUAL_MIN = 0.92
+"""The auto-link visual floor when neither the tenant nor the model sets one.
+
+Cosine similarity scales differ between vision models (one model's 0.80 is
+not another's), so the floor is normally the one measured for the active
+model and stored in its `model_registry.metrics` (`matching.visual_min`).
+This is the fallback, the value measured for the shipped CLIP model
+(docs/eval/phase-2-baseline.md).
+"""
+
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -40,8 +50,14 @@ class MatchingWeights(_Strict):
 class MatchingThresholds(_Strict):
     auto: float = Field(default=0.85, gt=0, le=1, description="Score needed to link on its own.")
     review: float = Field(default=0.60, gt=0, le=1, description="Score that asks a person.")
-    visual_min: float = Field(
-        default=0.80, ge=0, le=1, description="Visual similarity an automatic link also needs."
+    visual_min: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description=(
+            "Visual similarity an automatic link also needs. Null follows the floor measured "
+            "for the active vision model (0.92 for the shipped CLIP model); a number overrides it."
+        ),
     )
 
     @model_validator(mode="after")
@@ -67,6 +83,15 @@ class MatchingConfig(_Strict):
         le=1,
         description="Without the visual signal, a score this high opens a review task.",
     )
+
+    def with_visual_floor(self, model_floor: float | None) -> MatchingConfig:
+        """This config with `visual_min` filled in: the tenant's own value if
+        it set one, else the model's, else DEFAULT_VISUAL_MIN."""
+        if self.thresholds.visual_min is not None:
+            return self
+        floor = DEFAULT_VISUAL_MIN if model_floor is None else model_floor
+        thresholds = self.thresholds.model_copy(update={"visual_min": floor})
+        return self.model_copy(update={"thresholds": thresholds})
 
 
 # --- priority (contract F) ---------------------------------------------------------------
