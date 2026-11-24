@@ -6,6 +6,7 @@ import { type ReactNode, useId, useLayoutEffect, useState } from "react";
 import { AccountMenu } from "@/components/account-menu";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,7 @@ function Frame({
             <div className="flex items-center gap-2 sm:gap-3">
               <ThemeSwitcher className="hidden sm:flex" />
               <LanguageSwitcher />
+              <NotificationBell />
               <AccountMenu />
             </div>
           </div>

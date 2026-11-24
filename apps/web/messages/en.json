@@ -1456,5 +1456,51 @@
       "privacy": "CivicPulse never shows your name or phone number publicly.",
       "copyright": "© CivicPulse"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Updates on your reports and the work waiting for you.",
+    "bellLabel": "Notifications",
+    "bellLabelUnread": "Notifications, {count, plural, one {# unread} other {# unread}}",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all notifications",
+    "today": "Today",
+    "earlier": "Earlier",
+    "unread": "Unread",
+    "loading": "Loading notifications",
+    "loadError": "Notifications could not be loaded. Try again shortly.",
+    "emptyTitle": "No notifications yet",
+    "emptyUnreadTitle": "You're all caught up",
+    "emptyBody": "We'll let you know when something changes on your reports or needs your attention.",
+    "filterLabel": "Show",
+    "filterAll": "All",
+    "filterUnread": "Unread ({count})",
+    "pagesLabel": "Notification pages",
+    "messages": {
+      "report_new_issue": {
+        "title": "Report {report} is now issue {issue}",
+        "body": "Yours is the first report of this problem. We'll keep you posted as it moves."
+      },
+      "report_linked": {
+        "title": "Report {report} joined issue {issue}",
+        "body": "Others reported the same problem, so your report was added to it. You'll get its updates."
+      },
+      "issue_status": {
+        "title": "Issue {issue}: {status}",
+        "body": "The issue your report is on is now “{status}”."
+      },
+      "review_task": {
+        "title": "Report {report} needs a duplicate decision",
+        "body": "Matching wasn't sure whether it repeats an existing issue. Open the review queue to decide."
+      },
+      "assignment": {
+        "title": "Issue {issue} assigned to you",
+        "body": "Open your field work to accept it and get started."
+      },
+      "fallback": {
+        "title": "Update",
+        "body": "Something changed. Open it for details."
+      }
+    }
   }
 }
