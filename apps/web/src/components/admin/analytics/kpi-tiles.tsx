@@ -21,6 +21,7 @@ export const KPI_ORDER = [
   "duplicate_rate",
   "review_rate",
   "reopen_rate",
+  "sla_compliance",
 ] as const;
 
 export function useKpiFormat() {
@@ -181,7 +182,7 @@ export function KpiTiles({
   }
   if (state.isPending || !kpis) {
     return (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {KPI_ORDER.map((key) => (
           <Skeleton key={key} className="h-36 rounded-xl" />
         ))}
@@ -193,7 +194,7 @@ export function KpiTiles({
   return (
     <ul
       aria-label={t("kpisLabel")}
-      className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+      className="grid grid-cols-2 gap-3 lg:grid-cols-3"
     >
       {KPI_ORDER.map((metric) => {
         const kpi = byMetric.get(metric);

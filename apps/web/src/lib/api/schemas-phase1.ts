@@ -8,6 +8,7 @@ import {
   reportMatchSchema,
   severitySchema,
 } from "./schemas-ai";
+import { slaStateSchema } from "./schemas-sla";
 
 /*
  * Response schemas for the Phase 1 contract (docs/api/phase-1-contract.md):
@@ -292,6 +293,10 @@ export const issueListItemSchema = z.object({
   severity: severitySchema.nullish(),
   priority: prioritySchema.nullish(),
   thumb_url: z.string().nullish(),
+  /** SLA resolution deadline; null when no target applies. */
+  due_at: z.string().nullish(),
+  overdue: z.boolean().default(false),
+  sla_state: slaStateSchema.default("none"),
   created_at: z.string(),
   updated_at: z.string(),
   version: z.number(),
@@ -336,6 +341,9 @@ export const issueDetailSchema = issueListItemSchema.extend({
   timeline: z.array(issueTimelineEventSchema).default([]),
   allowed_transitions: z.array(allowedTransitionSchema).default([]),
   related: z.array(relatedIssueSchema).default([]),
+  breached_at: z.string().nullish(),
+  /** 0: none; 1: supervisors told; 2: municipal admins told. */
+  escalation_level: z.number().default(0),
 });
 export type IssueDetail = z.infer<typeof issueDetailSchema>;
 

@@ -81,6 +81,13 @@ export const analyticsBodies = {
         previous: 0.04,
         sparkline: spark([0.05, 0.04, 0.06, 0.05, 0.05, 0.05, 0.05]),
       },
+      {
+        metric: "sla_compliance",
+        unit: "ratio",
+        value: 0.85,
+        previous: 0.8,
+        sparkline: spark([0.8, 0.82, 0.85, 0.9, 0.84, 0.86, 0.85]),
+      },
     ],
   },
   trend: {

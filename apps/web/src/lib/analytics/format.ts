@@ -31,12 +31,17 @@ const LOWER_IS_BETTER = new Set([
   "reopen_rate",
 ]);
 
+/** Higher is better for these. */
+const HIGHER_IS_BETTER = new Set(["sla_compliance"]);
+
 export function deltaTone(
   metric: string,
   change: number,
 ): "good" | "bad" | "neutral" {
-  if (!LOWER_IS_BETTER.has(metric) || Math.abs(change) < 1e-9) return "neutral";
-  return change < 0 ? "good" : "bad";
+  if (Math.abs(change) < 1e-9) return "neutral";
+  if (LOWER_IS_BETTER.has(metric)) return change < 0 ? "good" : "bad";
+  if (HIGHER_IS_BETTER.has(metric)) return change > 0 ? "good" : "bad";
+  return "neutral";
 }
 
 /** Hours as `{value, unit}` for the message catalogue. */
