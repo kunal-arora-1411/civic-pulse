@@ -1037,7 +1037,18 @@
       "tooMany": "Remove {extra, plural, one {# photo} other {# photos}}: you can add up to {max}.",
       "limitReached": "You've added the most photos allowed ({max}).",
       "skipped": "{count, plural, one {# photo wasn't} other {# photos weren't}} added: you can add up to {max}.",
-      "tip": "Tip: step back a little so the surroundings show too. It helps the team find the spot."
+      "tip": "Tip: step back a little so the surroundings show too. It helps the team find the spot.",
+      "camera": {
+        "title": "Take a photo",
+        "close": "Close the camera",
+        "preview": "Camera preview",
+        "capture": "Take photo",
+        "switch": "Switch camera",
+        "starting": "Starting the camera…",
+        "denied": "Camera access is blocked. Allow the camera for this site in your browser settings, or choose a photo file instead.",
+        "unavailable": "We couldn't find a camera on this device. Choose a photo file instead.",
+        "useFiles": "Choose a photo file"
+      }
     },
     "location": {
       "title": "Where is the problem?",

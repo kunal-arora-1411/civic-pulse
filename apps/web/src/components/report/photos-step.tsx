@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import type { PhotoIssue, PhotoLimits } from "@/lib/report/validation";
 import { cn } from "@/lib/utils";
+import { CameraCapture, canUseLiveCamera } from "./camera-capture";
 import type { LivePhoto } from "./use-photo-uploads";
 
 function PhotoTile({
@@ -153,17 +154,29 @@ export function PhotosStep({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [skipped, setSkipped] = useState(0);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const ids = { camera: useId(), gallery: useId(), status: useId() };
   const remaining = Math.max(0, limits.max - photos.length);
   const full = remaining === 0;
+
+  const addFiles = (files: File[]) => {
+    if (files.length === 0) return;
+    setSkipped(Math.max(0, files.length - remaining));
+    onAdd(files.slice(0, remaining));
+  };
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     // Reset so picking the same file again still fires a change.
     event.target.value = "";
-    if (files.length === 0) return;
-    setSkipped(Math.max(0, files.length - remaining));
-    onAdd(files.slice(0, remaining));
+    addFiles(files);
+  };
+
+  // A live camera in the page where the browser allows it; otherwise the
+  // file input, whose `capture` hint opens the camera app on phones.
+  const takePhoto = () => {
+    if (canUseLiveCamera()) setCameraOpen(true);
+    else cameraRef.current?.click();
   };
 
   const uploaded = photos.filter((photo) => photo.status === "done").length;
@@ -199,7 +212,7 @@ export function PhotosStep({
           size="lg"
           className="h-16 text-base [&_svg]:size-6"
           disabled={full}
-          onClick={() => cameraRef.current?.click()}
+          onClick={takePhoto}
         >
           <Camera aria-hidden="true" />
           {t("takePhoto")}
@@ -215,6 +228,13 @@ export function PhotosStep({
           {t("choose")}
         </Button>
       </div>
+
+      <CameraCapture
+        open={cameraOpen}
+        onOpenChange={setCameraOpen}
+        onCapture={(file) => addFiles([file])}
+        onFallback={() => cameraRef.current?.click()}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <p className="font-semibold">
@@ -249,7 +269,7 @@ export function PhotosStep({
       {photos.length > 0 ? (
         <ul
           aria-label={t("listLabel")}
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5"
         >
           {photos.map((photo, index) => (
             <PhotoTile
