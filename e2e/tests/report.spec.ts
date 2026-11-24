@@ -143,12 +143,20 @@ test("a citizen reports a pothole and follows it (AC-01)", async ({ page }) => {
   await expect(page.getByText(description)).toBeVisible();
   await expect(page.getByText("MG Road")).toBeVisible();
 
-  await expect(page.getByText(/Tracked as issue CP-\d{2}-\d{6}/)).toBeVisible();
+  // Matching runs in the background (Phase 2). The same photo at the same
+  // spot on a rerun links to the earlier issue instead of opening a new one.
+  await expect(
+    page.getByText(
+      /(New issue|Added to an existing issue|Tracked as issue) CP-\d{2}-\d{6}/,
+    ),
+  ).toBeVisible({ timeout: 60_000 });
   const timeline = page.getByRole("list").filter({
     has: page.getByRole("listitem").locator("time"),
   });
-  await expect(timeline.getByRole("listitem")).toHaveCount(1);
-  await expect(timeline.getByText("Reported", { exact: true })).toBeVisible();
+  await expect(timeline.getByRole("listitem").first()).toBeVisible();
+  await expect(
+    timeline.getByText("Reported", { exact: true }).first(),
+  ).toBeVisible();
 });
 
 test("sending the same report again after a lost response creates one report", async ({
