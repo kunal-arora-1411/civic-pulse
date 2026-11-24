@@ -258,7 +258,12 @@ function useCodeError() {
   const errorMessage = useErrorMessage();
   return (
     error: unknown,
-  ): { field?: string; form?: string; expired?: boolean } => {
+  ): {
+    field?: string;
+    form?: string;
+    expired?: boolean;
+    locked?: boolean;
+  } => {
     if (isApiError(error, "invalid_code")) {
       const remaining = error.details.attempts_remaining;
       const suffix =
@@ -268,6 +273,11 @@ function useCodeError() {
       return { field: `${errorMessage(error)}${suffix}` };
     }
     if (isApiError(error, "code_expired")) return { expired: true };
+    // After the last allowed wrong code the API answers 429
+    // too_many_attempts and the challenge is dead, like an expired one.
+    if (isApiError(error, "too_many_attempts")) {
+      return { expired: true, locked: true };
+    }
     return { form: errorMessage(error) };
   };
 }
@@ -360,8 +370,14 @@ function OtpStep({
       </StepHeader>
 
       {expired ? (
-        <Alert variant="warning" live="assertive" title={t("codeExpiredTitle")}>
-          {t("codeExpiredBody")}
+        <Alert
+          variant="warning"
+          live="assertive"
+          title={
+            verifyError?.locked ? t("codeLockedTitle") : t("codeExpiredTitle")
+          }
+        >
+          {verifyError?.locked ? t("codeLockedBody") : t("codeExpiredBody")}
         </Alert>
       ) : null}
 
@@ -452,6 +468,10 @@ function MfaStep({
     onError: (error) => {
       if (isApiError(error, "code_expired")) {
         onRestart(t("mfaExpired"));
+        return;
+      }
+      if (isApiError(error, "too_many_attempts")) {
+        onRestart(t("mfaLocked"));
         return;
       }
       setCode("");

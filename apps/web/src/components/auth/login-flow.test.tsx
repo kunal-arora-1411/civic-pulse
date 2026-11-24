@@ -174,6 +174,50 @@ describe("LoginFlow", () => {
     expect(screen.getByRole("button", { name: /verify/i })).toBeDisabled();
   });
 
+  it("asks for a new code once the wrong-code limit is used up", async () => {
+    // The API's last allowed wrong code answers 429 too_many_attempts,
+    // and the challenge can't be used again.
+    server.use(
+      http.post(`${API}/auth/otp/request`, () => HttpResponse.json(challenge)),
+      http.post(`${API}/auth/otp/verify`, () =>
+        HttpResponse.json(errorBody("too_many_attempts"), { status: 429 }),
+      ),
+    );
+
+    const { user } = renderWithProviders(<LoginFlow />);
+    await user.type(screen.getByLabelText(/mobile number/i), "9876543210");
+    await user.click(screen.getByRole("button", { name: "Send code" }));
+    await user.type(await screen.findByLabelText(/6-digit code/i), "999999");
+
+    expect(await screen.findByText("Too many wrong codes")).toBeInTheDocument();
+    expect(screen.getByLabelText(/6-digit code/i)).toBeDisabled();
+    expect(screen.getByRole("button", { name: /verify/i })).toBeDisabled();
+    expect(screen.queryByText(/something went wrong/i)).toBeNull();
+  });
+
+  it("starts over when the MFA wrong-code limit is used up", async () => {
+    server.use(
+      http.post(`${API}/auth/otp/request`, () => HttpResponse.json(challenge)),
+      http.post(`${API}/auth/otp/verify`, () =>
+        HttpResponse.json({ mfa_required: true, mfa_token: "mfa-1" }),
+      ),
+      http.post(`${API}/auth/mfa/verify`, () =>
+        HttpResponse.json(errorBody("too_many_attempts"), { status: 429 }),
+      ),
+    );
+
+    const { user } = renderWithProviders(<LoginFlow />);
+    await user.type(screen.getByLabelText(/mobile number/i), "9876543210");
+    await user.click(screen.getByRole("button", { name: "Send code" }));
+    await user.type(await screen.findByLabelText(/6-digit code/i), "000000");
+    await user.type(await screen.findByLabelText(/authenticator/i), "123456");
+
+    expect(
+      await screen.findByText(/too many wrong codes\. start again/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/mobile number/i)).toBeInTheDocument();
+  });
+
   it("returns to the phone step when the MFA token expires", async () => {
     server.use(
       http.post(`${API}/auth/otp/request`, () => HttpResponse.json(challenge)),
