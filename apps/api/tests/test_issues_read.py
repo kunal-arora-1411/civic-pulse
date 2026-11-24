@@ -349,8 +349,12 @@ async def test_detail_has_reports_timeline_and_transitions(
             "public_note": None,
             "visibility": "public",
             "actor": {"id": str(q.city.citizen_row.id), "display_name": "Asha Citizen"},
+            "related_issue": None,
+            "data": None,
         }
     ]
+    assert (detail["merged_into"], detail["related"]) == (None, [])
+    assert report["match_decisions"] == []
     assert detail["allowed_transitions"] == [
         {"to_status": "under_review", "requires_reason": False},
         {"to_status": "verified", "requires_reason": False},

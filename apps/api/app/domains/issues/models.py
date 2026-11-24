@@ -239,7 +239,11 @@ class IssueEvent(Base):
     public_note: Mapped[str | None] = mapped_column(Text)
     visibility: Mapped[str] = mapped_column(String(16))
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # clock_timestamp(), not now(): several events written in one transaction
+    # (a merge, a split) keep the order they were written in.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.clock_timestamp()
+    )
     # Phase 2: the other issue in a merge or split, and structured details
     # (moved report ids, old and new values) for the staff timeline.
     related_issue_id: Mapped[uuid.UUID | None] = mapped_column()

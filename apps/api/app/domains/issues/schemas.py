@@ -73,6 +73,11 @@ class IssuePage(Page[IssueListItem]):
     pass
 
 
+class IssueRefOut(BaseModel):
+    id: uuid.UUID
+    reference: str
+
+
 class EventActor(BaseModel):
     id: uuid.UUID
     display_name: str | None
@@ -90,11 +95,20 @@ class TimelineEvent(BaseModel):
     public_note: str | None
     visibility: Visibility
     actor: EventActor | None
+    related_issue: IssueRefOut | None = Field(description="The other issue in a merge or split.")
+    data: dict[str, Any] | None = Field(
+        description="Details for the staff timeline: moved report ids, old and new values."
+    )
 
 
 class AllowedTransition(BaseModel):
     to_status: IssueStatus
     requires_reason: bool
+
+
+class RelatedIssueOut(BaseModel):
+    issue: IssueListItem
+    note: str | None
 
 
 class IssueDetail(IssueListItem):
@@ -106,6 +120,82 @@ class IssueDetail(IssueListItem):
     allowed_transitions: list[AllowedTransition] = Field(
         description="What the caller may move this issue to right now."
     )
+    merged_into: IssueRefOut | None = Field(
+        description="Set when this issue was merged into another: redirect there."
+    )
+    related: list[RelatedIssueOut] = Field(description="Issues marked as related (FR-060).")
+
+
+def _clean(value: str | None) -> str | None:
+    return (value.strip() or None) if value is not None else None
+
+
+class _Change(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str | None = Field(
+        default=None, max_length=2000, description="Internal; never shown to citizens."
+    )
+    version: int = Field(ge=1, description="The `version` you last saw (optimistic locking).")
+
+    @field_validator("reason")
+    @classmethod
+    def _strip_reason(cls, value: str | None) -> str | None:
+        return _clean(value)
+
+
+class MergeRequest(_Change):
+    source_issue_ids: list[uuid.UUID] = Field(
+        min_length=1, max_length=20, description="Merged into the issue in the path."
+    )
+
+    @field_validator("source_issue_ids")
+    @classmethod
+    def _unique(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(value) != len(set(value)):
+            raise ValueError("Each issue can only be listed once.")
+        return value
+
+
+class NewIssueTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    new_issue: Literal[True]
+
+
+class ExistingIssueTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    issue_id: uuid.UUID
+
+
+class SplitRequest(_Change):
+    report_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+    target: NewIssueTarget | ExistingIssueTarget
+
+    @field_validator("report_ids")
+    @classmethod
+    def _unique(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(value) != len(set(value)):
+            raise ValueError("Each report can only be listed once.")
+        return value
+
+
+class SplitResult(BaseModel):
+    source: IssueDetail
+    target: IssueDetail
+
+
+class RelatedRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    issue_id: uuid.UUID
+    note: str | None = Field(default=None, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def _strip_note(cls, value: str | None) -> str | None:
+        return _clean(value)
 
 
 class StatusChange(BaseModel):

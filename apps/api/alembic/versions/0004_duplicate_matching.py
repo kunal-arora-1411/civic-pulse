@@ -166,6 +166,9 @@ def upgrade() -> None:
     # --- issue_events: new event types, the other issue, details --------------------
     op.add_column("issue_events", sa.Column("related_issue_id", sa.Uuid(), nullable=True))
     op.add_column("issue_events", sa.Column("data", postgresql.JSONB(), nullable=True))
+    # A merge or split writes several events in one transaction; now() would
+    # give them all the same time and the timeline no stable order.
+    op.alter_column("issue_events", "created_at", server_default=sa.text("clock_timestamp()"))
     op.create_foreign_key(
         "fk_issue_events_tenant_related_issue",
         "issue_events",
@@ -346,6 +349,7 @@ def downgrade() -> None:
         "ck_issue_events_type_values", "issue_events", f"type IN ({_in(OLD_EVENT_TYPES)})"
     )
     op.drop_constraint("fk_issue_events_tenant_related_issue", "issue_events", type_="foreignkey")
+    op.alter_column("issue_events", "created_at", server_default=sa.text("now()"))
     op.drop_column("issue_events", "data")
     op.drop_column("issue_events", "related_issue_id")
     op.drop_index("ix_civic_issues_merged_into_id", "civic_issues")

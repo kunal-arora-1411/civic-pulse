@@ -18,4 +18,22 @@ class InvalidTransition(AppError):
 class ReasonRequired(AppError):
     status_code = 422
     code = "reason_required"
-    message = "This status change needs a reason."
+    message = "This change needs a reason."
+
+
+class InvalidMerge(AppError):
+    status_code = 422
+    code = "invalid_merge"
+    message = "These issues can't be merged that way."
+
+
+class CannotEmptyIssue(AppError):
+    status_code = 422
+    code = "cannot_empty_issue"
+    message = "A split must leave at least one report on the issue."
+
+
+class IssueMerged(AppError):
+    status_code = 422
+    code = "issue_merged"
+    message = "This issue was merged into another; act on that one instead."

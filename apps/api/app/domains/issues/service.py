@@ -22,6 +22,7 @@ from app.domains.issues.models import (
     CivicIssue,
     EventType,
     IssueEvent,
+    IssueRelation,
     SeveritySource,
     Visibility,
 )
@@ -33,11 +34,13 @@ from app.domains.issues.schemas import (
     IssueFeatureCollection,
     IssueFeatureProperties,
     IssueListItem,
+    IssueRefOut,
     PointGeometry,
     PointOut,
     PriorityDetailOut,
     PriorityFactorOut,
     PriorityOut,
+    RelatedIssueOut,
     SeverityOut,
     StatusChange,
     TimelineEvent,
@@ -372,9 +375,11 @@ async def allowed_transitions(
 
 
 async def _timeline(db: AsyncSession, issue_id: uuid.UUID) -> list[TimelineEvent]:
+    other = aliased(CivicIssue)
     rows = await db.execute(
-        select(IssueEvent, User.display_name)
+        select(IssueEvent, User.display_name, other.reference)
         .outerjoin(User, User.id == IssueEvent.actor_id)
+        .outerjoin(other, other.id == IssueEvent.related_issue_id)
         .where(IssueEvent.issue_id == issue_id)
         .order_by(IssueEvent.created_at, IssueEvent.id)
     )
@@ -389,8 +394,12 @@ async def _timeline(db: AsyncSession, issue_id: uuid.UUID) -> list[TimelineEvent
             public_note=event.public_note,
             visibility=Visibility(event.visibility),
             actor=EventActor(id=event.actor_id, display_name=name) if event.actor_id else None,
+            related_issue=IssueRefOut(id=event.related_issue_id, reference=other_ref)
+            if event.related_issue_id and other_ref
+            else None,
+            data=event.data,
         )
-        for event, name in rows
+        for event, name, other_ref in rows
     ]
 
 
@@ -473,4 +482,35 @@ async def get_detail(
         ),
         timeline=await _timeline(db, issue.id),
         allowed_transitions=await allowed_transitions(db, principal, issue),
+        merged_into=await _merged_into(db, issue),
+        related=await related_issues(db, storage, principal, issue.id),
     )
+
+
+async def _merged_into(db: AsyncSession, issue: CivicIssue) -> IssueRefOut | None:
+    if issue.merged_into_id is None:
+        return None
+    reference = await db.scalar(
+        select(CivicIssue.reference).where(CivicIssue.id == issue.merged_into_id)
+    )
+    return IssueRefOut(id=issue.merged_into_id, reference=reference or "")
+
+
+async def related_issues(
+    db: AsyncSession, storage: ObjectStorage, principal: Principal, issue_id: uuid.UUID
+) -> list[RelatedIssueOut]:
+    """Issues marked as related, as list items (those in the caller's scope)."""
+    pairs = (
+        await db.execute(
+            select(IssueRelation).where(
+                or_(IssueRelation.issue_id == issue_id, IssueRelation.related_issue_id == issue_id)
+            )
+        )
+    ).scalars()
+    notes = {(p.related_issue_id if p.issue_id == issue_id else p.issue_id): p.note for p in pairs}
+    items = await list_items(db, storage, principal, list(notes))
+    return [
+        RelatedIssueOut(issue=items[other], note=note)
+        for other, note in sorted(notes.items(), key=lambda kv: str(kv[0]))
+        if other in items
+    ]

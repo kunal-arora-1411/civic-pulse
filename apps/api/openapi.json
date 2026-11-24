@@ -4748,6 +4748,500 @@
         }
       }
     },
+    "/api/v1/issues/{issue_id}/merge": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Merge Issues",
+        "description": "Merge `source_issue_ids` into this issue, which survives and keeps\nits status. Their reports move here; they keep their references and\nhistory, point here with `merged_into` and leave lists and the map.\n`version` is this issue's. Into itself or into a merged issue:\n`422 invalid_merge`. A blank reason: `422 reason_required`.",
+        "operationId": "issues_merge",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/split": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Split Issue",
+        "description": "Move `report_ids` to a new issue (`{\"new_issue\": true}`: same\ncategory, at the oldest moved report, status `reported`) or to an\nexisting one (`{\"issue_id\"}`). Moving every report out is\n`422 cannot_empty_issue`.",
+        "operationId": "issues_split",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SplitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SplitResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/related": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Add Related Issue",
+        "description": "Mark another issue as related without merging (FR-060). Already\nrelated: `409 conflict`. Audited.",
+        "operationId": "issues_add_related",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelatedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedIssueOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/related/{other_id}": {
+      "delete": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Remove Related Issue",
+        "operationId": "issues_remove_related",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "other_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Other Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/matching-config": {
       "get": {
         "tags": [
@@ -7174,6 +7668,21 @@
         "type": "object",
         "title": "Evidence"
       },
+      "ExistingIssueTarget": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "issue_id"
+        ],
+        "title": "ExistingIssueTarget"
+      },
       "Feedback": {
         "type": "string",
         "enum": [
@@ -7402,6 +7911,25 @@
             "type": "array",
             "title": "Allowed Transitions",
             "description": "What the caller may move this issue to right now."
+          },
+          "merged_into": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssueRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when this issue was merged into another: redirect there."
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedIssueOut"
+            },
+            "type": "array",
+            "title": "Related",
+            "description": "Issues marked as related (FR-060)."
           }
         },
         "type": "object",
@@ -7423,7 +7951,9 @@
           "version",
           "reports",
           "timeline",
-          "allowed_transitions"
+          "allowed_transitions",
+          "merged_into",
+          "related"
         ],
         "title": "IssueDetail"
       },
@@ -7697,6 +8227,25 @@
           "status"
         ],
         "title": "IssueRef"
+      },
+      "IssueRefOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference"
+        ],
+        "title": "IssueRefOut"
       },
       "IssueStatus": {
         "type": "string",
@@ -8436,6 +8985,47 @@
         ],
         "title": "MediaVariants"
       },
+      "MergeRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Internal; never shown to citizens."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "The `version` you last saw (optimistic locking)."
+          },
+          "source_issue_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Source Issue Ids",
+            "description": "Merged into the issue in the path."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "source_issue_ids"
+        ],
+        "title": "MergeRequest"
+      },
       "MfaChallengeResponse": {
         "properties": {
           "mfa_required": {
@@ -8661,6 +9251,21 @@
           "within_m"
         ],
         "title": "NearPlacesRule"
+      },
+      "NewIssueTarget": {
+        "properties": {
+          "new_issue": {
+            "type": "boolean",
+            "const": true,
+            "title": "New Issue"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "new_issue"
+        ],
+        "title": "NewIssueTarget"
       },
       "OtpRequestIn": {
         "properties": {
@@ -9243,6 +9848,57 @@
         "additionalProperties": false,
         "type": "object",
         "title": "RefreshIn"
+      },
+      "RelatedIssueOut": {
+        "properties": {
+          "issue": {
+            "$ref": "#/components/schemas/IssueListItem"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue",
+          "note"
+        ],
+        "title": "RelatedIssueOut"
+      },
+      "RelatedRequest": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "issue_id"
+        ],
+        "title": "RelatedRequest"
       },
       "ReportCreate": {
         "properties": {
@@ -10206,6 +10862,74 @@
         ],
         "title": "SeveritySource"
       },
+      "SplitRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Internal; never shown to citizens."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "The `version` you last saw (optimistic locking)."
+          },
+          "report_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Report Ids"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewIssueTarget"
+              },
+              {
+                "$ref": "#/components/schemas/ExistingIssueTarget"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "report_ids",
+          "target"
+        ],
+        "title": "SplitRequest"
+      },
+      "SplitResult": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/IssueDetail"
+          },
+          "target": {
+            "$ref": "#/components/schemas/IssueDetail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "title": "SplitResult"
+      },
       "StatusChange": {
         "properties": {
           "to_status": {
@@ -10423,6 +11147,30 @@
                 "type": "null"
               }
             ]
+          },
+          "related_issue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssueRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The other issue in a merge or split."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data",
+            "description": "Details for the staff timeline: moved report ids, old and new values."
           }
         },
         "type": "object",
@@ -10435,7 +11183,9 @@
           "reason",
           "public_note",
           "visibility",
-          "actor"
+          "actor",
+          "related_issue",
+          "data"
         ],
         "title": "TimelineEvent",
         "description": "The staff timeline: every event, internal ones included."
