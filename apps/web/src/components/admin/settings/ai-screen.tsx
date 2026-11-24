@@ -44,6 +44,28 @@ function isModelTask(task: string): task is ModelTask {
   return (MODEL_TASKS as readonly string[]).includes(task);
 }
 
+/** One row per category code that was kept or corrected, busiest first. */
+export function categoryChoices(counts: {
+  accepted_by_category: Record<string, number>;
+  corrected_by_category: Record<string, number>;
+}): { code: string; accepted: number; corrected: number }[] {
+  const codes = new Set([
+    ...Object.keys(counts.accepted_by_category),
+    ...Object.keys(counts.corrected_by_category),
+  ]);
+  return [...codes]
+    .map((code) => ({
+      code,
+      accepted: counts.accepted_by_category[code] ?? 0,
+      corrected: counts.corrected_by_category[code] ?? 0,
+    }))
+    .sort(
+      (a, b) =>
+        b.accepted + b.corrected - (a.accepted + a.corrected) ||
+        a.code.localeCompare(b.code),
+    );
+}
+
 function defaultRange() {
   const now = new Date();
   return {
@@ -72,10 +94,6 @@ function Models() {
     queryKey: ["admin", "ai", "models"],
     queryFn: ({ signal }) => listModels(signal),
   });
-  const active = new Set(
-    Object.values(models.data?.active ?? {}).filter(Boolean) as string[],
-  );
-
   return (
     <section aria-labelledby="ai-models" className="grid gap-3">
       <div className="grid gap-1">
@@ -122,7 +140,7 @@ function Models() {
                   <TableCell>
                     <span className="font-semibold">{model.name}</span>{" "}
                     <span className="font-mono text-xs">{model.version}</span>
-                    {active.has(model.model_id) ? (
+                    {model.active ? (
                       <Badge variant="success" className="ms-2">
                         <CircleCheck aria-hidden="true" />
                         {t("active")}
@@ -203,10 +221,11 @@ function Quality() {
   const n = (value: number) => format.number(value);
   const localized = useLocalized();
   const categories = useFilterCategories();
-  const categoryName = (id: string) => {
-    const category = categories.data?.find((item) => item.id === id);
+  const categoryName = (code: string) => {
+    const category = categories.data?.find((item) => item.code === code);
     return category ? localized(category.name_i18n) : null;
   };
+  const choices = q ? categoryChoices(q.classifications) : [];
 
   return (
     <section aria-labelledby="ai-quality" className="grid gap-3">
@@ -330,17 +349,17 @@ function Quality() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {q.category_choices.length === 0 ? (
+              {choices.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={4} className="text-muted-foreground">
                     {t("noChoices")}
                   </TableCell>
                 </TableRow>
               ) : (
-                q.category_choices.map((row) => (
-                  <TableRow key={row.category_id}>
+                choices.map((row) => (
+                  <TableRow key={row.code}>
                     <TableCell>
-                      {categoryName(row.category_id) ?? (
+                      {categoryName(row.code) ?? (
                         <span className="font-mono text-sm">{row.code}</span>
                       )}
                     </TableCell>

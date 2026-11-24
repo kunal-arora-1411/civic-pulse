@@ -173,7 +173,8 @@ describe("AiScreen", () => {
               license: "MIT",
               deployed_at: "2026-11-20T00:00:00Z",
               intended_use: "Photo similarity for duplicate matching",
-              metrics: null,
+              metrics: { matching: { visual_min: 0.92 } },
+              active: true,
             },
             {
               model_id: "fake@1",
@@ -184,10 +185,10 @@ describe("AiScreen", () => {
               license: null,
               deployed_at: null,
               intended_use: null,
-              metrics: null,
+              metrics: {},
+              active: false,
             },
           ],
-          active: { embedding: "clip-vit-b32@onnx-1" },
         }),
       ),
       http.get(`${API}/admin/categories`, () =>
@@ -201,10 +202,12 @@ describe("AiScreen", () => {
         return HttpResponse.json({
           from: url.searchParams.get("from"),
           to: url.searchParams.get("to"),
-          classifications: { done: 120, failed: 6 },
-          category_choices: [
-            { category_id: "c1", code: "pothole", accepted: 40, corrected: 10 },
-          ],
+          classifications: {
+            done: 120,
+            failed: 6,
+            accepted_by_category: { pothole: 40 },
+            corrected_by_category: { pothole: 10 },
+          },
           matching: { auto_linked: 12, sent_to_review: 9, new_issue: 80 },
           reviews: { linked: 5, new_issue: 4 },
           auto_link_feedback: { correct: 7, incorrect: 1 },

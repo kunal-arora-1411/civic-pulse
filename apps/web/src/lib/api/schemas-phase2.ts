@@ -138,30 +138,28 @@ export const modelRegistryEntrySchema = z.object({
   deployed_at: z.string().nullish(),
   intended_use: z.string().nullish(),
   metrics: z.record(z.string(), z.unknown()).nullish(),
+  /** The model in use for its task: the one deployed most recently. */
+  active: z.boolean(),
 });
 export type ModelRegistryEntry = z.infer<typeof modelRegistryEntrySchema>;
 
 export const modelRegistrySchema = z.object({
+  /** Newest deployment first. */
   items: z.array(modelRegistryEntrySchema),
-  /** The model in use for each task, by `model_id`. */
-  active: z.record(z.string(), z.string().nullable()).default({}),
 });
 export type ModelRegistry = z.infer<typeof modelRegistrySchema>;
 
 export const aiQualitySchema = z.object({
   from: z.string(),
   to: z.string(),
-  classifications: z.object({ done: z.number(), failed: z.number() }),
-  category_choices: z
-    .array(
-      z.object({
-        category_id: z.string(),
-        code: z.string(),
-        accepted: z.number(),
-        corrected: z.number(),
-      }),
-    )
-    .default([]),
+  classifications: z.object({
+    done: z.number(),
+    failed: z.number(),
+    /** Reports whose citizen kept the top suggestion, by category code. */
+    accepted_by_category: z.record(z.string(), z.number()),
+    /** Reports whose citizen chose another category, by the chosen code. */
+    corrected_by_category: z.record(z.string(), z.number()),
+  }),
   matching: z.object({
     auto_linked: z.number(),
     sent_to_review: z.number(),
