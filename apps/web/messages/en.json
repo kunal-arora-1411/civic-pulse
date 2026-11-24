@@ -674,7 +674,17 @@
       "descriptionTooShort": "Without a photo, describe the problem in at least {min} characters.",
       "photosTooFew": "{category} needs at least {min, plural, one {# photo} other {# photos}}. You've added {count}.",
       "photosTooMany": "{category} allows up to {max, plural, one {# photo} other {# photos}}. You've added {count}.",
-      "editPhotos": "Change photos"
+      "editPhotos": "Change photos",
+      "suggestionLoading": "Looking at your photo to suggest a category…",
+      "suggestedTitle": "Suggested from your photo",
+      "suggestion_looksLike": "This looks like {category}.",
+      "suggestion_mightBe": "This might be {category}.",
+      "suggestionYourChoice": "It's your choice: pick another one if this isn't right.",
+      "suggestedBadge": "Suggested from your photo",
+      "suggestedGroup": "Suggested from your photo",
+      "otherGroup": "All other kinds of problem",
+      "notCivicTitle": "We couldn't spot a civic problem in this photo",
+      "notCivicBody": "You can still continue. If it isn't the photo you meant to send, you can change it."
     },
     "review": {
       "title": "Check and send",

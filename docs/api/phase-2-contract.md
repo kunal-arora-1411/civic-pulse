@@ -75,7 +75,7 @@ Three engineers work in parallel:
 - `not_civic` is true when that reserved code wins. The client shows a soft warning but never blocks the citizen (PRD §8.6).
 - `needs_manual` is true when the top category confidence is below `matching_config.classification_threshold` (default 0.45), or the result is `unknown`.
 
-**Report creation additions:** `POST /reports` accepts an optional `classification_id`. The server sets `category_source`:
+**Report creation additions:** `POST /reports` accepts an optional `classification_id`. The web app sends it only when the citizen was shown that classification's suggestion (pre-selected on the category step). It leaves it out after a failure, a timeout, `needs_manual` or `not_civic`, so a choice is never recorded as accepting or correcting a suggestion the citizen didn't see. The server sets `category_source`:
 - `ai_accepted`: the chosen category equals the top suggestion
 - `ai_corrected`: it differs (this becomes a correction label, FR-021)
 - `citizen`: no classification
