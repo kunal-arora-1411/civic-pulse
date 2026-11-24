@@ -34,12 +34,22 @@ import { hasPermission } from "@/lib/auth/access";
 import { useSession } from "@/lib/auth/use-session";
 import { processingRefetchInterval } from "@/lib/media/processing";
 import { IssueTimeline } from "./issue-timeline";
+import { MatchInfo } from "./match-info";
 import { PriorityDialog, SeverityDialog } from "./override-dialogs";
 import { PriorityCard } from "./priority-card";
+import { RelatedIssues } from "./related-issues";
 import { StatusDialog } from "./status-dialog";
 import { CategoryDialog, MergeDialog, SplitDialog } from "./structure-dialogs";
 
-function ReportItem({ report }: { report: StaffReport }) {
+function ReportItem({
+  report,
+  issue,
+  canGiveFeedback,
+}: {
+  report: StaffReport;
+  issue: IssueDetail;
+  canGiveFeedback: boolean;
+}) {
   const t = useTranslations("admin.issueDetail");
   const format = useFormatter();
   const detailLabel = useDetailLabels(report.category.id);
@@ -89,6 +99,11 @@ function ReportItem({ report }: { report: StaffReport }) {
           ? ` · ±${Math.round(report.location.accuracy_m)} m`
           : ""}
       </p>
+      <MatchInfo
+        report={report}
+        issue={issue}
+        canGiveFeedback={canGiveFeedback}
+      />
     </li>
   );
 }
@@ -179,7 +194,12 @@ function Body({
             </h2>
             <ul className="grid">
               {issue.reports.map((report) => (
-                <ReportItem key={report.id} report={report} />
+                <ReportItem
+                  key={report.id}
+                  report={report}
+                  issue={issue}
+                  canGiveFeedback={can("issue:triage")}
+                />
               ))}
             </ul>
           </Card>
@@ -219,6 +239,8 @@ function Body({
               {issue.location.lat.toFixed(5)}, {issue.location.lng.toFixed(5)}
             </p>
           </Card>
+
+          <RelatedIssues issue={issue} canEdit={can("issue:update")} />
 
           <Card className="p-5">
             <h2 className="mb-3 font-semibold">{t("facts")}</h2>

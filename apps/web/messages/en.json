@@ -424,7 +424,48 @@
         "public": "Visible to the public",
         "system": "System",
         "reason": "Reason (staff only)",
-        "publicNote": "Note shown to the citizen"
+        "publicNote": "Note shown to the citizen",
+        "types": {
+          "report_linked": "Report added",
+          "merged": "Other issues merged in",
+          "merged_into": "Merged into another issue",
+          "split": "Reports split out",
+          "category_changed": "Category corrected",
+          "severity_changed": "Severity changed",
+          "priority_changed": "Priority changed",
+          "related_added": "Related issue linked",
+          "related_removed": "Related issue unlinked"
+        }
+      },
+      "match": {
+        "auto": "Linked automatically (score {score})",
+        "reviewed": "Linked by {name} after review (score {score})",
+        "someone": "a reviewer",
+        "started": "Started this issue.",
+        "startedBest": "The closest existing issue, {reference}, scored {score}.",
+        "showWhy": "Why",
+        "hideWhy": "Hide",
+        "feedbackAsk": "Was this the same problem?",
+        "correct": "Correct",
+        "incorrect": "Incorrect",
+        "markedCorrect": "Marked as a correct link",
+        "markedIncorrect": "Marked as a wrong link",
+        "incorrectHint": "If it's a different problem, split this report out of the issue."
+      },
+      "related": {
+        "heading": "Related issues",
+        "add": "Link",
+        "none": "None. Link issues that are connected but aren't the same problem.",
+        "remove": "Unlink {reference}",
+        "removed": "Unlinked {reference}",
+        "added": "Linked {reference}",
+        "dialogTitle": "Link a related issue to {reference}",
+        "dialogDescription": "For issues that are connected but not the same problem, such as a burst main and the waterlogging it caused. Reports and counts don't change.",
+        "pickLabel": "Related issue",
+        "pickRequired": "Choose the issue to link.",
+        "note": "Note (optional)",
+        "noteHelp": "How they're connected, for colleagues.",
+        "submit": "Link issue"
       },
       "actions": {
         "category": "Change category",

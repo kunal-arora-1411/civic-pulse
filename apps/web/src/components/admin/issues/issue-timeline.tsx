@@ -1,11 +1,44 @@
 "use client";
 
-import { Globe, Lock, MessageSquareText } from "lucide-react";
+import {
+  ArrowRightFromLine,
+  Combine,
+  Gauge,
+  Globe,
+  Hand,
+  Link2,
+  Link2Off,
+  Lock,
+  type LucideIcon,
+  MessageSquareText,
+  Split,
+  Tags,
+  UserPlus,
+} from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { STATUS_STYLE } from "@/components/issues/status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { IssueTimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+/** Phase 2 event types (contract D.5) and their icons. */
+const PHASE2_EVENTS = {
+  report_linked: UserPlus,
+  merged: Combine,
+  merged_into: ArrowRightFromLine,
+  split: Split,
+  category_changed: Tags,
+  severity_changed: Gauge,
+  priority_changed: Hand,
+  related_added: Link2,
+  related_removed: Link2Off,
+} satisfies Record<string, LucideIcon>;
+
+type Phase2Event = keyof typeof PHASE2_EVENTS;
+
+function isPhase2Event(type: string): type is Phase2Event {
+  return Object.hasOwn(PHASE2_EVENTS, type);
+}
 
 /**
  * The full staff history, newest first. Internal entries are marked with
@@ -23,11 +56,15 @@ export function IssueTimeline({ events }: { events: IssueTimelineEvent[] }) {
     <ol className="grid gap-3">
       {sorted.map((event) => {
         const internal = event.visibility === "internal";
-        const Icon = event.to_status
-          ? STATUS_STYLE[event.to_status].icon
-          : MessageSquareText;
-        const title =
-          event.type === "created"
+        const phase2 = isPhase2Event(event.type) ? event.type : null;
+        const Icon = phase2
+          ? PHASE2_EVENTS[phase2]
+          : event.to_status
+            ? STATUS_STYLE[event.to_status].icon
+            : MessageSquareText;
+        const title = phase2
+          ? t(`types.${phase2}`)
+          : event.type === "created"
             ? tStatus("reported")
             : event.to_status
               ? event.from_status
