@@ -23,6 +23,7 @@ export type Report = {
   id: string;
   reference: string;
   view: "owner" | "staff";
+  matching_status?: "pending" | "linked" | "review" | "new_issue";
   media: { id: string; status: "processing" | "ready" | "failed" }[];
   issue: {
     id: string;
@@ -199,7 +200,30 @@ export class Api {
       }),
       "Creating a report",
     );
-    return (await response.json()) as Report;
+    const created = (await response.json()) as Report;
+    return this.waitForIssue(session, created.id);
+  }
+
+  /**
+   * Reports are matched asynchronously (Phase 2): `issue` is null until the
+   * AI worker links the report or opens a new issue for it.
+   */
+  async waitForIssue(
+    session: Session,
+    id: string,
+    timeoutMs = 60_000,
+  ): Promise<Report> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const report = await this.getReport(session, id);
+      if (report.issue) return report;
+      if (Date.now() > deadline) {
+        throw new Error(
+          `Report ${id} still has no issue after ${timeoutMs} ms (matching_status: ${report.matching_status})`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 
   async getReport(session: Session, id: string): Promise<Report> {
