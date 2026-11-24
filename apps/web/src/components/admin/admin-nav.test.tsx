@@ -69,6 +69,23 @@ describe("visibleNavItems", () => {
     expect(visibleNavItems(reader).map((item) => item.key)).toContain("issues");
   });
 
+  it("shows analytics only with analytics:read", () => {
+    const analyst = makeUser({
+      is_staff: true,
+      roles: [
+        { role: "supervisor", department_id: "roads", jurisdiction_id: null },
+      ],
+      permissions: ["analytics:read"],
+    });
+    expect(visibleNavItems(analyst).map((item) => item.key)).toEqual([
+      "overview",
+      "analytics",
+    ]);
+    expect(visibleNavItems(auditor).map((item) => item.key)).not.toContain(
+      "analytics",
+    );
+  });
+
   it("filters each entry by its own permission", () => {
     expect(visibleNavItems(auditor).map((item) => item.key)).toEqual([
       "overview",
