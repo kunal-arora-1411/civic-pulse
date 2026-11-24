@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.domains.ai.router import admin_router as ai_admin_router
 from app.domains.ai.router import router as ai_router
+from app.domains.analytics.router import router as analytics_router
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
 from app.domains.categories.router import router as categories_router
@@ -46,3 +47,4 @@ api_router.include_router(matching_router)
 api_router.include_router(operations_router)
 api_router.include_router(field_router)
 api_router.include_router(notifications_router)
+api_router.include_router(analytics_router)
