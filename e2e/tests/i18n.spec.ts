@@ -37,8 +37,10 @@ test("switching to Hindi shows the first report step in Hindi", async ({
   ).toBeVisible();
 
   await page
-    .getByRole("combobox", { name: en.language.label })
-    .selectOption({ label: "हिन्दी" });
+    .getByRole("group", { name: en.language.label })
+    // The radio itself is visually hidden; people click its label.
+    .getByText("हिन्दी", { exact: true })
+    .click();
 
   await expect(page.locator("html")).toHaveAttribute("lang", "hi");
   await expect(

@@ -24,6 +24,8 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "seed_roles": "SELECT count(*) FROM user_roles r JOIN users u ON u.id = r.user_id "
         "WHERE u.phone LIKE '+9190000000%' OR u.phone = '+919100000001'",
         "city": "SELECT count(*) FROM jurisdictions WHERE code = 'SYN-CITY' AND kind = 'city'",
+        "delhi": "SELECT count(*) FROM jurisdictions WHERE code LIKE 'DEL-%' "
+        "AND ST_GeometryType(geom) = 'ST_MultiPolygon'",
         "categories": "SELECT count(*) FROM categories c JOIN tenants t ON t.id = c.tenant_id "
         "WHERE t.slug = 'demo-city' AND c.name_i18n ? 'hi' AND c.default_department_id IS NOT NULL",
         "transitions": "SELECT count(*) FROM status_transitions s JOIN tenants t "
@@ -90,6 +92,7 @@ async def test_seed_is_idempotent_and_usable(
         "seed_users": 9,
         "seed_roles": 9,
         "city": 1,
+        "delhi": 6,
         "categories": 5,
         "transitions": 14,
         "issues": 60,
@@ -171,6 +174,27 @@ async def test_seed_is_idempotent_and_usable(
         ).scalar_one()
     assert contained is True
     assert centre_ward == 4  # the four wards meet at the centre point
+
+    # Ramesh Nagar, West Delhi, is inside Demo City too: one city
+    # boundary, one zone and one ward cover it.
+    async with owner_engine.connect() as conn:
+        ramesh_nagar = dict(
+            (
+                await conn.execute(
+                    text(
+                        "SELECT kind, count(*) FROM jurisdictions j JOIN tenants t "
+                        "ON t.id = j.tenant_id WHERE t.slug = 'demo-city' "
+                        "AND ST_Covers(j.geom, ST_SetSRID(ST_Point(77.131, 28.651), 4326)) "
+                        "GROUP BY kind"
+                    )
+                )
+            ).all()
+        )
+    assert {str(kind): n for kind, n in ramesh_nagar.items()} == {
+        "city": 1,
+        "zone": 1,
+        "ward": 1,
+    }
 
     supervisor = await login(client, sms, "+919000000003", "demo-city")
     assert supervisor.user["roles"][0]["role"] == "supervisor"

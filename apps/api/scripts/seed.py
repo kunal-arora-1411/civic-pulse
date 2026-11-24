@@ -15,7 +15,11 @@ Running it again converges on the same state: names, geometry, roles and
 categories are reset to these values, and existing issues are left alone.
 
 The ward polygons are SYNTHETIC rectangles around central Bengaluru
-(~12.97 N, 77.59 E). They are not real municipal boundaries.
+(~12.97 N, 77.59 E). A second synthetic area around Ramesh Nagar in West
+Delhi (~28.65 N, 77.13 E) gives Demo City a city boundary, a zone and four
+wards there too, so the report flow can be tried from Delhi with a real
+GPS fix. The seeded issues all stay in Bengaluru. None of these are real
+municipal boundaries.
 """
 
 from __future__ import annotations
@@ -56,6 +60,11 @@ DEPARTMENTS = [
 # Synthetic grid around central Bengaluru: (min_lon, min_lat, max_lon, max_lat).
 WEST, MID_LON, EAST = 77.55, 77.59, 77.63
 SOUTH, MID_LAT, NORTH = 12.93, 12.97, 13.01
+
+
+# Synthetic grid around Ramesh Nagar, West Delhi.
+D_WEST, D_MID_LON, D_EAST = 77.09, 77.13, 77.17
+D_SOUTH, D_MID_LAT, D_NORTH = 28.62, 28.65, 28.68
 
 
 @dataclass(frozen=True)
@@ -112,6 +121,54 @@ AREAS = [
         JurisdictionKind.WARD,
         (MID_LON, SOUTH, EAST, MID_LAT),
         "SYN-ZS",
+    ),
+]
+
+# A second, separate piece of Demo City in West Delhi. Any of the tenant's
+# city boundaries counts as "in jurisdiction" (geo.place), so reports there
+# get a ward and a zone like anywhere else. Kept out of AREAS so the seeded
+# issues and their wards stay exactly as before.
+DELHI_AREAS = [
+    Area(
+        "DEL-CITY",
+        "Demo City, West Delhi (synthetic)",
+        JurisdictionKind.CITY,
+        (D_WEST, D_SOUTH, D_EAST, D_NORTH),
+    ),
+    Area(
+        "DEL-ZW",
+        "Synthetic Zone West Delhi",
+        JurisdictionKind.ZONE,
+        (D_WEST, D_SOUTH, D_EAST, D_NORTH),
+        "DEL-CITY",
+    ),
+    Area(
+        "DEL-W01",
+        "Synthetic Ward D1 (Rajouri Garden)",
+        JurisdictionKind.WARD,
+        (D_WEST, D_MID_LAT, D_MID_LON, D_NORTH),
+        "DEL-ZW",
+    ),
+    Area(
+        "DEL-W02",
+        "Synthetic Ward D2 (Ramesh Nagar)",
+        JurisdictionKind.WARD,
+        (D_MID_LON, D_MID_LAT, D_EAST, D_NORTH),
+        "DEL-ZW",
+    ),
+    Area(
+        "DEL-W03",
+        "Synthetic Ward D3 (Tagore Garden)",
+        JurisdictionKind.WARD,
+        (D_WEST, D_SOUTH, D_MID_LON, D_MID_LAT),
+        "DEL-ZW",
+    ),
+    Area(
+        "DEL-W04",
+        "Synthetic Ward D4 (Kirti Nagar)",
+        JurisdictionKind.WARD,
+        (D_MID_LON, D_SOUTH, D_EAST, D_MID_LAT),
+        "DEL-ZW",
     ),
 ]
 
@@ -205,7 +262,7 @@ async def run() -> dict[str, int]:
             code: await _upsert_department(db, demo, code, name) for code, name in DEPARTMENTS
         }
         areas: dict[str, uuid.UUID] = {}
-        for area in AREAS:  # parents are listed before their children
+        for area in [*AREAS, *DELHI_AREAS]:  # parents are listed before their children
             parent_id = areas[area.parent] if area.parent else None
             areas[area.code] = await _upsert_area(db, demo, area, parent_id)
 

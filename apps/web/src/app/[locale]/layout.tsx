@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
+import { InlineScript } from "@/components/inline-script";
 import { AppProviders } from "@/components/providers";
+import { themeScript } from "@/components/theme-switcher";
 import { locales, routing } from "@/i18n/routing";
 import { fontVariables } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -37,7 +39,15 @@ export default async function LocaleLayout({
   const t = await getTranslations("common");
 
   return (
-    <html lang={locale} className={cn(fontVariables, "h-full")}>
+    <html
+      lang={locale}
+      className={cn(fontVariables, "h-full")}
+      // The theme script below may set data-theme before React hydrates.
+      suppressHydrationWarning
+    >
+      <head>
+        <InlineScript html={themeScript} />
+      </head>
       <body className="flex min-h-full flex-col">
         <a
           href="#main"
