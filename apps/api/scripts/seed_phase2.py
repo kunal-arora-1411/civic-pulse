@@ -38,7 +38,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.ai.registry import get_vision_model
 from app.core.storage import get_storage
 from app.core.tenancy import system_session
-from app.domains.ai.analysis import ensure_embeddings, ensure_registered
+from app.domains.ai.analysis import ensure_embeddings, ensure_registered, refresh_phashes
 from app.domains.ai.models import ModelRegistryEntry, ModelTask
 from app.domains.categories.models import Category
 from app.domains.config.models import ConfigKey, TenantConfig
@@ -299,6 +299,9 @@ async def seed_matching_examples(
             for issue in planned
             if await db.get(MediaAsset, phase1.seed_id("media", issue.index)) is not None
         ]
+    # A database seeded before the real pHash existed holds difference
+    # hashes; bring those rows up to date before anything is matched.
+    await refresh_phashes(tenant_id)
     await ensure_embeddings(tenant_id, seeded_media)
 
     outcomes: dict[str, int] = {}

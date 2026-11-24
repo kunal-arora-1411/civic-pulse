@@ -10,11 +10,14 @@ from typing import Any
 
 import httpx
 import pytest
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.ai import registry
-from app.domains.ai.analysis import ensure_embeddings
+from app.ai.interfaces import perceptual_hash_distance
+from app.ai.phash import to_signed64
+from app.domains.ai.analysis import ensure_embeddings, refresh_phashes
+from app.domains.ai.models import MediaEmbedding
 from app.domains.matching.service import decide_and_apply, process_report, watchdog
 from tests.helpers import InlineJobs
 from tests.phase1 import NE, SW, City, login_new, make_city
@@ -183,6 +186,83 @@ async def test_without_a_photo_a_report_is_never_auto_linked(
     staff = await view(client, city.operator, same_spot["id"])
     assert staff["match"]["signals"]["reason"] == "no_photos"
     assert staff["match"]["decision"] == "sent_to_review"
+
+
+# --- the same-photo rule with the full 64 bits ------------------------------------------------
+
+# Hashes with the top bit set are negative in the bigint column.
+TOP_BIT = 1 << 63
+
+
+async def _set_phash(engine: AsyncEngine, media_id: str, value: int) -> None:
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE media_embeddings SET phash = :h WHERE media_id = :m"),
+            {"h": to_signed64(value), "m": media_id},
+        )
+
+
+async def _stored_phash(engine: AsyncEngine, media_id: str) -> int:
+    async with AsyncSession(engine) as db:
+        return (
+            await db.scalars(
+                select(MediaEmbedding.phash).where(MediaEmbedding.media_id == media_id)
+            )
+        ).one()
+
+
+@pytest.mark.parametrize(
+    ("first_hash", "second_hash"),
+    [
+        (TOP_BIT | 0xF0F0, TOP_BIT | 0xF0F3),  # both negative in the column
+        (TOP_BIT | 0x0FF0, 0x0FF0 | 0b111),  # one negative, one positive
+    ],
+)
+async def test_the_same_photo_rule_counts_all_64_bits(
+    client: httpx.AsyncClient,
+    owner_engine: AsyncEngine,
+    city: City,
+    first_hash: int,
+    second_hash: int,
+) -> None:
+    distance = perceptual_hash_distance(first_hash, second_hash)
+    assert distance <= 6
+    # The signed forms must give the same distance, or a stored hash read
+    # back without conversion would be compared wrongly.
+    assert perceptual_hash_distance(to_signed64(first_hash), to_signed64(second_hash)) == distance
+
+    first_media = await scene_photo(client, city.citizen, 21)
+    first = await report(client, city, city.citizen, media_ids=[first_media])
+    await _set_phash(owner_engine, first_media, first_hash)
+    assert await _stored_phash(owner_engine, first_media) == first_hash
+
+    # A different scene, so only the hash can make these the same photo.
+    second_media = await scene_photo(client, city.citizen, 22)
+    await ensure_embeddings(city.tenant.id, [uuid.UUID(second_media)])
+    await _set_phash(owner_engine, second_media, second_hash)
+    second = await report(
+        client, city, city.citizen, point=north_of(NE, 3), media_ids=[second_media]
+    )
+
+    assert second["matching_status"] == "linked"
+    assert second["issue"]["id"] == first["issue"]["id"]
+    staff = await view(client, city.operator, second["id"])
+    assert staff["match"]["signals"]["same_photo"] is True
+    assert staff["match"]["signals"]["visual"] == 1.0
+
+
+async def test_hashes_from_the_old_difference_hash_are_refreshed(
+    client: httpx.AsyncClient, owner_engine: AsyncEngine, city: City
+) -> None:
+    media_id = await scene_photo(client, city.citizen, 23)
+    await report(client, city, city.citizen, media_ids=[media_id])
+    real = await _stored_phash(owner_engine, media_id)
+    stale = real ^ (TOP_BIT | 0xFFFF)
+    await _set_phash(owner_engine, media_id, stale)
+
+    assert await refresh_phashes(city.tenant.id) == 1
+    assert await _stored_phash(owner_engine, media_id) == real
+    assert await refresh_phashes(city.tenant.id) == 0
 
 
 # --- AC-06: ambiguous goes to a person --------------------------------------------------------

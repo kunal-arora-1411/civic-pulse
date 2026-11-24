@@ -91,6 +91,14 @@ class FaceDetector(Protocol):
         ...
 
 
+_UINT64_MASK = (1 << 64) - 1
+
+
 def perceptual_hash_distance(a: int, b: int) -> int:
-    """Hamming distance between two 64-bit perceptual hashes."""
-    return (a ^ b).bit_count()
+    """Hamming distance between two 64-bit perceptual hashes.
+
+    Either hash may be unsigned or in the signed form a Postgres ``bigint``
+    holds: only the low 64 bits are compared. (``bit_count`` of a negative
+    Python int would count the bits of its absolute value instead.)
+    """
+    return ((a ^ b) & _UINT64_MASK).bit_count()

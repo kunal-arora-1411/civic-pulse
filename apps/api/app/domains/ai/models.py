@@ -18,6 +18,7 @@ from sqlalchemy import (
     Index,
     String,
     Text,
+    TypeDecorator,
     UniqueConstraint,
     Uuid,
     func,
@@ -26,12 +27,34 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.ai.phash import from_signed64, to_signed64
 from app.core.db import Base, TimestampMixin
 from app.domains.workflow.statuses import sql_in
 
 # The embedding column's width. A model with another dimension needs a new
 # column (or table) and a migration; existing vectors are never resized.
 EMBEDDING_DIM = 512
+
+
+class UnsignedHash64(TypeDecorator[int]):
+    """An unsigned 64-bit hash kept in a Postgres ``bigint``.
+
+    Perceptual hashes use all 64 bits, and ``bigint`` is signed, so values
+    are stored in two's complement and turned back into unsigned ints on
+    the way out. Python code only ever sees the unsigned hash, which is
+    what ``perceptual_hash_distance`` and the pHash tests expect. SQL that
+    XORs two stored hashes needs no conversion: two's complement keeps the
+    bits as they are.
+    """
+
+    impl = BigInteger
+    cache_ok = True
+
+    def process_bind_param(self, value: int | None, dialect: object) -> int | None:
+        return None if value is None else to_signed64(value)
+
+    def process_result_value(self, value: int | None, dialect: object) -> int | None:
+        return None if value is None else from_signed64(value)
 
 
 class ModelTask(StrEnum):
@@ -99,8 +122,8 @@ class MediaEmbedding(Base):
         String(100), ForeignKey("model_registry.id", ondelete="RESTRICT")
     )
     embedding: Mapped[Any] = mapped_column(Vector(EMBEDDING_DIM), deferred=True)
-    # 64-bit perceptual hash stored as a signed bigint (two's complement).
-    phash: Mapped[int] = mapped_column(BigInteger)
+    # Unsigned 64-bit pHash; signed in the column, see UnsignedHash64.
+    phash: Mapped[int] = mapped_column(UnsignedHash64())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

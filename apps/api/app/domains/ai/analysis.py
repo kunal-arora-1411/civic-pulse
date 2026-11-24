@@ -34,7 +34,7 @@ from app.core.db import get_session_factory
 from app.core.logging import log_fields
 from app.core.storage import ObjectStorage, get_storage
 from app.core.tenancy import set_tenant
-from app.domains.ai.models import EMBEDDING_DIM, ModelRegistryEntry, ModelTask
+from app.domains.ai.models import EMBEDDING_DIM, MediaEmbedding, ModelRegistryEntry, ModelTask
 from app.domains.media.inspect import InvalidImage
 from app.domains.media.models import MediaAsset, MediaStatus
 from app.domains.media.processing import decode_upright, render_image_variants
@@ -167,6 +167,65 @@ async def ensure_embeddings(
         await db.commit()
     logger.info("photos embedded", extra=log_fields(model_id=model.model_id, count=len(missing)))
     return model.model_id
+
+
+async def refresh_phashes(tenant_id: uuid.UUID, *, storage: ObjectStorage | None = None) -> int:
+    """Re-hash stored embeddings whose pHash isn't the photo's current one.
+
+    Rows written while a difference hash stood in for the real pHash hold
+    another kind of hash, which never comes within the same-photo distance
+    of a real one, so a re-upload of those photos would go unnoticed. The
+    seed runs this; it reads each original once and is safe to repeat.
+    Embedding rows are insert-only for the app role, so a stale row is
+    replaced (same vector, new hash) rather than updated. Returns the
+    number of rows replaced.
+    """
+    storage = storage or get_storage()
+    settings = get_settings()
+    async with get_session_factory()() as db:
+        await set_tenant(db, tenant_id)
+        rows = (
+            await db.execute(
+                select(
+                    MediaEmbedding.id,
+                    MediaEmbedding.media_id,
+                    MediaEmbedding.model_id,
+                    MediaEmbedding.phash,
+                    MediaAsset.storage_key,
+                )
+                .join(MediaAsset, MediaAsset.id == MediaEmbedding.media_id)
+                .order_by(MediaEmbedding.media_id, MediaEmbedding.model_id)
+            )
+        ).all()
+        await db.commit()
+        hashes: dict[str, int] = {}
+        stale = []
+        for row in rows:
+            if row.storage_key not in hashes:
+                data = await storage.read(row.storage_key, max_bytes=settings.media_max_bytes)
+                image = decode_upright(data, max_pixels=settings.media_max_pixels)
+                hashes[row.storage_key] = await asyncio.to_thread(perceptual_hash, image)
+            if hashes[row.storage_key] != row.phash:
+                stale.append((row, hashes[row.storage_key]))
+        for row, phash in stale:
+            vector = await db.scalar(
+                text("DELETE FROM media_embeddings WHERE id = :id RETURNING embedding::text"),
+                {"id": row.id},
+            )
+            await db.execute(
+                _INSERT_EMBEDDING,
+                {
+                    "tenant_id": tenant_id,
+                    "media_id": row.media_id,
+                    "model_id": row.model_id,
+                    "embedding": vector,
+                    "phash": to_signed64(phash),
+                },
+            )
+        await db.commit()
+    if stale:
+        logger.info("perceptual hashes refreshed", extra=log_fields(count=len(stale)))
+    return len(stale)
 
 
 async def blur_faces(
