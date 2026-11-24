@@ -140,7 +140,7 @@ Audit event:
 
 ## Seed data (development only, synthetic)
 
-Tenant `demo-city` ("Demo City") with a city boundary (`SYN-CITY`), 2 zones and 4 wards beneath it, and 4 departments (Roads, Solid Waste, Storm Water Drains, Street Lighting). Tenant `other-city` exists for isolation tests. Phase 1 adds categories, the workflow and synthetic issues ([Phase 1 contract, section 8](phase-1-contract.md#8-development-seed-additions)).
+Tenant `demo-city` ("Demo City") with a city boundary (`SYN-CITY`), 2 zones and 4 wards beneath it (synthetic, central Bengaluru), a second synthetic area in West Delhi (`DEL-CITY`, one zone, 4 wards, no seeded issues) so the report flow can be tried from there, and 4 departments (Roads, Solid Waste, Storm Water Drains, Street Lighting). Tenant `other-city` exists for isolation tests. Phase 1 adds categories, the workflow and synthetic issues ([Phase 1 contract, section 8](phase-1-contract.md#8-development-seed-additions)).
 
 | Phone | Role | Tenant |
 |---|---|---|
