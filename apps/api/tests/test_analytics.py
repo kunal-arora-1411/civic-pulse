@@ -94,20 +94,23 @@ async def test_breakdowns_add_up(client: httpx.AsyncClient, city: City) -> None:
     }
     category = await _get(client, city.admin, "by-category")
     (row,) = category["items"]
-    assert row["category"]["code"] == "waste" and row["total"] == 3
+    assert row["category"]["code"] == "waste"
+    assert row["total"] == 3
     wards = await _get(client, city.admin, "by-ward")
     assert sum(w["issues"] for w in wards["items"]) == 3
     assert {w["ward"]["name"] for w in wards["items"]} == {"Ward NE", "Ward NW", "Ward SE"}
     assert sum(w["resolved"] for w in wards["items"]) == 1
 
     times = await _get(client, city.admin, "resolution-times")
-    assert times["count"] == 1 and times["median_hours"] == pytest.approx(48, abs=0.01)
+    assert times["count"] == 1
+    assert times["median_hours"] == pytest.approx(48, abs=0.01)
     assert [b["count"] for b in times["bins"] if b["lower_hours"] == 48] == [1]
 
     trend = await _get(client, city.admin, "trend", interval="week")
     assert sum(p["reports"] for p in trend["points"]) == 3
     quality = await _get(client, city.admin, "matching-quality")
-    assert quality["decided_reports"] == 3 and quality["duplicate_rate"] == 0
+    assert quality["decided_reports"] == 3
+    assert quality["duplicate_rate"] == 0
     hot = await _get(client, city.admin, "hotspots", resolution=7)
     assert sum(h["issues"] for h in hot["items"]) == 3
     assert all(77.5 < h["lng"] < 77.7 and 12.9 < h["lat"] < 13.1 for h in hot["items"])

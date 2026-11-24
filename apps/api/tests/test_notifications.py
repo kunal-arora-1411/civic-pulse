@@ -78,7 +78,8 @@ async def test_mark_one_and_all_read(client: httpx.AsyncClient, city: City) -> N
     assert again.json()["read_at"] == response.json()["read_at"]
     assert await _unread(client, city.citizen) == 1
     unread_only = await _list(client, city.citizen, unread="true")
-    assert unread_only["total"] == 1 and unread_only["items"][0]["id"] != target["id"]
+    assert unread_only["total"] == 1
+    assert unread_only["items"][0]["id"] != target["id"]
 
     done = await client.post(f"{NOTIFICATIONS}/read-all", headers=city.citizen.headers)
     assert done.json() == {"updated": 1}

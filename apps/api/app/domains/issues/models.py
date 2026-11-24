@@ -86,6 +86,7 @@ class CivicIssue(TimestampMixin, Base):
             name="counts_consistent",
         ),
         CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint("support_count >= 0", name="support_count_non_negative"),
         CheckConstraint(f"severity IN ({sql_in(SeverityLevel)})", name="severity_values"),
         CheckConstraint(
             f"severity_source IN ({sql_in(SeveritySource)})", name="severity_source_values"
@@ -139,6 +140,8 @@ class CivicIssue(TimestampMixin, Base):
     ward_id: Mapped[uuid.UUID | None] = mapped_column()
     report_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     unique_reporter_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    # Citizens who said "I face this too" (app/domains/community).
+    support_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     # Severity (FR-038): computed from the category's rules unless a person
     # overrode it (`severity_source = override`, with their reason).
     severity: Mapped[str] = mapped_column(
