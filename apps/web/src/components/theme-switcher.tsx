@@ -1,8 +1,9 @@
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";
+import { useServerInsertedHTML } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useId, useSyncExternalStore } from "react";
+import { useId, useRef, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
 export type ThemeChoice = "system" | "light" | "dark";
@@ -15,6 +16,27 @@ export const THEME_STORAGE_KEY = "theme";
  * statically prerendered. Keep it tiny and dependency-free.
  */
 export const themeScript = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
+
+/**
+ * Puts themeScript into the server HTML, ahead of the page, once. Through
+ * useServerInsertedHTML rather than a <script> in the layout, so React
+ * doesn't warn about rendering a script tag. Server only: it renders
+ * nothing and inserts nothing on the client.
+ */
+export function ThemeScript() {
+  const inserted = useRef(false);
+  useServerInsertedHTML(() => {
+    if (inserted.current) return null;
+    inserted.current = true;
+    return (
+      <script
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed, first-party script that applies the saved theme before first paint
+        dangerouslySetInnerHTML={{ __html: themeScript }}
+      />
+    );
+  });
+  return null;
+}
 
 const EVENT = "civicpulse:theme";
 

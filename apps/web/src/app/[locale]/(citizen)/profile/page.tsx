@@ -11,7 +11,7 @@ export default function ProfilePage() {
   return (
     <main
       id="main"
-      className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6"
+      className="mx-auto w-full max-w-2xl flex-1 px-5 py-10 sm:px-8"
     >
       <ProfileScreen />
     </main>

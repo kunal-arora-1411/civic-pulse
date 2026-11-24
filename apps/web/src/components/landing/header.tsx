@@ -12,6 +12,7 @@ export function LandingHeader() {
     { href: "#how-it-works", label: t("howItWorks") },
     { href: "#live-map", label: t("liveMap") },
     { href: "#for-cities", label: t("forCities") },
+    { href: "/blog", label: t("blog") },
   ];
 
   return (
@@ -31,8 +32,8 @@ export function LandingHeader() {
               CivicPulse
             </span>
           </Link>
-          <nav aria-label={t("label")} className="hidden md:block">
-            <ul className="flex items-center gap-7 text-sm text-lp-ink-2">
+          <nav aria-label={t("label")} className="hidden lg:block">
+            <ul className="flex items-center gap-7 text-sm whitespace-nowrap text-lp-ink-2">
               {links.map((link) => (
                 <li key={link.href}>
                   <a

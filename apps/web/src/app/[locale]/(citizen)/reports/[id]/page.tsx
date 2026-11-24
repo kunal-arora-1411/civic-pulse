@@ -26,7 +26,7 @@ export default function ReportDetailPage({
   return (
     <main
       id="main"
-      className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-10"
+      className="mx-auto w-full max-w-5xl flex-1 px-5 py-6 sm:px-8 sm:py-10"
     >
       <RequireAuth>
         <Suspense fallback={<DetailSkeleton />}>
