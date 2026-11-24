@@ -198,6 +198,24 @@ class RelatedRequest(BaseModel):
         return _clean(value)
 
 
+class SeverityOverride(_Change):
+    severity: SeverityLevel | None = Field(
+        description="A level to override with (a reason is required), or null to go back "
+        "to the rules."
+    )
+
+
+class PriorityOverride(_Change):
+    band: PriorityBand | None = Field(
+        description="A band to override with (a reason is required), or null to go back to "
+        "the computed band."
+    )
+
+
+class CategoryChange(_Change):
+    category_id: uuid.UUID
+
+
 class StatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

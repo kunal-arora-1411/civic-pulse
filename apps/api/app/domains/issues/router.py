@@ -9,15 +9,18 @@ from app.core.db import DbSession
 from app.core.errors import error_responses
 from app.core.pagination import PageParamsDep
 from app.core.storage import Storage
-from app.domains.issues import consolidation, service
+from app.domains.issues import consolidation, overrides, service
 from app.domains.issues.filters import IssueFiltersDep, MapFiltersDep
 from app.domains.issues.schemas import (
+    CategoryChange,
     IssueDetail,
     IssueFeatureCollection,
     IssuePage,
     MergeRequest,
+    PriorityOverride,
     RelatedIssueOut,
     RelatedRequest,
+    SeverityOverride,
     SplitRequest,
     SplitResult,
     StatusChange,
@@ -180,3 +183,61 @@ async def remove_related_issue(
 ) -> Response:
     await consolidation.remove_related(db, principal, issue_id, other_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch(
+    "/{issue_id}/severity",
+    operation_id="issues_set_severity",
+    response_model=IssueDetail,
+    responses=error_responses(401, 403, 404, 409, 422),
+)
+async def set_severity(
+    principal: IssueEditor,
+    db: DbSession,
+    storage: Storage,
+    issue_id: uuid.UUID,
+    body: SeverityOverride,
+) -> IssueDetail:
+    """Override the severity (a reason is required) or, with `null`, go back
+    to the rules. Priority is recomputed. Audited."""
+    await overrides.set_severity(db, principal, issue_id, body)
+    return await service.get_detail(db, storage, principal, issue_id)
+
+
+@router.patch(
+    "/{issue_id}/priority",
+    operation_id="issues_set_priority",
+    response_model=IssueDetail,
+    responses=error_responses(401, 403, 404, 409, 422),
+)
+async def set_priority(
+    principal: PrioritySetter,
+    db: DbSession,
+    storage: Storage,
+    issue_id: uuid.UUID,
+    body: PriorityOverride,
+) -> IssueDetail:
+    """Override the priority band (a reason is required) or, with `null`,
+    go back to the computed band. The score is unchanged. Audited."""
+    await overrides.set_priority(db, principal, issue_id, body)
+    return await service.get_detail(db, storage, principal, issue_id)
+
+
+@router.patch(
+    "/{issue_id}/category",
+    operation_id="issues_set_category",
+    response_model=IssueDetail,
+    responses=error_responses(401, 403, 404, 409, 422),
+)
+async def set_category(
+    principal: IssueEditor,
+    db: DbSession,
+    storage: Storage,
+    issue_id: uuid.UUID,
+    body: CategoryChange,
+) -> IssueDetail:
+    """Correct the category. The issue's reports follow and are marked
+    `category_source: "operator"`; severity and priority are recomputed.
+    Audited."""
+    await overrides.set_category(db, principal, issue_id, body)
+    return await service.get_detail(db, storage, principal, issue_id)
