@@ -11,6 +11,7 @@ from app.domains.categories.router import router as categories_router
 from app.domains.config.router import router as config_router
 from app.domains.geo.router import router as geo_router
 from app.domains.issues.router import router as issues_router
+from app.domains.matching.router import router as matching_router
 from app.domains.media.router import router as media_router
 from app.domains.org.router import router as org_router
 from app.domains.reports.router import router as reports_router
@@ -36,3 +37,4 @@ api_router.include_router(reports_router)
 api_router.include_router(issues_router)
 api_router.include_router(config_router)
 api_router.include_router(ai_router)
+api_router.include_router(matching_router)
