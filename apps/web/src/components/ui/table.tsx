@@ -23,7 +23,7 @@ export function Table({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard reachable
       tabIndex={0}
       className={cn(
-        "relative w-full overflow-x-auto rounded-xl border border-border bg-card shadow-card",
+        "relative w-full overflow-x-auto rounded-2xl border border-border bg-card shadow-card",
         containerClassName,
       )}
     >
@@ -41,7 +41,7 @@ export function Table({
 export function TableHeader({ className, ...props }: ComponentProps<"thead">) {
   return (
     <thead
-      className={cn("bg-muted/60 [&_tr]:border-b", className)}
+      className={cn("bg-muted/50 [&_tr]:border-b", className)}
       {...props}
     />
   );
@@ -70,7 +70,7 @@ export function TableHead({ className, ...props }: ComponentProps<"th">) {
     <th
       scope="col"
       className={cn(
-        "h-10 whitespace-nowrap px-4 text-start align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+        "h-10 whitespace-nowrap px-4 text-start align-middle font-mono text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-foreground",
         className,
       )}
       {...props}

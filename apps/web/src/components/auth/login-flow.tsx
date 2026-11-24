@@ -153,10 +153,12 @@ function StepHeader({
 }) {
   return (
     <div className="grid gap-2">
-      <span className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary-soft-foreground [&_svg]:size-5">
+      <span className="bg-brand-gradient grid size-11 place-items-center rounded-2xl text-white shadow-raised [&_svg]:size-5">
         {icon}
       </span>
-      <h1 className="text-2xl font-semibold">{title}</h1>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+        {title}
+      </h1>
       {children ? (
         <div className="text-[0.9375rem] text-muted-foreground">{children}</div>
       ) : null}

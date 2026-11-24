@@ -51,14 +51,20 @@ export function ReportDone({
 
   return (
     <div className="grid justify-items-center gap-6 py-6 text-center motion-safe:animate-rise">
-      <span className="grid size-16 place-items-center rounded-full bg-success-soft text-success-soft-foreground">
-        <CircleCheckBig aria-hidden="true" className="size-9" />
+      <span className="relative grid size-20 place-items-center">
+        <span
+          aria-hidden="true"
+          className="bg-brand-gradient absolute inset-0 rounded-full opacity-25 blur-xl"
+        />
+        <span className="bg-brand-gradient relative grid size-20 place-items-center rounded-full text-white shadow-raised">
+          <CircleCheckBig aria-hidden="true" className="size-10" />
+        </span>
       </span>
       <div className="grid gap-2">
         <h2
           ref={heading}
           tabIndex={-1}
-          className="text-2xl font-semibold outline-none sm:text-3xl"
+          className="text-3xl font-semibold tracking-tight outline-none sm:text-4xl"
         >
           {t("title")}
         </h2>
@@ -69,10 +75,8 @@ export function ReportDone({
         </p>
       </div>
 
-      <div className="grid w-full max-w-sm gap-2 rounded-xl border border-border bg-card p-5 shadow-card">
-        <p className="text-sm font-semibold text-muted-foreground">
-          {t("referenceLabel")}
-        </p>
+      <div className="grid w-full max-w-sm gap-2 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <p className="eyebrow">{t("referenceLabel")}</p>
         <div className="flex items-center justify-center gap-2">
           <p className="font-mono text-2xl font-semibold tracking-wide">
             {report.reference}
@@ -99,7 +103,7 @@ export function ReportDone({
       <div className="grid w-full max-w-sm gap-2">
         <Link
           href={`/reports/${report.id}`}
-          className={buttonVariants({ size: "lg" })}
+          className={buttonVariants({ variant: "ink", size: "lg" })}
         >
           {t("view")}
           <ArrowRight aria-hidden="true" className="rtl:rotate-180" />

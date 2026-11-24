@@ -1,6 +1,11 @@
-import { apiRequest } from "../client";
+import { usersGetMe, usersUpdateMe } from "@civicpulse/api-client";
+import { call } from "../generated-client";
 import { type CurrentUser, currentUserSchema } from "../schemas";
 
+/**
+ * Narrower than the spec's `UserMeUpdate`, which also accepts `null` for
+ * `display_name`, `locale` and `preferences`; the app never clears those.
+ */
 export type UpdateMeBody = Partial<{
   display_name: string;
   email: string | null;
@@ -9,14 +14,9 @@ export type UpdateMeBody = Partial<{
 }>;
 
 export function getMe(signal?: AbortSignal): Promise<CurrentUser> {
-  return apiRequest({ path: "/users/me", schema: currentUserSchema, signal });
+  return call(currentUserSchema, (o) => usersGetMe(o), { signal });
 }
 
 export function updateMe(body: UpdateMeBody): Promise<CurrentUser> {
-  return apiRequest({
-    method: "PATCH",
-    path: "/users/me",
-    body,
-    schema: currentUserSchema,
-  });
+  return call(currentUserSchema, (o) => usersUpdateMe(body, o));
 }

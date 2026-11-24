@@ -1,4 +1,10 @@
-import { apiRequest } from "../client";
+import {
+  adminCreateCategory,
+  adminListCategories,
+  adminUpdateCategory,
+  categoriesList,
+} from "@civicpulse/api-client";
+import { call } from "../generated-client";
 import { type Paginated, paginated } from "../schemas";
 import {
   type Category,
@@ -12,22 +18,17 @@ import {
  * works with just the tenant header.
  */
 export function listCategories(signal?: AbortSignal): Promise<Category[]> {
-  return apiRequest({
-    path: "/categories",
-    schema: categorySchema.array(),
-    signal,
-  });
+  return call(categorySchema.array(), (o) => categoriesList(o), { signal });
 }
 
 export function listAdminCategories(
   signal?: AbortSignal,
 ): Promise<Paginated<Category>> {
-  return apiRequest({
-    path: "/admin/categories",
-    query: { limit: 100 },
-    schema: paginated(categorySchema),
-    signal,
-  });
+  return call(
+    paginated(categorySchema),
+    (o) => adminListCategories({ limit: 100 }, o),
+    { signal },
+  );
 }
 
 export type CategoryInput = {
@@ -43,22 +44,18 @@ export type CategoryInput = {
 };
 
 export function createCategory(body: CategoryInput): Promise<Category> {
-  return apiRequest({
-    method: "POST",
-    path: "/admin/categories",
-    body,
-    schema: categorySchema,
-  });
+  // Contract mismatch, kept as is: the dialog sends `icon: null` when no
+  // icon is picked, but the spec (CategoryCreate) and the Phase 1 contract
+  // require a string, so the API answers 422. The cast keeps today's
+  // request; the fix belongs in the dialog (require an icon) or the API.
+  return call(categorySchema, (o) =>
+    adminCreateCategory(body as CategoryInput & { icon: string }, o),
+  );
 }
 
 export function updateCategory(
   id: string,
   body: Partial<CategoryInput>,
 ): Promise<Category> {
-  return apiRequest({
-    method: "PATCH",
-    path: `/admin/categories/${encodeURIComponent(id)}`,
-    body,
-    schema: categorySchema,
-  });
+  return call(categorySchema, (o) => adminUpdateCategory(id, body, o));
 }

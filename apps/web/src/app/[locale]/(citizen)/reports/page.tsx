@@ -17,14 +17,18 @@ export default function MyReportsPage() {
   return (
     <main
       id="main"
-      className="mx-auto grid w-full max-w-3xl flex-1 content-start gap-6 px-4 py-6 sm:px-6 sm:py-10"
+      className="mx-auto grid w-full max-w-3xl flex-1 content-start gap-8 px-4 py-8 sm:px-6 sm:py-14"
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold sm:text-3xl">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("description")}</p>
+        <div className="grid gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
+            {t("title")}
+          </h1>
+          <p className="max-w-md text-lg text-muted-foreground">
+            {t("description")}
+          </p>
         </div>
-        <Link href="/report" className={buttonVariants()}>
+        <Link href="/report" className={buttonVariants({ variant: "ink" })}>
           <MapPinPlus aria-hidden="true" />
           {t("newReport")}
         </Link>

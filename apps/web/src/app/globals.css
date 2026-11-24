@@ -9,79 +9,108 @@
  * pairing below meets WCAG 2.2 AA (4.5:1 for text, 3:1 for UI boundaries
  * such as input borders and focus rings) in both themes.
  */
+/*
+ * CivicPulse design tokens, matched to the marketing site: a cool,
+ * near-white canvas, near-black "ink" for type and primary actions, a deep
+ * municipal teal, and a teal-to-marigold gradient used for brand moments
+ * only (never to carry meaning). Every text/background pairing meets
+ * WCAG 2.2 AA (4.5:1 for text, 3:1 for UI boundaries) in both themes.
+ */
 :root {
   color-scheme: light;
 
-  --background: oklch(0.982 0.006 95);
-  --foreground: oklch(0.22 0.028 245);
+  --background: oklch(0.985 0.002 190);
+  --foreground: oklch(0.2 0.018 200);
 
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
 
-  --muted: oklch(0.952 0.009 95);
-  --muted-foreground: oklch(0.46 0.022 245);
+  --muted: oklch(0.962 0.004 190);
+  --muted-foreground: oklch(0.48 0.014 200);
 
-  --primary: oklch(0.44 0.085 182);
-  --primary-hover: oklch(0.39 0.08 182);
-  --primary-foreground: oklch(0.99 0.008 182);
-  --primary-soft: oklch(0.94 0.03 182);
-  --primary-soft-foreground: oklch(0.34 0.07 182);
+  --primary: oklch(0.45 0.085 178);
+  --primary-hover: oklch(0.4 0.08 178);
+  --primary-foreground: oklch(0.99 0.006 178);
+  --primary-soft: oklch(0.95 0.028 175);
+  --primary-soft-foreground: oklch(0.36 0.07 178);
 
-  --accent: oklch(0.82 0.145 78);
+  --ink: oklch(0.2 0.02 200);
+  --ink-hover: oklch(0.3 0.024 200);
+  --ink-foreground: oklch(0.99 0.003 190);
+  /* Dark brand panels (sidebar, heroes). Dark in both themes, unlike
+     --ink, which flips so ink buttons stay high-contrast. */
+  --panel: oklch(0.235 0.024 198);
+  --panel-foreground: oklch(0.98 0.004 190);
+  --panel-border: oklch(0.34 0.024 198);
+  --panel-muted-foreground: oklch(0.78 0.016 195);
+
+  --accent: oklch(0.83 0.15 82);
   --accent-foreground: oklch(0.24 0.04 60);
-  --accent-soft: oklch(0.96 0.045 85);
+  --accent-soft: oklch(0.965 0.045 88);
 
-  --secondary: oklch(0.935 0.012 245);
-  --secondary-foreground: oklch(0.26 0.03 245);
+  --secondary: oklch(0.945 0.005 200);
+  --secondary-foreground: oklch(0.25 0.02 200);
 
-  --destructive: oklch(0.52 0.19 27);
-  --destructive-hover: oklch(0.47 0.18 27);
+  --destructive: oklch(0.53 0.19 27);
+  --destructive-hover: oklch(0.48 0.18 27);
   --destructive-foreground: oklch(0.99 0.01 27);
-  --destructive-soft: oklch(0.95 0.03 27);
-  --destructive-soft-foreground: oklch(0.44 0.17 27);
+  --destructive-soft: oklch(0.955 0.028 27);
+  --destructive-soft-foreground: oklch(0.45 0.17 27);
 
-  --success-soft: oklch(0.95 0.04 155);
-  --success-soft-foreground: oklch(0.38 0.09 155);
-  --warning-soft: oklch(0.96 0.05 85);
-  --warning-soft-foreground: oklch(0.42 0.09 60);
-  --info-soft: oklch(0.95 0.025 245);
-  --info-soft-foreground: oklch(0.4 0.09 250);
+  --success-soft: oklch(0.955 0.04 160);
+  --success-soft-foreground: oklch(0.39 0.09 160);
+  --warning-soft: oklch(0.965 0.05 85);
+  --warning-soft-foreground: oklch(0.43 0.09 60);
+  --info-soft: oklch(0.955 0.022 240);
+  --info-soft-foreground: oklch(0.41 0.09 250);
 
-  --border: oklch(0.895 0.01 95);
-  --input: oklch(0.6 0.018 245);
-  --ring: oklch(0.5 0.11 182);
+  --border: oklch(0.915 0.005 200);
+  --input: oklch(0.62 0.014 200);
+  --ring: oklch(0.52 0.1 178);
 
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  --grid-dot: oklch(0.22 0.028 245 / 0.07);
-  --shadow-color: 245 30% 20%;
+  --brand-1: oklch(0.42 0.08 185);
+  --brand-2: oklch(0.6 0.12 165);
+  --brand-3: oklch(0.86 0.15 88);
+
+  --grid-dot: oklch(0.2 0.018 200 / 0.07);
+  --shadow-color: 200 25% 18%;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
 
-    --background: oklch(0.185 0.02 235);
-    --foreground: oklch(0.95 0.008 95);
+    --background: oklch(0.175 0.016 205);
+    --foreground: oklch(0.96 0.004 190);
 
-    --card: oklch(0.22 0.022 235);
+    --card: oklch(0.21 0.018 205);
     --card-foreground: var(--foreground);
 
-    --muted: oklch(0.255 0.02 235);
-    --muted-foreground: oklch(0.76 0.015 235);
+    --muted: oklch(0.245 0.018 205);
+    --muted-foreground: oklch(0.76 0.012 200);
 
-    --primary: oklch(0.79 0.105 178);
-    --primary-hover: oklch(0.84 0.1 178);
-    --primary-foreground: oklch(0.2 0.035 200);
-    --primary-soft: oklch(0.3 0.05 182);
-    --primary-soft-foreground: oklch(0.88 0.07 178);
+    --primary: oklch(0.79 0.11 172);
+    --primary-hover: oklch(0.84 0.1 172);
+    --primary-foreground: oklch(0.2 0.035 195);
+    --primary-soft: oklch(0.3 0.05 178);
+    --primary-soft-foreground: oklch(0.88 0.07 172);
 
-    --accent: oklch(0.83 0.14 78);
+    --ink: oklch(0.95 0.004 190);
+    --ink-hover: oklch(0.88 0.006 190);
+    --ink-foreground: oklch(0.18 0.016 205);
+    --panel: oklch(0.14 0.016 205);
+    --panel-foreground: oklch(0.97 0.004 190);
+    --panel-border: oklch(0.28 0.02 205);
+    --panel-muted-foreground: oklch(0.78 0.012 200);
+
+    --accent: oklch(0.84 0.14 82);
     --accent-foreground: oklch(0.22 0.04 60);
     --accent-soft: oklch(0.32 0.06 75);
 
-    --secondary: oklch(0.29 0.022 235);
-    --secondary-foreground: oklch(0.93 0.01 95);
+    --secondary: oklch(0.28 0.018 205);
+    --secondary-foreground: oklch(0.94 0.006 190);
 
     --destructive: oklch(0.71 0.16 25);
     --destructive-hover: oklch(0.76 0.15 25);
@@ -89,19 +118,23 @@
     --destructive-soft: oklch(0.3 0.07 25);
     --destructive-soft-foreground: oklch(0.88 0.07 25);
 
-    --success-soft: oklch(0.3 0.05 155);
-    --success-soft-foreground: oklch(0.88 0.08 155);
+    --success-soft: oklch(0.3 0.05 160);
+    --success-soft-foreground: oklch(0.88 0.08 160);
     --warning-soft: oklch(0.32 0.06 75);
     --warning-soft-foreground: oklch(0.9 0.09 85);
     --info-soft: oklch(0.3 0.04 250);
     --info-soft-foreground: oklch(0.88 0.06 250);
 
-    --border: oklch(0.32 0.02 235);
-    --input: oklch(0.56 0.02 235);
-    --ring: oklch(0.8 0.11 178);
+    --border: oklch(0.3 0.018 205);
+    --input: oklch(0.56 0.016 205);
+    --ring: oklch(0.8 0.11 172);
 
-    --grid-dot: oklch(0.95 0.008 95 / 0.06);
-    --shadow-color: 235 40% 4%;
+    --brand-1: oklch(0.5 0.09 185);
+    --brand-2: oklch(0.68 0.12 165);
+    --brand-3: oklch(0.86 0.15 88);
+
+    --grid-dot: oklch(0.96 0.004 190 / 0.06);
+    --shadow-color: 205 40% 4%;
   }
 }
 
@@ -120,6 +153,16 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
+  --color-ink: var(--ink);
+  --color-ink-hover: var(--ink-hover);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-panel-border: var(--panel-border);
+  --color-panel-muted-foreground: var(--panel-muted-foreground);
+  --color-brand-1: var(--brand-1);
+  --color-brand-2: var(--brand-2);
+  --color-brand-3: var(--brand-3);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
@@ -137,9 +180,11 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  /* Geist has no Devanagari, so Hindi glyphs fall through to Mukta. */
+  --font-sans:
+    var(--font-latin), var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-display:
-    var(--font-display-face), var(--font-body), ui-sans-serif, sans-serif;
+    var(--font-latin), var(--font-body), ui-sans-serif, sans-serif;
   --font-mono: var(--font-code), ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -149,11 +194,11 @@
   --radius-2xl: calc(var(--radius) + 10px);
 
   --shadow-card:
-    0 1px 2px hsl(var(--shadow-color) / 0.06),
-    0 4px 16px -6px hsl(var(--shadow-color) / 0.12);
+    0 1px 2px hsl(var(--shadow-color) / 0.04),
+    0 2px 8px -4px hsl(var(--shadow-color) / 0.08);
   --shadow-raised:
-    0 2px 4px hsl(var(--shadow-color) / 0.08),
-    0 18px 40px -12px hsl(var(--shadow-color) / 0.28);
+    0 2px 4px hsl(var(--shadow-color) / 0.06),
+    0 24px 48px -16px hsl(var(--shadow-color) / 0.22);
 
   --animate-rise: rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade: fade 240ms ease-out both;
@@ -208,8 +253,13 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
     text-wrap: balance;
+  }
+
+  /* Devanagari needs its natural spacing; tight tracking breaks conjuncts. */
+  :lang(hi) :is(h1, h2, h3) {
+    letter-spacing: 0;
   }
 
   /* A single, consistent focus treatment that stays visible on any surface. */
@@ -227,6 +277,37 @@
     background: oklch(0.18 0.03 245 / 0.55);
     backdrop-filter: blur(2px);
   }
+}
+
+/* Small mono label above headings and numbers, as on the marketing site. */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+@utility bg-brand-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--brand-1) 0%,
+    var(--brand-2) 55%,
+    var(--brand-3) 100%
+  );
+}
+
+@utility text-brand-gradient {
+  background-image: linear-gradient(
+    100deg,
+    var(--brand-1) 0%,
+    var(--brand-2) 55%,
+    var(--brand-3) 100%
+  );
+  background-clip: text;
+  color: transparent;
 }
 
 @utility bg-survey-grid {

@@ -397,7 +397,11 @@ export function AiScreen() {
   const t = useTranslations("admin.ai");
   return (
     <div className="grid gap-8 motion-safe:animate-rise">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader
+        section="ai"
+        title={t("title")}
+        description={t("description")}
+      />
       <Models />
       <Quality />
     </div>

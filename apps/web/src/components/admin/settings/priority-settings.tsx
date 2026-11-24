@@ -190,7 +190,11 @@ export function PrioritySettings() {
 
   return (
     <div className="motion-safe:animate-rise">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader
+        section="priority"
+        title={t("title")}
+        description={t("description")}
+      />
       <SettingsFrame form={form} savedMessage={t("saved")}>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="grid gap-6">

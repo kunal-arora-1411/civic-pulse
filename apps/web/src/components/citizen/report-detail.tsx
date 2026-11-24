@@ -87,14 +87,16 @@ function Body({ report }: { report: Report }) {
             {report.reference}
           </span>
         </div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold sm:text-3xl">
-          <CategoryIcon
-            icon={report.category.icon}
-            className="size-7 shrink-0 text-primary"
-          />
+        <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight sm:text-5xl">
+          <span className="bg-brand-gradient grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-raised sm:size-14">
+            <CategoryIcon
+              icon={report.category.icon}
+              className="size-5 sm:size-7"
+            />
+          </span>
           {localized(report.category.name_i18n)}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="font-mono text-xs text-muted-foreground">
           {t("reportedOn", {
             date: format.dateTime(new Date(report.created_at), {
               dateStyle: "long",
@@ -107,7 +109,7 @@ function Body({ report }: { report: Report }) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="grid content-start gap-6">
           <Card className="grid gap-3 p-5">
-            <h2 className="font-semibold">{t("photos")}</h2>
+            <h2 className="eyebrow">{t("photos")}</h2>
             <PhotoGallery
               media={report.media}
               label={t("photosOf", { reference: report.reference })}
@@ -115,8 +117,8 @@ function Body({ report }: { report: Report }) {
           </Card>
 
           <Card className="grid gap-3 p-5">
-            <h2 className="font-semibold">{t("location")}</h2>
-            <div className="h-48 overflow-hidden rounded-lg border border-border">
+            <h2 className="eyebrow">{t("location")}</h2>
+            <div className="h-56 overflow-hidden rounded-xl border border-border">
               <PinMap
                 center={report.location}
                 zoom={16}
@@ -140,7 +142,7 @@ function Body({ report }: { report: Report }) {
           </Card>
 
           <Card className="grid gap-3 p-5">
-            <h2 className="font-semibold">{t("details")}</h2>
+            <h2 className="eyebrow">{t("details")}</h2>
             {details.length > 0 ? (
               <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
                 {details.map(([key, value]) => {
@@ -164,9 +166,9 @@ function Body({ report }: { report: Report }) {
           </Card>
         </div>
 
-        <Card className="grid content-start gap-4 p-5">
+        <Card className="grid content-start gap-4 self-start p-5 lg:sticky lg:top-24">
           <div className="grid gap-1">
-            <h2 className="font-semibold">{t("progress")}</h2>
+            <h2 className="eyebrow">{t("progress")}</h2>
             {matching.state === "placed" ? (
               <p className="text-sm text-muted-foreground">
                 {t("issueRef", { reference: matching.reference })}
@@ -204,7 +206,7 @@ export function ReportDetail({ params }: { params: Promise<{ id: string }> }) {
     <div className="grid gap-5">
       <Link
         href="/reports"
-        className="inline-flex w-fit items-center gap-1.5 rounded-md text-sm font-semibold text-primary hover:underline"
+        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-muted-foreground shadow-card transition-colors hover:text-foreground"
       >
         <ArrowLeft aria-hidden="true" className="size-4 rtl:rotate-180" />
         {t("back")}

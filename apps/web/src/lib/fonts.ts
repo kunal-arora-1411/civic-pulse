@@ -1,15 +1,21 @@
-import { Bricolage_Grotesque, JetBrains_Mono, Mukta } from "next/font/google";
+import { Geist, Geist_Mono, Mukta } from "next/font/google";
 
 /*
- * Mukta covers both Latin and Devanagari with matching metrics, so Hindi and
- * English text sit comfortably side by side. Bricolage Grotesque gives
- * headings some character; Devanagari headings fall back to Mukta.
+ * Geist carries Latin text (body and headings, matching the marketing
+ * site). It has no Devanagari, so the font stack falls through to Mukta for
+ * Hindi, which has matching metrics for both scripts.
  *
- * Only the heading face is preloaded. Preloading Mukta would push every
- * weight of both scripts to every visitor; left to unicode-range, the
- * browser downloads just the script a page actually uses, which matters on
- * the low-bandwidth connections the PRD calls out.
+ * Only Geist is preloaded. Preloading Mukta would push every weight of both
+ * scripts to every visitor; left to unicode-range, the browser downloads
+ * just the script a page actually uses, which matters on the low-bandwidth
+ * connections the PRD calls out.
  */
+export const latinFont = Geist({
+  subsets: ["latin"],
+  variable: "--font-latin",
+  display: "swap",
+});
+
 export const bodyFont = Mukta({
   subsets: ["latin", "devanagari"],
   weight: ["400", "500", "600", "700"],
@@ -18,13 +24,7 @@ export const bodyFont = Mukta({
   preload: false,
 });
 
-export const displayFont = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-display-face",
-  display: "swap",
-});
-
-export const codeFont = JetBrains_Mono({
+export const codeFont = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-code",
   display: "swap",
@@ -32,7 +32,7 @@ export const codeFont = JetBrains_Mono({
 });
 
 export const fontVariables = [
+  latinFont.variable,
   bodyFont.variable,
-  displayFont.variable,
   codeFont.variable,
 ].join(" ");

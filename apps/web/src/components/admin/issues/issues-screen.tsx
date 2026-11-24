@@ -123,6 +123,7 @@ export function IssuesScreen() {
   return (
     <div className="motion-safe:animate-rise">
       <PageHeader
+        section="issues"
         title={t("title")}
         description={t("description")}
         actions={

@@ -4,9 +4,10 @@ import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useId, useLayoutEffect, useState } from "react";
 import { AccountMenu } from "@/components/account-menu";
+import { TenantName } from "@/components/auth/tenant-name";
+import { BrandArcs } from "@/components/brand/brand-arcs";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
@@ -31,20 +32,24 @@ function Frame({
   useLayoutEffect(() => () => setMenuOpen(false), []);
 
   return (
-    <div className="flex min-h-dvh flex-1 bg-muted/40">
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-e border-border bg-card lg:flex">
-        <div className="flex h-16 items-center gap-2 px-5">
+    <div className="flex min-h-dvh flex-1 bg-background">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-hidden bg-panel text-panel-foreground lg:flex">
+        <BrandArcs className="absolute -start-16 bottom-0 h-72 w-80 opacity-25" />
+        <div className="relative flex h-16 items-center gap-2 px-5">
           <Link href="/admin" className="rounded-lg">
             <Logo />
           </Link>
         </div>
-        <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3 pt-2 pb-4">
+        <p className="eyebrow relative px-5 pb-3 text-panel-muted-foreground">
+          {t("consoleBadge")}
+        </p>
+        <div className="relative flex flex-1 flex-col justify-between overflow-y-auto px-3 pt-1 pb-4">
           {sidebar}
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-border bg-card/90 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur-md">
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
             <div className="flex items-center gap-2">
               {mobileNav ? (
@@ -67,9 +72,9 @@ function Frame({
               <Link href="/admin" className="rounded-lg lg:hidden">
                 <Logo className="[&>span:last-child]:hidden sm:[&>span:last-child]:inline" />
               </Link>
-              <Badge variant="outline" className="hidden lg:inline-flex">
-                {t("consoleBadge")}
-              </Badge>
+              <span className="hidden lg:block">
+                <TenantName />
+              </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <LanguageSwitcher />
@@ -86,8 +91,8 @@ function Frame({
             </div>
           ) : null}
         </header>
-        <main id="main" className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto max-w-6xl">{children}</div>
+        <main id="main" className="flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+          <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>
     </div>
@@ -97,23 +102,31 @@ function Frame({
 function SidebarFooter({ user }: { user: CurrentUser }) {
   const t = useTranslations("roles");
   return (
-    <div className="mt-6 rounded-xl border border-border bg-muted/50 p-3 text-sm">
-      <p className="truncate font-semibold">
-        {user.display_name || formatIndianPhone(user.phone)}
-      </p>
-      <p className="truncate text-muted-foreground">
-        {user.roles
-          .filter((assignment) => assignment.role !== "citizen")
-          .map((assignment) => t(assignment.role))
-          .join(", ")}
-      </p>
+    <div className="mt-6 flex items-center gap-3 rounded-xl border border-panel-border bg-panel-foreground/5 p-3 text-sm">
+      <span
+        aria-hidden="true"
+        className="bg-brand-gradient grid size-9 shrink-0 place-items-center rounded-full font-semibold text-white"
+      >
+        {(user.display_name || "?").trim().charAt(0).toUpperCase()}
+      </span>
+      <span className="grid min-w-0">
+        <span className="truncate font-semibold">
+          {user.display_name || formatIndianPhone(user.phone)}
+        </span>
+        <span className="truncate text-panel-muted-foreground">
+          {user.roles
+            .filter((assignment) => assignment.role !== "citizen")
+            .map((assignment) => t(assignment.role))
+            .join(", ")}
+        </span>
+      </span>
     </div>
   );
 }
 
 function SidebarSkeleton() {
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2 opacity-20">
       <Skeleton className="h-9" />
       <Skeleton className="h-9" />
       <Skeleton className="h-9" />
@@ -141,7 +154,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       sidebar={
         admin ? (
           <>
-            <AdminNav user={admin} />
+            <AdminNav user={admin} tone="dark" />
             <SidebarFooter user={admin} />
           </>
         ) : status === "unknown" ? (

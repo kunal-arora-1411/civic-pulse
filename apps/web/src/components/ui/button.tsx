@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
   [
-    "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold",
+    "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium tracking-[-0.005em]",
     "transition-[background-color,color,box-shadow,transform] duration-150",
     "active:translate-y-px disabled:pointer-events-none disabled:opacity-55",
     "aria-disabled:pointer-events-none aria-disabled:opacity-55",
@@ -16,9 +16,11 @@ export const buttonVariants = cva(
       variant: {
         primary:
           "bg-primary text-primary-foreground shadow-card hover:bg-primary-hover",
+        ink: "bg-ink text-ink-foreground shadow-card hover:bg-ink-hover",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/70",
-        outline: "border border-input bg-card text-foreground hover:bg-muted",
+        outline:
+          "border border-border bg-card text-foreground shadow-card hover:border-input/60 hover:bg-muted",
         ghost: "text-foreground hover:bg-muted",
         destructive:
           "bg-destructive text-destructive-foreground shadow-card hover:bg-destructive-hover",

@@ -50,7 +50,11 @@ export function MatchingSettings() {
 
   return (
     <div className="motion-safe:animate-rise">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader
+        section="matching"
+        title={t("title")}
+        description={t("description")}
+      />
       <SettingsFrame form={form} savedMessage={t("saved")}>
         <SettingsSection title={t("autoTitle")}>
           <label className="flex cursor-pointer items-start gap-3">

@@ -142,7 +142,7 @@ function Body({
               {t("reportCount", { count: issue.report_count })}
             </span>
           </div>
-          <h1 className="font-mono text-2xl font-semibold sm:text-3xl">
+          <h1 className="font-mono text-3xl font-semibold tracking-tight sm:text-4xl">
             {issue.reference}
           </h1>
           <p className="flex items-center gap-2 text-muted-foreground">
@@ -172,7 +172,7 @@ function Body({
             </Button>
           ) : null}
           {issue.allowed_transitions.length > 0 ? (
-            <Button onClick={() => setChanging(true)}>
+            <Button variant="ink" onClick={() => setChanging(true)}>
               <ArrowRightLeft aria-hidden="true" />
               {t("changeStatus")}
             </Button>
@@ -183,7 +183,7 @@ function Body({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="grid content-start gap-6">
           <Card className="grid gap-3 p-5">
-            <h2 className="font-semibold">{t("photos")}</h2>
+            <h2 className="eyebrow">{t("photos")}</h2>
             <PhotoGallery
               media={media}
               label={t("photosOf", { reference: issue.reference })}
@@ -192,7 +192,7 @@ function Body({
           </Card>
 
           <Card className="grid gap-3 p-5">
-            <h2 className="font-semibold">
+            <h2 className="eyebrow">
               {t("reports", { count: issue.reports.length })}
             </h2>
             <ul className="grid">
@@ -208,7 +208,7 @@ function Body({
           </Card>
 
           <Card className="grid gap-3 p-5">
-            <h2 className="font-semibold">{t("history")}</h2>
+            <h2 className="eyebrow">{t("history")}</h2>
             <IssueTimeline events={issue.timeline} />
           </Card>
         </div>
@@ -223,7 +223,7 @@ function Body({
           />
 
           <Card className="grid gap-3 p-5">
-            <h2 className="font-semibold">{t("location")}</h2>
+            <h2 className="eyebrow">{t("location")}</h2>
             <div className="h-56 overflow-hidden rounded-lg border border-border">
               <PinMap
                 center={issue.location}
@@ -246,7 +246,7 @@ function Body({
           <RelatedIssues issue={issue} canEdit={can("issue:update")} />
 
           <Card className="p-5">
-            <h2 className="mb-3 font-semibold">{t("facts")}</h2>
+            <h2 className="eyebrow mb-3">{t("facts")}</h2>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">{t("created")}</dt>
               <dd>

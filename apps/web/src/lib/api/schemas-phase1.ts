@@ -1,3 +1,19 @@
+import {
+  CategoryOut,
+  CategoryRef,
+  FieldOption,
+  CategoryField as GenCategoryField,
+  IssueStatus as GenIssueStatus,
+  LocationSource as GenLocationSource,
+  LocationOut,
+  MediaAssetOut,
+  MediaOut,
+  MediaStatus,
+  MediaVariants,
+  ReverseGeocodeOut,
+  UploadCreated,
+  Visibility,
+} from "@civicpulse/api-client";
 import { z } from "zod";
 import { jurisdictionSchema, lngLatSchema } from "./schemas";
 import {
@@ -8,12 +24,24 @@ import {
   reportMatchSchema,
   severitySchema,
 } from "./schemas-ai";
+import { expectType, type Same } from "./type-checks";
 
 /*
  * Response schemas for the Phase 1 contract (docs/api/phase-1-contract.md):
- * categories, media, geocoding, reports and civic issues. Same rules as
- * schemas.ts: hand-written until orval generates them, and exported names
- * are what feature code depends on.
+ * categories, media, geocoding, reports and civic issues.
+ *
+ * Categories, media and geocoding are built from the orval-generated
+ * schemas (@civicpulse/api-client), with adapters noted where the app
+ * needs something the spec doesn't say.
+ *
+ * Reports and issues are still hand-written (from "issues" down), on
+ * purpose. Their generated counterparts require keys that the app, its
+ * MSW mocks and test fixtures treat as optional, carry new required fields
+ * nothing reads yet, and type match `signals` as a free-form object while
+ * the review screens depend on its structure. Replacing them means
+ * migrating the fixtures and mocks first; until then they keep the old
+ * schemas, use the generated enums, and their requests go through the
+ * generated client like everything else.
  */
 
 /** `{ "en": "Pothole", "hi": "गड्ढा" }`. Pick a locale with `localized()`. */
@@ -29,52 +57,42 @@ export const CATEGORY_FIELD_TYPES = [
   "boolean",
 ] as const;
 export type CategoryFieldType = (typeof CATEGORY_FIELD_TYPES)[number];
+expectType<
+  Same<CategoryFieldType, z.infer<typeof GenCategoryField.shape.type>>
+>(true);
 
-export const categoryFieldOptionSchema = z.object({
-  value: z.string(),
-  label_i18n: i18nTextSchema,
-});
+export const categoryFieldOptionSchema = FieldOption;
 export type CategoryFieldOption = z.infer<typeof categoryFieldOptionSchema>;
 
-export const categoryFieldSchema = z.object({
-  key: z.string(),
-  type: z.enum(CATEGORY_FIELD_TYPES),
-  required: z.boolean().default(false),
-  label_i18n: i18nTextSchema,
-  options: z.array(categoryFieldOptionSchema).nullish(),
-});
+export const categoryFieldSchema = GenCategoryField;
 export type CategoryField = z.infer<typeof categoryFieldSchema>;
 
-export const categorySchema = z.object({
-  id: z.string(),
-  code: z.string(),
-  parent_id: z.string().nullish(),
-  name_i18n: i18nTextSchema,
+// Adapters: the spec always sends these keys and never `null` for
+// `description_i18n`, `icon` or `dedup`; the app has always tolerated them
+// missing or null, so it still does. `ai_prompts` and `severity_rules`
+// (Phase 2, required in the spec) are optional until a screen edits them.
+export const categorySchema = CategoryOut.extend({
+  parent_id: CategoryOut.shape.parent_id.optional(),
   description_i18n: i18nTextSchema.nullish(),
-  icon: z.string().nullish(),
-  evidence: z.object({
-    min_photos: z.number().int().min(0),
-    max_photos: z.number().int().min(0),
-  }),
-  fields: z.array(categoryFieldSchema).default([]),
-  default_department_id: z.string().nullish(),
-  dedup: z.object({ radius_m: z.number(), window_days: z.number() }).nullish(),
-  sort_order: z.number(),
-  is_active: z.boolean(),
+  icon: CategoryOut.shape.icon.nullish(),
+  fields: CategoryOut.shape.fields.default([]),
+  default_department_id: CategoryOut.shape.default_department_id.optional(),
+  dedup: CategoryOut.shape.dedup.nullish(),
+  ai_prompts: CategoryOut.shape.ai_prompts.optional(),
+  severity_rules: CategoryOut.shape.severity_rules.optional(),
 });
 export type Category = z.infer<typeof categorySchema>;
 
 /** The category as embedded in reports and issues. */
-export const categorySummarySchema = z.object({
-  id: z.string(),
-  code: z.string(),
-  name_i18n: i18nTextSchema,
-  icon: z.string().nullish(),
+// Adapter: `icon` may be missing or null, as above.
+export const categorySummarySchema = CategoryRef.extend({
+  icon: CategoryRef.shape.icon.nullish(),
 });
 export type CategorySummary = z.infer<typeof categorySummarySchema>;
 
 // --------------------------------------------------------------------- media
 
+/** What the upload pipeline accepts; the spec types it as a free string. */
 export const ALLOWED_UPLOAD_TYPES = [
   "image/jpeg",
   "image/png",
@@ -82,49 +100,45 @@ export const ALLOWED_UPLOAD_TYPES = [
 ] as const;
 export type UploadContentType = (typeof ALLOWED_UPLOAD_TYPES)[number];
 
-export const uploadTicketSchema = z.object({
-  upload_id: z.string(),
-  method: z.string().default("PUT"),
-  url: z.string(),
-  headers: z.record(z.string(), z.string()).default({}),
-  expires_in: z.number(),
-  max_size_bytes: z.number(),
+// Adapter: `headers` defaults to `{}`.
+export const uploadTicketSchema = UploadCreated.extend({
+  headers: UploadCreated.shape.headers.default({}),
 });
 export type UploadTicket = z.infer<typeof uploadTicketSchema>;
 
-export const MEDIA_STATUSES = ["processing", "ready", "failed"] as const;
-export const mediaStatusSchema = z.enum(MEDIA_STATUSES);
+/**
+ * Includes `pending` (the spec's MediaStatus): media embedded in a report
+ * can still be waiting for processing.
+ */
+export const MEDIA_STATUSES = MediaStatus.options;
+export const mediaStatusSchema = MediaStatus;
 
 /** Returned by `POST /media/uploads/{id}/complete`. */
-export const mediaAssetSchema = z.object({
-  id: z.string(),
-  status: mediaStatusSchema,
-  content_type: z.string(),
-  width: z.number().nullish(),
-  height: z.number().nullish(),
-  variants: z
-    .object({ thumb: z.string().nullish(), display: z.string().nullish() })
-    .partial()
-    .nullish(),
-  captured_at: z.string().nullish(),
+// Adapters: the nullable fields may also be missing, and `variants` (and
+// either variant) may be missing or null.
+export const mediaAssetSchema = MediaAssetOut.extend({
+  width: MediaAssetOut.shape.width.optional(),
+  height: MediaAssetOut.shape.height.optional(),
+  variants: MediaVariants.partial().nullish(),
+  captured_at: MediaAssetOut.shape.captured_at.optional(),
 });
 export type MediaAsset = z.infer<typeof mediaAssetSchema>;
 
 /** Media as embedded in report and issue responses. */
-export const mediaSchema = z.object({
-  id: z.string(),
-  status: mediaStatusSchema,
-  width: z.number().nullish(),
-  height: z.number().nullish(),
-  thumb_url: z.string().nullish(),
-  display_url: z.string().nullish(),
-  original_url: z.string().nullish(),
-  captured_at: z.string().nullish(),
+// Adapter: every nullable field may also be missing.
+export const mediaSchema = MediaOut.partial({
+  width: true,
+  height: true,
+  thumb_url: true,
+  display_url: true,
+  original_url: true,
+  captured_at: true,
 });
 export type Media = z.infer<typeof mediaSchema>;
 
 // ----------------------------------------------------------------------- geo
 
+/** A ward as embedded in reports and issues (the geocoder adds `code`). */
 export const wardRefSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -132,22 +146,20 @@ export const wardRefSchema = z.object({
 });
 export type WardRef = z.infer<typeof wardRefSchema>;
 
-export const reverseGeocodeSchema = z.object({
-  address_text: z.string().nullable(),
-  in_jurisdiction: z.boolean(),
+// Adapter: `ward` and `zone` may also be missing, and a ward's `code`
+// may be missing or null.
+export const reverseGeocodeSchema = ReverseGeocodeOut.extend({
   ward: wardRefSchema.nullish(),
-  zone: z.object({ id: z.string(), name: z.string() }).nullish(),
+  zone: ReverseGeocodeOut.shape.zone.optional(),
 });
 export type ReverseGeocode = z.infer<typeof reverseGeocodeSchema>;
 
-export const LOCATION_SOURCES = ["gps", "pin", "manual"] as const;
-export type LocationSource = (typeof LOCATION_SOURCES)[number];
+export const LOCATION_SOURCES = GenLocationSource.options;
+export type LocationSource = z.infer<typeof GenLocationSource>;
 
-export const reportLocationSchema = z.object({
-  lat: z.number(),
-  lng: z.number(),
-  accuracy_m: z.number().nullish(),
-  source: z.enum(LOCATION_SOURCES),
+// Adapter: `accuracy_m` may also be missing.
+export const reportLocationSchema = LocationOut.extend({
+  accuracy_m: LocationOut.shape.accuracy_m.optional(),
 });
 export type ReportLocation = z.infer<typeof reportLocationSchema>;
 
@@ -166,7 +178,10 @@ export const ISSUE_STATUSES = [
   "closed",
   "reopened",
 ] as const;
-export const issueStatusSchema = z.enum(ISSUE_STATUSES);
+expectType<
+  Same<(typeof ISSUE_STATUSES)[number], z.infer<typeof GenIssueStatus>>
+>(true);
+export const issueStatusSchema = GenIssueStatus;
 export type IssueStatus = z.infer<typeof issueStatusSchema>;
 
 export const publicTimelineEventSchema = z.object({
@@ -285,7 +300,7 @@ export const issueTimelineEventSchema = z.object({
   to_status: issueStatusSchema.nullish(),
   reason: z.string().nullish(),
   public_note: z.string().nullish(),
-  visibility: z.enum(["public", "internal"]),
+  visibility: Visibility,
   actor: z
     .object({ id: z.string(), display_name: z.string().nullable() })
     .nullish(),

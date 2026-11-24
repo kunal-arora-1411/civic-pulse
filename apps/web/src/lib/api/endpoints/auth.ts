@@ -1,4 +1,11 @@
-import { apiRequest, refreshSession } from "../client";
+import {
+  authLogout,
+  authRequestOtp,
+  authVerifyMfa,
+  authVerifyOtp,
+} from "@civicpulse/api-client";
+import { refreshSession } from "../client";
+import { call, callVoid } from "../generated-client";
 import {
   type OtpChallenge,
   type OtpVerifyResponse,
@@ -10,11 +17,7 @@ import {
 import { session } from "../session";
 
 export function requestOtp(phone: string): Promise<OtpChallenge> {
-  return apiRequest({
-    method: "POST",
-    path: "/auth/otp/request",
-    body: { phone },
-    schema: otpChallengeSchema,
+  return call(otpChallengeSchema, (o) => authRequestOtp({ phone }, o), {
     auth: false,
   });
 }
@@ -24,11 +27,7 @@ export function verifyOtp(body: {
   challenge_id: string;
   code: string;
 }): Promise<OtpVerifyResponse> {
-  return apiRequest({
-    method: "POST",
-    path: "/auth/otp/verify",
-    body,
-    schema: otpVerifyResponseSchema,
+  return call(otpVerifyResponseSchema, (o) => authVerifyOtp(body, o), {
     auth: false,
     credentials: "include",
   });
@@ -38,11 +37,7 @@ export function verifyMfa(body: {
   mfa_token: string;
   code: string;
 }): Promise<TokenResponse> {
-  return apiRequest({
-    method: "POST",
-    path: "/auth/mfa/verify",
-    body,
-    schema: tokenResponseSchema,
+  return call(tokenResponseSchema, (o) => authVerifyMfa(body, o), {
     auth: false,
     credentials: "include",
   });
@@ -78,11 +73,7 @@ export async function restoreSession(): Promise<RestoreResult> {
 export async function logout(): Promise<boolean> {
   try {
     if (session.getAccessToken()) {
-      await apiRequest({
-        method: "POST",
-        path: "/auth/logout",
-        credentials: "include",
-      });
+      await callVoid((o) => authLogout(o), { credentials: "include" });
     }
     return true;
   } catch {

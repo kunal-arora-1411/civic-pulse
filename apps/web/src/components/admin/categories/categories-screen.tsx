@@ -119,6 +119,7 @@ export function CategoriesScreen() {
   return (
     <div className="motion-safe:animate-rise">
       <PageHeader
+        section="categories"
         title={t("title")}
         description={t("description")}
         actions={
