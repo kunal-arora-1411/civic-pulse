@@ -92,7 +92,10 @@ beforeEach(() => {
   session.setAuthenticated("token", makeUser());
   window.history.replaceState(null, "", "/report");
 });
-afterEach(() => session.reset());
+afterEach(() => {
+  session.reset();
+  vi.useRealTimers();
+});
 
 describe("ReportFlow submission", () => {
   it("retries a failed submission with the same idempotency key, then starts a new draft with a new key", async () => {
@@ -100,15 +103,21 @@ describe("ReportFlow submission", () => {
     sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
     useReferenceHandlers();
     const keys: (string | null)[] = [];
+    const bodies: unknown[] = [];
     let attempt = 0;
     server.use(
-      http.post(`${API}/reports`, ({ request }) => {
+      http.post(`${API}/reports`, async ({ request }) => {
         keys.push(request.headers.get("Idempotency-Key"));
+        bodies.push(await request.json());
         attempt += 1;
         if (attempt === 1) return HttpResponse.error();
         return HttpResponse.json(makeReport(), { status: 201 });
       }),
     );
+    // Only Date is faked, so the retry happens visibly later without
+    // freezing the timers user-event and React Query rely on.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-24T08:15:00Z"));
 
     const { user } = renderWithProviders(<ReportFlow />);
     await user.click(
@@ -121,6 +130,7 @@ describe("ReportFlow submission", () => {
     // The draft and its key survive the failure.
     expect(storedDraft().idempotencyKey).toBe(draft.idempotencyKey);
 
+    vi.setSystemTime(new Date("2026-11-24T08:16:30Z"));
     await user.click(screen.getByRole("button", { name: /try again/i }));
 
     expect(
@@ -131,6 +141,12 @@ describe("ReportFlow submission", () => {
       screen.getByRole("link", { name: /view your report/i }),
     ).toHaveAttribute("href", "/reports/rep-1");
     expect(keys).toEqual([draft.idempotencyKey, draft.idempotencyKey]);
+    // The API replays a key only for an identical body, so the retry must
+    // repeat the first attempt's timestamp rather than take a new one.
+    expect(bodies[1]).toEqual(bodies[0]);
+    expect(bodies[0]).toMatchObject({
+      client_created_at: "2026-11-24T08:15:00.000Z",
+    });
 
     // A new draft replaces the submitted one, with its own key.
     await waitFor(() =>

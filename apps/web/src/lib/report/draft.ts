@@ -43,6 +43,15 @@ export type DraftLocation = {
 export type ReportDraft = {
   version: typeof DRAFT_VERSION;
   idempotencyKey: string;
+  /**
+   * When the citizen first pressed Send with the current key, sent as
+   * `client_created_at`. It's fixed on the first attempt and reused on
+   * retries: the key only replays the original report if the body is
+   * byte-for-byte the same, so a fresh timestamp on every attempt would
+   * turn a retry into `idempotency_key_reused`. Absent until then (and in
+   * drafts saved before this field existed).
+   */
+  submittedAt?: string;
   createdAt: string;
   step: ReportStep;
   photos: DraftPhoto[];

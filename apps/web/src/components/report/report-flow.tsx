@@ -178,14 +178,21 @@ export function ReportFlow() {
   // ---- submit
 
   const mutation = useMutation({
-    mutationFn: ({ key }: { key: string }) => {
+    mutationFn: ({
+      key,
+      submittedAt,
+    }: {
+      key: string;
+      submittedAt: string;
+    }) => {
       if (!category) throw new Error("No category");
       const mediaIds = uploads.photos.flatMap((photo) =>
         photo.mediaId ? [photo.mediaId] : [],
       );
-      return createReport(buildReportBody(draft, category, mediaIds), {
-        idempotencyKey: key,
-      });
+      return createReport(
+        buildReportBody(draft, category, mediaIds, new Date(submittedAt)),
+        { idempotencyKey: key },
+      );
     },
     onSuccess: (report) => {
       // The submitted draft is finished with. A new draft (with a new
@@ -202,7 +209,10 @@ export function ReportFlow() {
     onError: (error) => setSubmitError(submitErrorInfo(error)),
   });
 
-  const submit = (key: string = draft.idempotencyKey) => {
+  const submit = (
+    key: string = draft.idempotencyKey,
+    stamp: string | undefined = draft.submittedAt,
+  ) => {
     // Re-check every step: the citizen may have edited an earlier one
     // from the review page.
     if (photoIssue) return goTo(1);
@@ -210,13 +220,20 @@ export function ReportFlow() {
     if (hasDetailsIssues(detailsIssues) || !category) return goTo(3);
     if (uploadsState !== "ready") return;
     setSubmitError(null);
-    mutation.mutate({ key });
+    // A retry must send exactly what the first attempt sent, timestamp
+    // included, or the API can't recognise it as the same report.
+    const submittedAt = stamp ?? new Date().toISOString();
+    if (submittedAt !== draft.submittedAt) {
+      setDraft((current) => ({ ...current, submittedAt }));
+    }
+    mutation.mutate({ key, submittedAt });
   };
 
   const submitAsNew = () => {
     const key = randomId();
-    setDraft((current) => ({ ...current, idempotencyKey: key }));
-    submit(key);
+    const submittedAt = new Date().toISOString();
+    setDraft((current) => ({ ...current, idempotencyKey: key, submittedAt }));
+    submit(key, submittedAt);
   };
 
   const continueFrom = () => {
