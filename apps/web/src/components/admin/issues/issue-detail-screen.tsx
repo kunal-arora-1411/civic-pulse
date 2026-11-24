@@ -22,6 +22,7 @@ import {
   isApiError,
   type StaffReport,
 } from "@/lib/api";
+import { processingRefetchInterval } from "@/lib/media/processing";
 import { IssueTimeline } from "./issue-timeline";
 import { StatusDialog } from "./status-dialog";
 
@@ -217,6 +218,11 @@ export function IssueDetailScreen({
   const query = useQuery({
     queryKey: ["issues", "detail", id],
     queryFn: ({ signal }) => getIssue(id, signal),
+    refetchInterval: ({ state }) =>
+      processingRefetchInterval(
+        state.data?.reports.flatMap((report) => report.media),
+        state.dataUpdateCount,
+      ),
   });
 
   return (

@@ -17,6 +17,7 @@ import { useErrorMessage } from "@/hooks/use-error-message";
 import { useCategories, useLocalized } from "@/hooks/use-reference-data";
 import { Link } from "@/i18n/navigation";
 import { type Category, getReport, isApiError, type Report } from "@/lib/api";
+import { processingRefetchInterval } from "@/lib/media/processing";
 
 /** "road_name" → "Road name", for fields of categories since edited. */
 function humanize(key: string): string {
@@ -171,6 +172,8 @@ export function ReportDetail({ params }: { params: Promise<{ id: string }> }) {
   const query = useQuery({
     queryKey: ["reports", "detail", id],
     queryFn: ({ signal }) => getReport(id, signal),
+    refetchInterval: ({ state }) =>
+      processingRefetchInterval(state.data?.media, state.dataUpdateCount),
   });
 
   return (
