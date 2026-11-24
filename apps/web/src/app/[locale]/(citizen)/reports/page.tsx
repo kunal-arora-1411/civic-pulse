@@ -17,7 +17,7 @@ export default function MyReportsPage() {
   return (
     <main
       id="main"
-      className="mx-auto grid w-full max-w-3xl flex-1 content-start gap-6 px-4 py-6 sm:px-6 sm:py-10"
+      className="mx-auto grid w-full max-w-5xl flex-1 content-start gap-6 px-5 py-6 sm:px-8 sm:py-10"
     >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="grid gap-1">
