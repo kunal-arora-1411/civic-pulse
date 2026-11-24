@@ -58,7 +58,7 @@ export function LandingFooter() {
         <div className="flex flex-wrap justify-between gap-12">
           <div className="grid max-w-[300px] content-start gap-4">
             <span className="flex items-center gap-2.5">
-              <LogoMark className="size-[26px] [&_rect]:fill-lp-ink [&_path:last-of-type]:stroke-lp-ink" />
+              <LogoMark className="size-[26px]" />
               <span className="text-lg font-semibold tracking-[-0.03em] text-lp-ink">
                 CivicPulse
               </span>

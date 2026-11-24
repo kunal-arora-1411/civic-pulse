@@ -23,7 +23,7 @@ export function LandingHeader() {
             aria-label={t("home")}
             className="flex items-center gap-2.5 rounded-lg"
           >
-            <LogoMark className="size-[26px] [&_rect]:fill-lp-ink [&_path:last-of-type]:stroke-lp-ink" />
+            <LogoMark className="size-[26px]" />
             <span
               aria-hidden="true"
               className="hidden text-lg font-semibold tracking-[-0.03em] text-lp-ink sm:inline"
