@@ -109,5 +109,7 @@ class MediaAsset(TimestampMixin, Base):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Face blurring of the display and thumbnail copies (Phase 2): when the
     # copies were checked, and how many faces were blurred. NULL = not yet.
+    # With blurring on, a photo has no public copies and stays `processing`
+    # until this check has run.
     faces_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     face_count: Mapped[int | None] = mapped_column(SmallInteger)

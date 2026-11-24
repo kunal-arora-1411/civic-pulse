@@ -2,7 +2,9 @@
 
 Both read the original upload (never altered) and are safe to repeat:
 an embedding is stored once per photo and model (a duplicate insert is a
-no-op), and blurring is recorded on the asset so it happens once.
+no-op), and the face check is recorded on the asset so it happens once.
+With face blurring on, the face check is also what publishes a photo's
+public copies (`check_faces`).
 
 Model failures surface as `AIUnavailable`; storage failures as
 `StorageError`, which callers retry. Vectors go to Postgres as text cast
@@ -39,7 +41,8 @@ from app.core.tenancy import set_tenant
 from app.domains.ai.models import EMBEDDING_DIM, MediaEmbedding, ModelRegistryEntry, ModelTask
 from app.domains.media.inspect import InvalidImage
 from app.domains.media.models import MediaAsset, MediaStatus
-from app.domains.media.processing import decode_upright, render_image_variants
+from app.domains.media.processing import Variant, decode_upright, render_image_variants
+from app.domains.media.service import object_key
 
 logger = logging.getLogger(__name__)
 
@@ -270,54 +273,75 @@ async def refresh_phashes(tenant_id: uuid.UUID, *, storage: ObjectStorage | None
     return len(stale)
 
 
-async def blur_faces(
+async def check_faces(
     media_id: uuid.UUID, tenant_id: uuid.UUID, *, storage: ObjectStorage | None = None
 ) -> int | None:
-    """Re-render a ready photo's display and thumbnail copies with faces
-    blurred, once. The original is never altered. Returns the number of
-    faces blurred, or None when there was nothing to do."""
-    if not get_settings().face_blur_enabled:
-        return None
+    """Publish a photo's public copies with every face blurred, once.
+
+    With face blurring on, media processing verifies a photo and reads its
+    metadata but stops at `processing` without making public copies
+    (`process_asset`). This step renders the display and thumbnail copies
+    from the original, with the faces the detector finds blurred, and only
+    then marks the photo ready, so no unblurred public copy ever exists.
+    A photo that was made ready while blurring was off is re-rendered the
+    same way once blurring is on. The original is never altered.
+
+    Returns the number of faces blurred, or None when there was nothing to
+    do (already checked, not processed yet, or blurring off for a photo
+    that is already public).
+    """
     storage = storage or get_storage()
     settings = get_settings()
     async with get_session_factory()() as db:
         await set_tenant(db, tenant_id)
         asset = await db.scalar(select(MediaAsset).where(MediaAsset.id == media_id))
-        if (
-            asset is None
-            or asset.status != MediaStatus.READY
-            or asset.faces_checked_at is not None
-            or not asset.display_key
-            or not asset.thumb_key
-        ):
+        if asset is None or asset.faces_checked_at is not None:
             return None
-        keys = (asset.storage_key, asset.display_key, asset.thumb_key)
+        held = asset.status == MediaStatus.PROCESSING and asset.processed_at is not None
+        public_unchecked = asset.status == MediaStatus.READY and settings.face_blur_enabled
+        if not (held or public_unchecked):
+            return None
+        original_key = asset.storage_key
         await db.rollback()
 
         try:
             detector = registry.get_face_detector()
         except Exception as exc:
             raise AIUnavailable(f"face detector unavailable: {exc!r}") from exc
-        data = await storage.read(keys[0], max_bytes=settings.media_max_bytes)
+        data = await storage.read(original_key, max_bytes=settings.media_max_bytes)
 
-        def detect_and_render() -> tuple[int, dict[str, bytes]]:
+        def detect_and_render() -> tuple[int, dict[str, Variant]]:
             image = decode_upright(data, max_pixels=settings.media_max_pixels)
             source = Image.open(io.BytesIO(data))
             image.info.update(source.info)
             boxes = detector.detect(image)
-            if not boxes:
-                return 0, {}
-            variants = render_image_variants(blur_regions(image, boxes))
-            return len(boxes), {name: v.data for name, v in variants.items()}
+            public = blur_regions(image, boxes) if boxes else image
+            return len(boxes), render_image_variants(public)
 
-        count, variants = await asyncio.to_thread(detect_and_render)
-        if variants:
-            await storage.write(keys[1], variants["display"], content_type="image/webp")
-            await storage.write(keys[2], variants["thumb"], content_type="image/webp")
+        try:
+            count, variants = await asyncio.to_thread(detect_and_render)
+        except InvalidImage as exc:  # verified at upload, so this is unexpected
+            raise AIUnavailable(f"undecodable photo: {exc.reason}") from exc
+        keys = {name: object_key(tenant_id, media_id, f"{name}.webp") for name in variants}
+        for name, variant in variants.items():
+            await storage.write(keys[name], variant.data, content_type="image/webp")
+        display = variants["display"]
         await db.execute(
             update(MediaAsset)
-            .where(MediaAsset.id == media_id, MediaAsset.faces_checked_at.is_(None))
-            .values(faces_checked_at=datetime.now(UTC), face_count=count)
+            .where(
+                MediaAsset.id == media_id,
+                MediaAsset.faces_checked_at.is_(None),
+                MediaAsset.status.in_([MediaStatus.PROCESSING, MediaStatus.READY]),
+            )
+            .values(
+                status=MediaStatus.READY,
+                display_key=keys["display"],
+                thumb_key=keys["thumb"],
+                width=display.width,
+                height=display.height,
+                faces_checked_at=datetime.now(UTC),
+                face_count=count,
+            )
         )
         await db.commit()
     logger.info("faces checked", extra=log_fields(media_id=str(media_id), faces=count))
@@ -325,7 +349,7 @@ async def blur_faces(
 
 
 async def analyze_media(media_id: uuid.UUID, tenant_id: uuid.UUID) -> str:
-    """The `analyze_media` task: embedding and pHash, then face blurring."""
-    model_id = await ensure_embeddings(tenant_id, [media_id])
-    await blur_faces(media_id, tenant_id)
-    return model_id
+    """The `analyze_media` task: the face check first, so the photo is
+    published as soon as it can be, then its embedding and pHash."""
+    await check_faces(media_id, tenant_id)
+    return await ensure_embeddings(tenant_id, [media_id])

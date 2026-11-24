@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
+import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -31,7 +34,7 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "WHERE t.slug = 'demo-city' AND r.address_text LIKE 'Synthetic Street%'",
         "ready_photos": "SELECT count(*) FROM media_assets m JOIN reports r ON r.id = m.report_id "
         "WHERE r.address_text LIKE 'Synthetic Street%' AND m.status = 'ready' "
-        "AND m.thumb_key IS NOT NULL",
+        "AND m.thumb_key IS NOT NULL AND m.faces_checked_at IS NOT NULL",
         "events": "SELECT count(*) FROM issue_events e JOIN civic_issues i ON i.id = e.issue_id "
         "WHERE i.address_text LIKE 'Synthetic Street%'",
         # Phase 2
@@ -57,8 +60,14 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
 
 
 async def test_seed_is_idempotent_and_usable(
-    owner_engine: AsyncEngine, client: httpx.AsyncClient, sms: RecordingSms
+    owner_engine: AsyncEngine,
+    client: httpx.AsyncClient,
+    sms: RecordingSms,
+    settings: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # As in the compose stack: photos are only public after a face check.
+    monkeypatch.setattr(settings, "ai_face_blur", True)
     await seed.run()
     first = await _counts(owner_engine)
     await seed.run()

@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.storage import get_storage
 from app.core.tenancy import system_session
+from app.domains.ai.analysis import check_faces
 from app.domains.categories.models import Category
 from app.domains.issues.models import (
     CivicIssue,
@@ -352,6 +353,8 @@ async def _ensure_photo(
             status = MediaStatus.PROCESSING
     if status == MediaStatus.PROCESSING:
         await process_asset(media_id, tenant_id)
+        # With face blurring on, the face check is what publishes the copies.
+        await check_faces(media_id, tenant_id)
     return media_id
 
 

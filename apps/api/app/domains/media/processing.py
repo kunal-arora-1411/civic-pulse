@@ -32,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 VARIANTS = {"display": (1600, 82), "thumb": (400, 75)}  # name: (longest side, WebP quality)
 
+AWAITING_FACE_CHECK = "awaiting_face_check"
+"""`process_asset`'s result for a photo verified with face blurring on: it
+stays `processing`, with no public copies, until the AI worker's face check
+renders them with faces blurred and marks it ready (`ai.analysis.check_faces`)."""
+
 
 @dataclass(frozen=True, slots=True)
 class Variant:
@@ -83,6 +88,11 @@ async def process_asset(
 ) -> str:
     """Make the variants for one asset and mark it ready (or failed).
 
+    With face blurring on (AI_FACE_BLUR), the asset is only verified (it
+    decodes in full) and its metadata read; it stays `processing` with no
+    public copies and AWAITING_FACE_CHECK is returned. The face check on
+    the AI queue makes the copies, so an unblurred one is never written.
+
     Safe to run more than once: only `processing` assets are touched, the
     variant keys are deterministic, and the final update is conditional on
     the status still being `processing`. Storage errors propagate so the
@@ -99,34 +109,44 @@ async def process_asset(
             return "missing"
         if asset.status != MediaStatus.PROCESSING:
             return asset.status
+        if asset.processed_at is not None:
+            return AWAITING_FACE_CHECK  # processed already; the face check publishes it
         original_key = asset.storage_key
         await db.rollback()  # don't hold a transaction open while decoding
 
         data = await storage.read(original_key, max_bytes=settings.media_max_bytes)
+        hold = settings.face_blur_enabled
         values: dict[str, object]
+        variants: dict[str, Variant] = {}
         try:
-            variants = await asyncio.to_thread(
-                render_variants, data, max_pixels=settings.media_max_pixels
-            )
+            if hold:  # check that it decodes in full; the copies come later
+                await asyncio.to_thread(decode_upright, data, max_pixels=settings.media_max_pixels)
+            else:
+                variants = await asyncio.to_thread(
+                    render_variants, data, max_pixels=settings.media_max_pixels
+                )
             image = open_image(data, max_pixels=settings.media_max_pixels)
             exif = read_exif(image, tz=settings.local_timezone)
         except InvalidImage as exc:
             values = {"status": MediaStatus.FAILED, "failure_reason": exc.reason}
         else:
-            keys = {name: object_key(tenant_id, asset_id, f"{name}.webp") for name in variants}
-            for name, variant in variants.items():
-                await storage.write(keys[name], variant.data, content_type="image/webp")
-            display = variants["display"]
             values = {
-                "status": MediaStatus.READY,
-                "display_key": keys["display"],
-                "thumb_key": keys["thumb"],
-                "width": display.width,
-                "height": display.height,
                 "exif": exif.private or None,
                 "captured_at": exif.captured_at,
                 "processed_at": datetime.now(UTC),
             }
+            if not hold:
+                keys = {name: object_key(tenant_id, asset_id, f"{name}.webp") for name in variants}
+                for name, variant in variants.items():
+                    await storage.write(keys[name], variant.data, content_type="image/webp")
+                display = variants["display"]
+                values |= {
+                    "status": MediaStatus.READY,
+                    "display_key": keys["display"],
+                    "thumb_key": keys["thumb"],
+                    "width": display.width,
+                    "height": display.height,
+                }
 
         result = await db.execute(
             update(MediaAsset)
@@ -137,8 +157,9 @@ async def process_asset(
         status = result.scalar_one_or_none()
         await db.commit()
 
+    outcome = str(values.get("status", AWAITING_FACE_CHECK))
     logger.info(
         "media processed",
-        extra=log_fields(media_id=str(asset_id), status=values["status"], applied=status),
+        extra=log_fields(media_id=str(asset_id), status=outcome, applied=status),
     )
-    return str(values["status"])
+    return outcome
