@@ -24,7 +24,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, TimestampMixin
@@ -64,7 +64,16 @@ class CivicIssue(TimestampMixin, Base):
             name="fk_civic_issues_tenant_cover_media",
             use_alter=True,
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "merged_into_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_civic_issues_tenant_merged_into",
+        ),
         CheckConstraint(f"status IN ({sql_in(IssueStatus)})", name="status_values"),
+        CheckConstraint(
+            "merged_into_id IS NULL OR merged_into_id <> id", name="not_merged_into_self"
+        ),
         CheckConstraint(
             "report_count >= 0 AND unique_reporter_count BETWEEN 0 AND report_count",
             name="counts_consistent",
@@ -78,6 +87,7 @@ class CivicIssue(TimestampMixin, Base):
         Index("ix_civic_issues_tenant_category", "tenant_id", "category_id"),
         Index("ix_civic_issues_tenant_ward", "tenant_id", "ward_id"),
         Index("ix_civic_issues_tenant_report_count", "tenant_id", "report_count"),
+        Index("ix_civic_issues_merged_into_id", "merged_into_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -103,12 +113,24 @@ class CivicIssue(TimestampMixin, Base):
     search_document: Mapped[Any] = mapped_column(
         TSVECTOR, server_default=text("''::tsvector"), deferred=True
     )
+    # Set when this issue was merged into another (FR-033). A merged issue
+    # keeps its reference and history but has no reports and drops out of
+    # lists, the map and matching; reading it points at the survivor.
+    merged_into_id: Mapped[uuid.UUID | None] = mapped_column()
 
 
 class EventType(StrEnum):
     CREATED = "created"
     STATUS_CHANGED = "status_changed"
     NOTE = "note"
+    # Phase 2
+    REPORT_LINKED = "report_linked"  # a report joined this issue
+    MERGED = "merged"  # another issue was merged into this one
+    MERGED_INTO = "merged_into"  # this issue was merged into another
+    SPLIT = "split"  # reports moved out of (or into) this issue
+    CATEGORY_CHANGED = "category_changed"
+    SEVERITY_CHANGED = "severity_changed"
+    PRIORITY_CHANGED = "priority_changed"
 
 
 class Visibility(StrEnum):
@@ -138,6 +160,12 @@ class IssueEvent(Base):
             ondelete="RESTRICT",
             name="fk_issue_events_tenant_report",
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "related_issue_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_issue_events_tenant_related_issue",
+        ),
         CheckConstraint(f"type IN ({sql_in(EventType)})", name="type_values"),
         CheckConstraint(f"visibility IN ({sql_in(Visibility)})", name="visibility_values"),
         CheckConstraint(
@@ -159,6 +187,45 @@ class IssueEvent(Base):
     public_note: Mapped[str | None] = mapped_column(Text)
     visibility: Mapped[str] = mapped_column(String(16))
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Phase 2: the other issue in a merge or split, and structured details
+    # (moved report ids, old and new values) for the staff timeline.
+    related_issue_id: Mapped[uuid.UUID | None] = mapped_column()
+    data: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+class IssueRelation(Base):
+    """Two issues marked as related without merging them (FR-060).
+
+    One row per unordered pair: `issue_id` is always the smaller id.
+    """
+
+    __tablename__ = "issue_relations"
+    __table_args__ = (
+        PrimaryKeyConstraint("issue_id", "related_issue_id"),
+        ForeignKeyConstraint(
+            ["tenant_id", "issue_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_issue_relations_tenant_issue",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "related_issue_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_issue_relations_tenant_related_issue",
+        ),
+        CheckConstraint("issue_id < related_issue_id", name="ordered_pair"),
+        Index("ix_issue_relations_related_issue_id", "related_issue_id"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id", ondelete="RESTRICT"))
+    issue_id: Mapped[uuid.UUID] = mapped_column()
+    related_issue_id: Mapped[uuid.UUID] = mapped_column()
+    note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

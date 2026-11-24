@@ -107,3 +107,7 @@ class MediaAsset(TimestampMixin, Base):
     upload_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Face blurring of the display and thumbnail copies (Phase 2): when the
+    # copies were checked, and how many faces were blurred. NULL = not yet.
+    faces_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    face_count: Mapped[int | None] = mapped_column(SmallInteger)

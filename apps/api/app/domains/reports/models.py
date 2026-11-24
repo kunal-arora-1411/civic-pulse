@@ -41,6 +41,24 @@ class LocationSource(StrEnum):
     MANUAL = "manual"
 
 
+class CategorySource(StrEnum):
+    """Who chose the report's category (FR-021: AI corrections are labels)."""
+
+    CITIZEN = "citizen"  # no AI suggestion was used
+    AI_ACCEPTED = "ai_accepted"  # the citizen kept the top suggestion
+    AI_CORRECTED = "ai_corrected"  # the citizen picked something else
+    OPERATOR = "operator"  # staff corrected it afterwards
+
+
+class MatchingStatus(StrEnum):
+    """Where duplicate matching stands for a report (Phase 2)."""
+
+    PENDING = "pending"  # not decided yet; no issue
+    REVIEW = "review"  # waiting for a human; no issue
+    LINKED = "linked"  # joined an existing issue
+    NEW_ISSUE = "new_issue"  # started an issue of its own
+
+
 class Report(TimestampMixin, Base):
     """A single citizen submission. Reports are never deleted: merges and
     withdrawals keep the row (PRD §10.2), so the app role has no DELETE."""
@@ -73,7 +91,24 @@ class Report(TimestampMixin, Base):
             ondelete="RESTRICT",
             name="fk_reports_tenant_ward",
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "classification_id"],
+            ["classifications.tenant_id", "classifications.id"],
+            ondelete="RESTRICT",
+            name="fk_reports_tenant_classification",
+        ),
         CheckConstraint(f"status IN ({sql_in(ReportStatus)})", name="status_values"),
+        CheckConstraint(
+            f"category_source IN ({sql_in(CategorySource)})", name="category_source_values"
+        ),
+        CheckConstraint(
+            f"matching_status IN ({sql_in(MatchingStatus)})", name="matching_status_values"
+        ),
+        # A report has an issue exactly when matching has placed it.
+        CheckConstraint(
+            "(matching_status IN ('pending', 'review')) = (issue_id IS NULL)",
+            name="issue_matches_status",
+        ),
         CheckConstraint(
             f"location_source IN ({sql_in(LocationSource)})", name="location_source_values"
         ),
@@ -87,6 +122,12 @@ class Report(TimestampMixin, Base):
         Index("ix_reports_tenant_reporter_created", "tenant_id", "reporter_id", "created_at"),
         Index("ix_reports_issue_id", "issue_id"),
         Index("ix_reports_location", "location", postgresql_using="gist"),
+        # The matching watchdog looks for reports stuck in `pending`.
+        Index(
+            "ix_reports_matching_pending",
+            "created_at",
+            postgresql_where=text("matching_status = 'pending'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -96,8 +137,7 @@ class Report(TimestampMixin, Base):
     reference: Mapped[str] = mapped_column(String(20))
     reporter_id: Mapped[uuid.UUID] = mapped_column()
     category_id: Mapped[uuid.UUID] = mapped_column()
-    # Nullable so that later phases can hold a report for review before it
-    # is linked; in Phase 1 every report gets its own issue immediately.
+    # NULL while matching is pending or the report waits in review.
     issue_id: Mapped[uuid.UUID | None] = mapped_column()
     status: Mapped[str] = mapped_column(String(16), default=ReportStatus.ACCEPTED)
     description: Mapped[str | None] = mapped_column(Text)
@@ -110,3 +150,8 @@ class Report(TimestampMixin, Base):
     address_text: Mapped[str | None] = mapped_column(String(500))
     ward_id: Mapped[uuid.UUID | None] = mapped_column()
     client_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    classification_id: Mapped[uuid.UUID | None] = mapped_column()
+    category_source: Mapped[str] = mapped_column(
+        String(16), default=CategorySource.CITIZEN, server_default=text("'citizen'")
+    )
+    matching_status: Mapped[str] = mapped_column(String(16), default=MatchingStatus.PENDING)

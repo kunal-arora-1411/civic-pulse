@@ -36,7 +36,7 @@ from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 from app.domains.rbac.scope import accessible_jurisdiction_ids
 from app.domains.reports.errors import EvidenceRequired, InvalidMedia, OutOfJurisdiction
-from app.domains.reports.models import LocationSource, Report, ReportStatus
+from app.domains.reports.models import LocationSource, MatchingStatus, Report, ReportStatus
 from app.domains.reports.schemas import (
     IssueRef,
     LocationOut,
@@ -197,6 +197,7 @@ async def create_report(db: AsyncSession, principal: Principal, body: ReportCrea
         address_text=body.address_text,
         ward_id=ward_id,
         client_created_at=body.client_created_at,
+        matching_status=MatchingStatus.NEW_ISSUE,
     )
     db.add(report)
     await db.flush()

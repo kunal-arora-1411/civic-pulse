@@ -5735,7 +5735,14 @@
         "enum": [
           "created",
           "status_changed",
-          "note"
+          "note",
+          "report_linked",
+          "merged",
+          "merged_into",
+          "split",
+          "category_changed",
+          "severity_changed",
+          "priority_changed"
         ],
         "title": "EventType"
       },

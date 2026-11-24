@@ -39,7 +39,7 @@ from app.domains.issues.references import allocate
 from app.domains.media.models import MediaAsset, MediaPurpose, MediaStatus
 from app.domains.media.processing import process_asset
 from app.domains.media.service import object_key
-from app.domains.reports.models import Report, ReportStatus
+from app.domains.reports.models import MatchingStatus, Report, ReportStatus
 from app.domains.workflow.statuses import IssueStatus
 
 ISSUE_COUNT = 60
@@ -442,6 +442,7 @@ async def seed_issues(
                     location_source="gps",
                     address_text=issue.address,
                     ward_id=ward_id,
+                    matching_status=MatchingStatus.NEW_ISSUE,
                     created_at=issue.created_at,
                     updated_at=issue.created_at,
                 )
