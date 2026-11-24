@@ -127,6 +127,7 @@ async def test_list_shape_and_newest_first_order(client: httpx.AsyncClient, queu
         "ward": {"id": str(q.city.wards["NE"]), "name": "Ward NE"},
         "report_count": 1,
         "unique_reporter_count": 1,
+        "support_count": 0,
         "severity": {"level": "medium", "source": "rule", "reason": None},
         "priority": None,
         "thumb_url": None,

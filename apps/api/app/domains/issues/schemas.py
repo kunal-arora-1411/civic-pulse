@@ -60,6 +60,7 @@ class IssueListItem(BaseModel):
     ward: WardRef | None
     report_count: int
     unique_reporter_count: int
+    support_count: int = Field(description='Citizens who said "I face this too".')
     severity: SeverityOut
     priority: PriorityOut | None = Field(
         description="Null only until the issue's priority is first computed (seconds)."

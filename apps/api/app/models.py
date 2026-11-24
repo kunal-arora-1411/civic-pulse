@@ -6,10 +6,12 @@ from app.domains.ai.models import Classification, MediaEmbedding, ModelRegistryE
 from app.domains.audit.models import AuditEvent
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.categories.models import Category
+from app.domains.community.models import IssueSupport
 from app.domains.config.models import TenantConfig
 from app.domains.issues.models import CivicIssue, IssueEvent, IssueRelation, ReferenceCounter
 from app.domains.matching.models import MatchDecision, ReviewTask
 from app.domains.media.models import MediaAsset
+from app.domains.notifications.models import Notification
 from app.domains.operations.models import (
     ClosureRequest,
     IssueAssignment,
@@ -45,12 +47,14 @@ __all__ = [
     "IssueAssignment",
     "IssueEvent",
     "IssueRelation",
+    "IssueSupport",
     "IssueVerification",
     "Jurisdiction",
     "MatchDecision",
     "MediaAsset",
     "MediaEmbedding",
     "ModelRegistryEntry",
+    "Notification",
     "OtpChallenge",
     "OutboxEvent",
     "PlaceOfInterest",

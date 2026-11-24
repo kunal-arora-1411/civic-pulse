@@ -53,6 +53,13 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "prioritised": "SELECT count(*) FROM civic_issues "
         "WHERE address_text LIKE 'Synthetic Street%' "
         "AND priority_computed_at IS NOT NULL AND priority_factors IS NOT NULL",
+        # Analytics history
+        "analytics_issues": "SELECT count(*) FROM civic_issues "
+        "WHERE address_text LIKE 'Analytics Street%'",
+        "analytics_reports": "SELECT count(*) FROM reports "
+        "WHERE address_text LIKE 'Analytics Street%'",
+        "analytics_decisions": "SELECT count(*) FROM match_decisions m "
+        "JOIN reports r ON r.id = m.report_id WHERE r.address_text LIKE 'Analytics Street%'",
         "embedded": "SELECT count(DISTINCT e.media_id) FROM media_embeddings e "
         "JOIN media_assets m ON m.id = e.media_id JOIN reports r ON r.id = m.report_id "
         "WHERE r.address_text LIKE 'Synthetic Street%'",
@@ -84,6 +91,10 @@ async def test_seed_is_idempotent_and_usable(
     first = await _counts(owner_engine)
     await seed.run()
     assert await _counts(owner_engine) == first
+    analytics = {k: first.pop(k) for k in list(first) if k.startswith("analytics_")}
+    assert analytics["analytics_issues"] == 360
+    assert analytics["analytics_reports"] > analytics["analytics_issues"]
+    assert analytics["analytics_decisions"] > analytics["analytics_reports"] - 360
     assert first == {
         "tenants": 2,
         "departments": 4,
@@ -150,6 +161,26 @@ async def test_seed_is_idempotent_and_usable(
                 "WHERE address_text LIKE 'Synthetic Street%'"
             )
         )
+    async with owner_engine.connect() as conn:
+        history = dict(
+            (
+                await conn.execute(
+                    text(
+                        "SELECT status, count(*) FROM civic_issues "
+                        "WHERE address_text LIKE 'Analytics Street%' GROUP BY status"
+                    )
+                )
+            ).all()
+        )
+        history_span = await conn.scalar(
+            text(
+                "SELECT max(created_at) - min(created_at) FROM civic_issues "
+                "WHERE address_text LIKE 'Analytics Street%'"
+            )
+        )
+    # The whole lifecycle shows up, over about three months.
+    assert {"reported", "in_progress", "resolved", "closed", "rejected"} <= set(history)
+    assert history_span.days >= 75
     assert statuses == {"reported": 30, "under_review": 12, "verified": 12, "rejected": 6}
     assert wards == 4
     assert span.days >= 28

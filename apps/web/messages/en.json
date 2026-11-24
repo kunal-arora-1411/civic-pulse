@@ -114,6 +114,7 @@
       "review": "Review queue",
       "openReviews": "({count} waiting)",
       "map": "Map",
+      "analytics": "Analytics",
       "categories": "Categories",
       "matching": "Matching",
       "priority": "Priority rules",
@@ -892,6 +893,150 @@
           "option_label_required": "Enter an English label."
         }
       }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "description": "How reporting and resolution are going: volumes, where issues cluster, how long they take and how the duplicate matching performs.",
+      "loading": "Loading…",
+      "error": "This chart couldn't load.",
+      "retry": "Try again",
+      "empty": "No data for these filters.",
+      "viewTable": "View as table",
+      "viewChart": "View as chart",
+      "noValue": "—",
+      "hours": "{value} h",
+      "days": "{value} d",
+      "bin": "{from}–{to}",
+      "binOpen": "{from}+",
+      "kpisLabel": "Headline figures",
+      "deltaPoints": "{value} pts",
+      "tone": {
+        "good": "{change}, better",
+        "bad": "{change}, worse",
+        "neutral": "{change}"
+      },
+      "vsPrevious": "vs {value} in the previous period",
+      "noComparison": "No comparison",
+      "issuesTotal": "issues",
+      "kpi": {
+        "reports": "Reports",
+        "issues": "New issues",
+        "unique_reporters": "Citizens reporting",
+        "resolution_time": "Median time to resolve",
+        "acknowledgement_time": "Median time to acknowledge",
+        "duplicate_rate": "Duplicate rate",
+        "review_rate": "Sent to review",
+        "reopen_rate": "Reopen rate"
+      },
+      "filters": {
+        "label": "Analytics filters",
+        "period": "Period",
+        "presets": {
+          "7d": "Last 7 days",
+          "30d": "Last 30 days",
+          "90d": "Last 90 days",
+          "mtd": "This month",
+          "custom": "Custom range"
+        },
+        "from": "From",
+        "to": "To",
+        "rangeInvalid": "The start must be on or before the end.",
+        "category": "Category",
+        "allCategories": "All categories",
+        "ward": "Ward",
+        "allWards": "All wards",
+        "status": "Status",
+        "allStatuses": "All statuses",
+        "selected": "{count} selected",
+        "reset": "Reset filters"
+      },
+      "groups": {
+        "new": "New and verified",
+        "inWork": "In work",
+        "done": "Resolved or closed",
+        "rejected": "Rejected"
+      },
+      "trend": {
+        "title": "Reports and resolutions over time",
+        "description": "Reports filed, issues created and issues first resolved.",
+        "summary": "{reports} reports, {issues} new issues and {resolved} resolutions in the period.",
+        "interval": "Group by",
+        "day": "Daily",
+        "week": "Weekly",
+        "weekOf": "Week of {day}",
+        "period": "Period",
+        "reports": "Reports",
+        "issues": "New issues",
+        "resolved": "Resolved"
+      },
+      "status": {
+        "title": "Where issues stand",
+        "description": "Issues created in the period, by their current stage.",
+        "summary": "{total, plural, one {# issue} other {# issues}}; {done} resolved or closed.",
+        "status": "Status",
+        "count": "Issues"
+      },
+      "category": {
+        "title": "Issues by category",
+        "description": "Split by current stage.",
+        "summary": "{name} has the most issues: {count}.",
+        "category": "Category",
+        "total": "Total"
+      },
+      "wards": {
+        "title": "Ward ranking",
+        "description": "The {count} wards with the most issues.",
+        "summary": "{name} has the most issues: {count}.",
+        "ward": "Ward",
+        "issues": "Issues",
+        "open": "Open",
+        "resolved": "Resolved",
+        "median": "Median time to resolve",
+        "outside": "Outside any ward"
+      },
+      "resolution": {
+        "title": "Time to resolve",
+        "description": "How long issues took to be first resolved. The dashed line marks the median.",
+        "summary": "{count, plural, one {# issue} other {# issues}} resolved; median {median}, 90th percentile {p90}.",
+        "bin": "Time to resolve",
+        "issues": "Issues",
+        "median": "Median",
+        "mean": "Mean",
+        "p90": "90th percentile",
+        "medianMarker": "Median {value}"
+      },
+      "activity": {
+        "title": "When citizens report",
+        "description": "Reports by weekday and hour (India time).",
+        "summary": "The busiest hour is {day} at {hour}:00 with {count, plural, one {# report} other {# reports}}.",
+        "day": "Day",
+        "hour": "Hour",
+        "reports": "Reports",
+        "cell": "{day}, {hour}:00: {count, plural, one {# report} other {# reports}}",
+        "hint": "Point at a cell for its count.",
+        "fewer": "Fewer",
+        "more": "More ({max})"
+      },
+      "hotspots": {
+        "title": "Hotspots",
+        "description": "Issues per map cell (about 0.7 km² each). Darker cells have more issues.",
+        "summary": "{cells, plural, one {# cell} other {# cells}} with issues; the densest has {max}.",
+        "where": "Cell centre (lat, lng)",
+        "issues": "Issues",
+        "open": "Open",
+        "tooltip": "{issues, plural, one {# issue} other {# issues}}, {open} open"
+      },
+      "quality": {
+        "title": "Duplicate matching quality",
+        "description": "Across {count, plural, one {# decided report} other {# decided reports}}.",
+        "auto_link_rate": "Linked automatically",
+        "review_rate": "Sent to review",
+        "duplicate_rate": "Duplicates",
+        "correction_rate": "Marked incorrect",
+        "feedback": "of {count} reviewed",
+        "metric": "Measure",
+        "value": "Rate"
+      }
     }
   },
   "profile": {
@@ -964,7 +1109,8 @@
     "age": "{count, plural, =0 {Reported today} one {Open for # day} other {Open for # days}}",
     "recurrence": "{count, plural, =0 {No similar issues nearby recently} one {# similar issue nearby in recent months} other {# similar issues nearby in recent months}}",
     "nearPlaces": "Near a school, hospital or other sensitive place",
-    "noPlaces": "No sensitive places nearby"
+    "noPlaces": "No sensitive places nearby",
+    "community": "{count, plural, one {# neighbour says they face this too} other {# neighbours say they face this too}}"
   },
   "priority": {
     "label": "Priority",
@@ -1255,7 +1401,8 @@
       "blog": "Blog",
       "forCities": "For cities",
       "signIn": "Sign in",
-      "report": "Report an issue"
+      "report": "Report an issue",
+      "track": "Track issues"
     },
     "hero": {
       "titleLead": "What needs fixing",
@@ -1436,7 +1583,8 @@
     "cta": {
       "title": "Your street is waiting. <muted>Report the first thing you see on the way home tonight.</muted>",
       "report": "Report an issue",
-      "talk": "Talk to our team"
+      "talk": "Talk to our team",
+      "track": "Track issues in your city"
     },
     "footer": {
       "label": "Footer",
@@ -1456,6 +1604,171 @@
       "profile": "Profile",
       "privacy": "CivicPulse never shows your name or phone number publicly.",
       "copyright": "© CivicPulse"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Updates on your reports and the work waiting for you.",
+    "bellLabel": "Notifications",
+    "bellLabelUnread": "Notifications, {count, plural, one {# unread} other {# unread}}",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all notifications",
+    "today": "Today",
+    "earlier": "Earlier",
+    "unread": "Unread",
+    "loading": "Loading notifications",
+    "loadError": "Notifications could not be loaded. Try again shortly.",
+    "emptyTitle": "No notifications yet",
+    "emptyUnreadTitle": "You're all caught up",
+    "emptyBody": "We'll let you know when something changes on your reports or needs your attention.",
+    "filterLabel": "Show",
+    "filterAll": "All",
+    "filterUnread": "Unread ({count})",
+    "pagesLabel": "Notification pages",
+    "messages": {
+      "report_new_issue": {
+        "title": "Report {report} is now issue {issue}",
+        "body": "Yours is the first report of this problem. We'll keep you posted as it moves."
+      },
+      "report_linked": {
+        "title": "Report {report} joined issue {issue}",
+        "body": "Others reported the same problem, so your report was added to it. You'll get its updates."
+      },
+      "issue_status": {
+        "title": "Issue {issue}: {status}",
+        "body": "The issue your report is on is now “{status}”."
+      },
+      "review_task": {
+        "title": "Report {report} needs a duplicate decision",
+        "body": "Matching wasn't sure whether it repeats an existing issue. Open the review queue to decide."
+      },
+      "assignment": {
+        "title": "Issue {issue} assigned to you",
+        "body": "Open your field work to accept it and get started."
+      },
+      "fallback": {
+        "title": "Update",
+        "body": "Something changed. Open it for details."
+      }
+    }
+  },
+  "community": {
+    "support": {
+      "button": "I face this too",
+      "supported": "You face this too",
+      "pressedHint": "Press again to take it back.",
+      "count": "{count, plural, =0 {Be the first to say so} one {# person faces this} other {# people face this}}",
+      "signIn": "Sign in to say you face this too",
+      "failed": "We couldn't save that. Try again.",
+      "closed": "This issue is no longer open for support.",
+      "merged": "This issue was combined with another one. Support that one instead."
+    },
+    "verify": {
+      "title": "Is it fixed?",
+      "description": "The municipality says the work is done. Please check the spot and tell us whether the problem is really fixed.",
+      "requestedOn": "Marked as fixed on {date}",
+      "afterPhotos": "Photos after the work",
+      "afterPhotosOf": "Photos after the work on {reference}",
+      "noAfterPhotos": "No photos were added after the work.",
+      "closureNote": "Closure note: {note}",
+      "yes": "Yes, it's fixed",
+      "no": "No, still broken",
+      "noteLabel": "What's still wrong?",
+      "noteHint": "Your note helps the field team find what was missed.",
+      "noteRequired": "Tell us what's still wrong.",
+      "submitNo": "Send: still broken",
+      "cancel": "Cancel",
+      "answeredResolved": "Thanks. You said it's fixed.",
+      "answeredUnresolved": "Thanks. You said it's still broken, so the municipality will look at it again.",
+      "sentResolved": "Thanks for confirming",
+      "sentUnresolved": "Thanks, we've sent it back to the municipality",
+      "not_eligible": "Only people who reported this issue can confirm the fix.",
+      "already_verified": "You've already answered for this round of work.",
+      "invalid_transition": "This issue isn't waiting for confirmation any more. Reload to see where it is now."
+    },
+    "reopen": {
+      "button": "Reopen this issue",
+      "title": "Reopen this issue",
+      "description": "If the problem has come back or was never fixed, reopen it and the municipality will assign it again.",
+      "reasonLabel": "Why are you reopening it?",
+      "reasonRequired": "Tell us why you're reopening it.",
+      "submit": "Reopen",
+      "cancel": "Cancel",
+      "close": "Close",
+      "done": "Issue reopened",
+      "not_eligible": "Only people who reported this issue can reopen it.",
+      "invalid_transition": "This issue can't be reopened right now. Reload to see where it is."
+    }
+  },
+  "track": {
+    "metaTitle": "Track issues",
+    "metaDescription": "See the civic issues reported in your city, where they are, and how quickly they're being fixed. No sign-in needed.",
+    "title": "Track issues in your city",
+    "description": "Every reported problem, where it is and how it's going. Locations are approximate and no one's name is shown.",
+    "scorecardLink": "Ward scorecard",
+    "mapLabel": "Map of reported issues, coloured by status",
+    "markerLabel": "{reference}, {status}",
+    "truncated": "The map shows the first 2,000 issues. Filter to see the rest.",
+    "filters": {
+      "label": "Filter issues",
+      "status": "Status",
+      "category": "Category",
+      "ward": "Ward",
+      "all": "All",
+      "open": "Open",
+      "sort": "Sort by",
+      "reset": "Clear filters"
+    },
+    "sorts": {
+      "-created_at": "Newest first",
+      "created_at": "Oldest first",
+      "-updated_at": "Recently updated",
+      "-support_count": "Most supported",
+      "-report_count": "Most reported"
+    },
+    "results": "{count, plural, =0 {No issues} one {# issue} other {# issues}}",
+    "empty": "No issues match these filters.",
+    "loading": "Loading issues…",
+    "loadError": "We couldn't load the issues",
+    "retry": "Try again",
+    "more": "Show more",
+    "reports": "{count, plural, one {# report} other {# reports}}",
+    "supporters": "{count, plural, one {# supporter} other {# supporters}}",
+    "age": "{count, plural, =0 {Reported today} one {# day old} other {# days old}}",
+    "detail": {
+      "metaTitle": "Issue",
+      "back": "All issues",
+      "loading": "Loading the issue…",
+      "loadError": "We couldn't load this issue",
+      "notFoundTitle": "Issue not found",
+      "notFoundBody": "This issue doesn't exist or isn't public.",
+      "reportedOn": "Reported on {date}",
+      "before": "Before",
+      "after": "After",
+      "beforeOf": "Photos of issue {reference} as reported",
+      "afterOf": "Photos of issue {reference} after the work",
+      "noPhotos": "No photos.",
+      "progress": "Progress",
+      "location": "Approximate location",
+      "mapLabel": "Map showing the approximate area of the issue",
+      "precision": "Shown to within about {meters} m to protect people's privacy.",
+      "mergedInto": "This issue was combined with <link>{reference}</link>. Follow that one for updates.",
+      "mergedIntoPlain": "This issue was combined with {reference}."
+    },
+    "scorecard": {
+      "metaTitle": "Ward scorecard",
+      "title": "Ward scorecard",
+      "description": "Open and resolved issues in each ward, and the median number of days from report to fix.",
+      "back": "Back to the tracker",
+      "loading": "Loading the scorecard…",
+      "loadError": "We couldn't load the scorecard",
+      "empty": "No wards yet.",
+      "open": "Open",
+      "resolved": "Resolved",
+      "median": "Median days to fix",
+      "noMedian": "Nothing fixed yet",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "retry": "Try again"
     }
   }
 }

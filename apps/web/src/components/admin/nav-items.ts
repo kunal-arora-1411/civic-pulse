@@ -1,4 +1,5 @@
 import {
+  ChartLine,
   Cpu,
   Gauge,
   GitCompareArrows,
@@ -19,6 +20,7 @@ export type AdminNavKey =
   | "issues"
   | "review"
   | "map"
+  | "analytics"
   | "categories"
   | "matching"
   | "priority"
@@ -33,6 +35,7 @@ export type AdminNavItem = {
     | "/admin/issues"
     | "/admin/review"
     | "/admin/map"
+    | "/admin/analytics"
     | "/admin/categories"
     | "/admin/settings/matching"
     | "/admin/settings/priority"
@@ -62,6 +65,12 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     badge: "openReviews",
   },
   { key: "map", href: "/admin/map", icon: MapIcon, permission: "issue:read" },
+  {
+    key: "analytics",
+    href: "/admin/analytics",
+    icon: ChartLine,
+    permission: "analytics:read",
+  },
   {
     key: "categories",
     href: "/admin/categories",

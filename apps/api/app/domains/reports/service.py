@@ -6,7 +6,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from geoalchemy2 import WKTElement
 from sqlalchemy import ColumnElement, and_, func, select
@@ -32,8 +32,9 @@ from app.domains.issues.models import (
 )
 from app.domains.issues.references import allocate
 from app.domains.matching import views as match_views
-from app.domains.media.models import MediaAsset, MediaPurpose, MediaStatus
+from app.domains.media.models import MediaAsset, MediaPhase, MediaPurpose, MediaStatus
 from app.domains.media.service import thumb_url, to_media_out
+from app.domains.operations.models import ClosureRequest, ClosureState, IssueVerification
 from app.domains.org.models import Jurisdiction
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
@@ -47,6 +48,7 @@ from app.domains.reports.models import (
     ReportStatus,
 )
 from app.domains.reports.schemas import (
+    CitizenClosure,
     IssueRef,
     LocationOut,
     MyReportIssue,
@@ -360,17 +362,86 @@ async def owner_view(db: AsyncSession, storage: ObjectStorage, row: ReportRow) -
     media = await media_for_reports(db, [row.report.id])
     issue = None
     if row.issue is not None:
+        status = IssueStatus(row.issue.status)
+        live = row.report.status == ReportStatus.ACCEPTED
+        closure, answer = await citizen_closure(db, storage, row.issue, row.report.reporter_id)
         issue = ReportIssue(
             id=row.issue.id,
             reference=row.issue.reference,
-            status=IssueStatus(row.issue.status),
+            status=status,
             report_count=row.issue.report_count,
             unique_reporter_count=row.issue.unique_reporter_count,
+            support_count=row.issue.support_count,
             timeline=await public_timeline(db, row.issue.id),
+            closure=closure,
+            my_verification=answer,
+            can_verify=live
+            and closure is not None
+            and answer is None
+            and status in (IssueStatus.PENDING_VERIFICATION, IssueStatus.RESOLVED),
+            can_reopen=live and status in (IssueStatus.RESOLVED, IssueStatus.CLOSED),
         )
     return ReportOwnerView(
         **base_fields(row, media[row.report.id], storage, staff=False), issue=issue
     )
+
+
+async def after_photos(db: AsyncSession, work_order_id: uuid.UUID | None) -> list[MediaAsset]:
+    """A closure's `after` photos (ready ones are face-blurred for the public)."""
+    if work_order_id is None:
+        return []
+    return list(
+        await db.scalars(
+            select(MediaAsset)
+            .where(
+                MediaAsset.work_order_id == work_order_id,
+                MediaAsset.phase == MediaPhase.AFTER,
+            )
+            .order_by(MediaAsset.created_at, MediaAsset.id)
+        )
+    )
+
+
+async def latest_closure(db: AsyncSession, issue: CivicIssue) -> ClosureRequest | None:
+    """The closure round the issue's status refers to: the pending request
+    while `pending_verification`, the last approved one once resolved or
+    closed, else none."""
+    if issue.status == IssueStatus.PENDING_VERIFICATION:
+        state = ClosureState.PENDING
+    elif issue.status in (IssueStatus.RESOLVED, IssueStatus.CLOSED):
+        state = ClosureState.APPROVED
+    else:
+        return None
+    return await db.scalar(
+        select(ClosureRequest)
+        .where(ClosureRequest.issue_id == issue.id, ClosureRequest.state == state)
+        .order_by(ClosureRequest.created_at.desc())
+        .limit(1)
+    )
+
+
+async def citizen_closure(
+    db: AsyncSession, storage: ObjectStorage, issue: CivicIssue, user_id: uuid.UUID
+) -> tuple[CitizenClosure | None, Literal["resolved", "unresolved"] | None]:
+    request = await latest_closure(db, issue)
+    if request is None:
+        return None, None
+    answer = await db.scalar(
+        select(IssueVerification.outcome).where(
+            IssueVerification.closure_request_id == request.id,
+            IssueVerification.user_id == user_id,
+        )
+    )
+    closure = CitizenClosure(
+        state="pending" if request.state == ClosureState.PENDING else "approved",
+        requested_at=request.created_at,
+        reason_code=request.reason_code,
+        after_photos=[
+            to_media_out(storage, m, staff=False)
+            for m in await after_photos(db, request.work_order_id)
+        ],
+    )
+    return closure, "resolved" if answer == "resolved" else "unresolved" if answer else None
 
 
 async def get_owner_view(

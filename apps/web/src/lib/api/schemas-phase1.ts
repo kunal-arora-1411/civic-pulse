@@ -178,6 +178,19 @@ export const publicTimelineEventSchema = z.object({
 });
 export type PublicTimelineEvent = z.infer<typeof publicTimelineEventSchema>;
 
+export const VERIFICATION_OUTCOMES = ["resolved", "unresolved"] as const;
+export const verificationOutcomeSchema = z.enum(VERIFICATION_OUTCOMES);
+export type VerificationOutcome = z.infer<typeof verificationOutcomeSchema>;
+
+/** The closure round a reporter is asked to confirm (Phase 3 §6). */
+export const citizenClosureSchema = z.object({
+  state: z.enum(["pending", "approved"]),
+  requested_at: z.string(),
+  reason_code: z.string().nullish(),
+  after_photos: z.array(mediaSchema).default([]),
+});
+export type CitizenClosure = z.infer<typeof citizenClosureSchema>;
+
 const reportCoreSchema = z.object({
   id: z.string(),
   reference: z.string(),
@@ -217,6 +230,14 @@ export const reportSchema = reportCoreSchema.extend({
       report_count: z.number().nullish(),
       unique_reporter_count: z.number().nullish(),
       timeline: z.array(publicTimelineEventSchema).default([]),
+      /** Community: citizens who said "I face this too". */
+      support_count: z.number().default(0),
+      /** Set while the issue is pending_verification, resolved or closed. */
+      closure: citizenClosureSchema.nullish(),
+      /** The caller's answer for the current closure round. */
+      my_verification: verificationOutcomeSchema.nullish(),
+      can_verify: z.boolean().default(false),
+      can_reopen: z.boolean().default(false),
     })
     .nullable(),
   /** Present in the staff view only. */

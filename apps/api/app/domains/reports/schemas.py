@@ -100,10 +100,34 @@ class IssueRef(BaseModel):
     status: IssueStatus
 
 
+class CitizenClosure(BaseModel):
+    """The closure round a reporter is asked about: the after photos (public,
+    face-blurred copies only) and the closure's reason code, if any."""
+
+    state: Literal["pending", "approved"]
+    requested_at: datetime
+    reason_code: str | None
+    after_photos: list[MediaOut]
+
+
 class ReportIssue(IssueRef):
     report_count: int
     unique_reporter_count: int
+    support_count: int = Field(description='Citizens who said "I face this too".')
     timeline: list[PublicTimelineEvent]
+    closure: CitizenClosure | None = Field(
+        default=None,
+        description="Set while the issue is `pending_verification`, `resolved` or `closed`.",
+    )
+    my_verification: Literal["resolved", "unresolved"] | None = Field(
+        default=None, description="The caller's answer for the current closure round."
+    )
+    can_verify: bool = Field(
+        default=False, description="Whether POST /issues/{id}/verification would be accepted."
+    )
+    can_reopen: bool = Field(
+        default=False, description="Whether POST /issues/{id}/reopen would be accepted."
+    )
 
 
 class ReporterOut(BaseModel):

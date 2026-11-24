@@ -119,7 +119,8 @@ test("a citizen reports a pothole and follows it (AC-01)", async ({ page }) => {
   await page.goto("/reports");
   const card = page.getByRole("link").filter({ hasText: reference });
   await expect(card).toBeVisible();
-  await expect(card).toContainText("Reported");
+  // Matching may still be running when the list loads (Phase 2).
+  await expect(card).toContainText(/Reported|Checking for similar reports/);
   await card.click();
 
   // ...and its page shows the photo once the worker has processed it,
@@ -199,7 +200,10 @@ test("sending the same report again after a lost response creates one report", a
   await expect(page.getByText("Your report wasn't sent")).toBeVisible();
   await expect(page.getByText(/won't create a duplicate/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Try again" }).click();
+  // The error box can still be settling into view; press the button from
+  // the keyboard, as a screen-reader or keyboard user would.
+  await page.getByRole("button", { name: "Try again" }).focus();
+  await page.keyboard.press("Enter");
   await expect(
     page.getByRole("heading", { name: "Report sent. Thank you!" }),
   ).toBeVisible();

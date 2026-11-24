@@ -38,6 +38,13 @@ const priority: Priority = {
       explanation_key: "priority.near_places",
     },
     {
+      factor: "community",
+      value: 2,
+      normalized: 0.5,
+      points: 2.5,
+      explanation_key: "priority.community",
+    },
+    {
       factor: "drainage_load",
       value: 0.2,
       normalized: 0.2,
@@ -79,6 +86,7 @@ describe("PriorityCard", () => {
       "Severity is High+30.0",
       "3 people have reported it+11.6",
       "Near a school, hospital or other sensitive place+10.0",
+      "2 neighbours say they face this too+2.5",
       // A factor this client doesn't know yet still shows, by name.
       "Drainage load+1.0",
     ]);

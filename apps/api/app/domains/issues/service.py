@@ -210,6 +210,7 @@ def _list_item(storage: ObjectStorage, row: Any) -> IssueListItem:
         ward=WardRef(id=issue.ward_id, name=ward_name) if issue.ward_id and ward_name else None,
         report_count=issue.report_count,
         unique_reporter_count=issue.unique_reporter_count,
+        support_count=issue.support_count,
         severity=severity_out(issue),
         priority=priority_out(issue),
         thumb_url=thumb_url(storage, cover_status, cover_thumb),

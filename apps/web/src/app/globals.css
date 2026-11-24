@@ -450,6 +450,12 @@
   fill: var(--primary);
 }
 
+/* Analytics hotspots: one hue, the cell's opacity carries the count. */
+.cp-hotspot {
+  stroke: var(--viz-seq-hi);
+  fill: var(--viz-1);
+}
+
 /* Review comparison map: labelled tags rather than bare pins, so which
    point is the new report and which the issue never rests on colour.
    The tag's dot marks the exact spot. */
@@ -511,4 +517,49 @@
 
 .cp-link-line {
   stroke: var(--foreground);
+}
+
+/*
+ * Chart palette (analytics). Categorical slots in fixed order, validated
+ * for colour-vision deficiency against both surfaces; the sequential ramp
+ * runs from "near zero" (blends into the card) to the darkest step. Dark
+ * values are their own steps, not a flip.
+ */
+:root {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-seq-lo: #e4effc;
+  --viz-seq-hi: #0d366b;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-up: #006300;
+  --viz-down: #b42828;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
+    --viz-3: #199e70;
+    --viz-4: #c98500;
+    --viz-seq-lo: #1d2a3a;
+    --viz-seq-hi: #9ec5f4;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #4a4a46;
+    --viz-up: #3cc23c;
+    --viz-down: #f08080;
+  }
+}
+:root[data-theme="dark"] {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-seq-lo: #1d2a3a;
+  --viz-seq-hi: #9ec5f4;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #4a4a46;
+  --viz-up: #3cc23c;
+  --viz-down: #f08080;
 }
