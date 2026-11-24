@@ -87,6 +87,8 @@ AI_MODEL_DIR=.models uv run pytest tests/ai --confcutdir=tests/ai  # no database
 
 `models.lock.json` pins each model to a Hub commit and records its licence and file hashes; change a pin in `scripts/download_models.py`, then run it with `--update-lock`. The `ai-worker` compose service bakes the weights into its image (`infra/ai-worker/Dockerfile`). The evaluation harness lives in `scripts/eval/` and its results in [`docs/eval/phase-2-baseline.md`](../../docs/eval/phase-2-baseline.md).
 
+To move to another vision model, re-embed every photo with `scripts/reindex_embeddings.py --model-id <id>` (resumable, rate-limited, `--dry-run`); the steps are in [`docs/runbooks/switch-vision-model.md`](../../docs/runbooks/switch-vision-model.md).
+
 ## Migrations
 
 ```sh
