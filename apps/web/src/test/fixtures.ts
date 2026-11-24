@@ -135,6 +135,9 @@ export function makeReport(overrides: Partial<Report> = {}): Report {
       id: "iss-1",
       reference: "CP-26-000123",
       status: "reported",
+      support_count: 0,
+      can_verify: false,
+      can_reopen: false,
       timeline: [
         {
           at: "2026-11-24T08:15:01+05:30",

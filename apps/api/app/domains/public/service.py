@@ -249,6 +249,7 @@ async def get_issue(
         before_photos=_photos(storage, before),
         after_photos=_photos(storage, after),
         merged_into=merged_into,
+        merged_into_id=issue.merged_into_id,
     )
 
 

@@ -30,6 +30,10 @@ export type KnownErrorCode =
   // Phase 2: merge and split
   | "invalid_merge"
   | "cannot_empty_issue"
+  // Community support and citizen verification
+  | "issue_merged"
+  | "not_eligible"
+  | "already_verified"
   // Client-side: the PUT to object storage failed (network, expiry, CORS).
   | "upload_failed"
   // Client-side: the request never got a response.

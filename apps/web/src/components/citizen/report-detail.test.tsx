@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReportDone } from "@/components/report/report-done";
 import { session } from "@/lib/api";
+import { supportHandlers } from "@/test/community";
 import { makeReport, makeUser } from "@/test/fixtures";
 import { API, server } from "@/test/msw";
 import { renderWithProviders } from "@/test/render";
@@ -38,7 +39,10 @@ const pending = makeReport({
 
 beforeEach(() => {
   session.setAuthenticated("token", makeUser());
-  server.use(http.get(`${API}/categories`, () => HttpResponse.json([])));
+  server.use(
+    http.get(`${API}/categories`, () => HttpResponse.json([])),
+    ...supportHandlers({ count: 2, supported: false }),
+  );
 });
 afterEach(() => session.reset());
 
@@ -171,6 +175,67 @@ describe("matching status on the citizen's report", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("You're the first to report this problem."),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("community on the citizen's report", () => {
+  it("asks whether the fix worked and shows the support count", async () => {
+    server.use(
+      http.get(`${API}/reports/rep-1`, () =>
+        HttpResponse.json(
+          makeReport({
+            matching_status: "new_issue",
+            issue: {
+              ...issue,
+              status: "pending_verification",
+              support_count: 2,
+              closure: {
+                state: "pending",
+                requested_at: "2026-11-23T10:00:00+05:30",
+                reason_code: null,
+                after_photos: [],
+              },
+              can_verify: true,
+            },
+          }),
+        ),
+      ),
+    );
+    await renderDetail();
+
+    expect(
+      await screen.findByRole("heading", { name: "Is it fixed?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No photos were added after the work."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Yes, it's fixed" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "I face this too" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("2 people face this")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reopen this issue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers to reopen a resolved issue", async () => {
+    server.use(
+      http.get(`${API}/reports/rep-1`, () =>
+        HttpResponse.json(
+          makeReport({
+            matching_status: "new_issue",
+            issue: { ...issue, status: "resolved", can_reopen: true },
+          }),
+        ),
+      ),
+    );
+    await renderDetail();
+    expect(
+      await screen.findByRole("button", { name: "Reopen this issue" }),
     ).toBeInTheDocument();
   });
 });

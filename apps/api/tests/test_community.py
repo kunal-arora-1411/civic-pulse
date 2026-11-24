@@ -22,7 +22,7 @@ from app.domains.priority.rules import (
 )
 from tests.helpers import RecordingSms, Session
 from tests.phase1 import NE, City, login_new, make_city
-from tests.phase2 import ISSUES, issue, report, view
+from tests.phase2 import ISSUES, issue, north_of, report, view
 from tests.phase3 import Ops, make_ops, to_pending_verification
 
 PUBLIC = "/api/v1/public"
@@ -292,3 +292,31 @@ async def test_scorecard_counts_open_and_resolved_per_ward(
     assert (ne["open_count"], ne["resolved_count"]) == (1, 1)
     assert ne["median_resolution_days"] is not None
     assert wards["Ward SW"]["median_resolution_days"] is None
+
+
+async def test_public_detail_of_a_merged_issue_links_to_the_survivor(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    city = ops.city
+    first = await _reported(client, city)
+    second = await report(
+        client, city, city.citizen, point=north_of(NE, 200), category=city.waste
+    )
+    survivor = await issue(client, city.operator, first["issue"]["id"])
+    merged = await client.post(
+        f"{ISSUES}/{survivor['id']}/merge",
+        headers=city.operator.headers,
+        json={
+            "source_issue_ids": [second["issue"]["id"]],
+            "reason": "Same pile",
+            "version": survivor["version"],
+        },
+    )
+    assert merged.status_code == 200, merged.text
+    detail = await client.get(f"{PUBLIC}/{city.tenant.slug}/issues/{second['issue']['id']}")
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert (body["merged_into"], body["merged_into_id"]) == (
+        survivor["reference"],
+        survivor["id"],
+    )
