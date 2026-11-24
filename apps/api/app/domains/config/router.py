@@ -8,7 +8,7 @@ from app.core.db import DbSession
 from app.core.errors import error_responses
 from app.domains.config import service
 from app.domains.config.models import ConfigKey
-from app.domains.config.schemas import MatchingConfig, PriorityConfig
+from app.domains.config.schemas import ClosureConfig, MatchingConfig, PriorityConfig
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
@@ -76,3 +76,27 @@ async def update_priority_config(
     assert principal.tenant_id is not None
     background.add_task(jobs.recompute_priorities, principal.tenant_id)
     return saved
+
+
+@router.get(
+    "/closure-config",
+    operation_id="admin_get_closure_config",
+    response_model=ClosureConfig,
+    responses=error_responses(401, 403),
+)
+async def get_closure_config(_: ConfigReader, db: DbSession) -> ClosureConfig:
+    """Resolution window and confirmation threshold in effect (defaults if never set)."""
+    return await service.closure_config(db)
+
+
+@router.put(
+    "/closure-config",
+    operation_id="admin_update_closure_config",
+    response_model=ClosureConfig,
+    responses=error_responses(401, 403, 422),
+)
+async def update_closure_config(
+    principal: ConfigManager, db: DbSession, body: ClosureConfig
+) -> ClosureConfig:
+    """Replace the whole document; a field left out goes back to its default. Audited."""
+    return await service.replace(db, principal, ConfigKey.CLOSURE, body)

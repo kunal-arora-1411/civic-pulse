@@ -8,13 +8,17 @@ from fastapi import APIRouter, Query, status
 from app.core.db import DbSession
 from app.core.errors import error_responses
 from app.core.pagination import PageParamsDep
-from app.domains.org import service
+from app.domains.org import service, teams
 from app.domains.org.models import JurisdictionKind
 from app.domains.org.schemas import (
     DepartmentCreate,
     DepartmentOut,
     DepartmentPage,
     JurisdictionPage,
+    TeamCreate,
+    TeamOut,
+    TeamPage,
+    TeamUpdate,
 )
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
@@ -80,3 +84,71 @@ async def list_jurisdictions(
         db, page, kind=kind, parent_id=parent_id, include_geometry=include_geometry, sort=sort
     )
     return JurisdictionPage(items=items, total=total, limit=page.limit, offset=page.offset)
+
+
+@router.get(
+    "/teams",
+    operation_id="admin_list_teams",
+    response_model=TeamPage,
+    responses=error_responses(401, 403, 422),
+)
+async def list_teams(
+    _: Annotated[Principal, require(Permission.CONFIG_READ)],
+    db: DbSession,
+    page: PageParamsDep,
+    department_id: uuid.UUID | None = None,
+    is_active: bool | None = None,
+    sort: Annotated[
+        str | None, Query(description="`name` (default) or `created_at`; prefix `-`.")
+    ] = None,
+) -> TeamPage:
+    items, total = await teams.list_teams(
+        db, page, department_id=department_id, is_active=is_active, sort=sort
+    )
+    return TeamPage(items=items, total=total, limit=page.limit, offset=page.offset)
+
+
+@router.post(
+    "/teams",
+    operation_id="admin_create_team",
+    response_model=TeamOut,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(401, 403, 409, 422),
+)
+async def create_team(
+    principal: Annotated[Principal, require(Permission.CONFIG_MANAGE)],
+    db: DbSession,
+    body: TeamCreate,
+) -> TeamOut:
+    """Create a team with its members, service area, categories and schedule.
+    Audited."""
+    return await teams.create_team(db, principal, body)
+
+
+@router.get(
+    "/teams/{team_id}",
+    operation_id="admin_get_team",
+    response_model=TeamOut,
+    responses=error_responses(401, 403, 404, 422),
+)
+async def get_team(
+    _: Annotated[Principal, require(Permission.CONFIG_READ)], db: DbSession, team_id: uuid.UUID
+) -> TeamOut:
+    return await teams.get_team(db, team_id)
+
+
+@router.patch(
+    "/teams/{team_id}",
+    operation_id="admin_update_team",
+    response_model=TeamOut,
+    responses=error_responses(401, 403, 404, 409, 422),
+)
+async def update_team(
+    principal: Annotated[Principal, require(Permission.CONFIG_MANAGE)],
+    db: DbSession,
+    team_id: uuid.UUID,
+    body: TeamUpdate,
+) -> TeamOut:
+    """Lists replace what is stored. Deactivating a team that holds open
+    work orders is `409 team_has_open_work`. Audited."""
+    return await teams.update_team(db, principal, team_id, body)

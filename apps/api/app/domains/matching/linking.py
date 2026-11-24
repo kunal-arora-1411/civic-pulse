@@ -28,7 +28,7 @@ from app.domains.issues.references import allocate
 from app.domains.media.models import MediaAsset
 from app.domains.priority import service as priority
 from app.domains.rbac.principal import Principal
-from app.domains.reports.models import MatchingStatus, Report
+from app.domains.reports.models import MatchingStatus, Report, ReportStatus
 from app.domains.workflow.statuses import IssueStatus
 
 # Category families: a category and its parent chain share a root, and only
@@ -80,12 +80,16 @@ async def lock_issues(
 
 
 async def refresh_counts(db: AsyncSession, issue: CivicIssue) -> None:
-    """Recount from the linked reports. The caller holds the issue's lock."""
+    """Recount from the linked, non-withdrawn reports. The caller holds the
+    issue's lock."""
     await db.flush()
     total, unique = (
         await db.execute(
             select(func.count(), func.count(distinct(Report.reporter_id))).where(
-                Report.issue_id == issue.id
+                Report.issue_id == issue.id,
+                # A withdrawn report stays linked as a tombstone but no
+                # longer counts (FR-018).
+                Report.status == ReportStatus.ACCEPTED,
             )
         )
     ).one()

@@ -16,7 +16,7 @@ from app.domains.auth.dependencies import CurrentPrincipal
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
-from app.domains.reports import service
+from app.domains.reports import service, withdraw
 from app.domains.reports.schemas import (
     MyReportPage,
     ReportCreate,
@@ -135,3 +135,24 @@ async def _replay(db: DbSession, storage: Storage, stored: Response) -> Response
         status_code=stored.status_code,
         headers={idempotency.REPLAY_HEADER: "true"},
     )
+
+
+@router.post(
+    "/reports/{report_id}/withdraw",
+    operation_id="reports_withdraw",
+    response_model=ReportOwnerView,
+    responses=error_responses(401, 403, 404, 422),
+)
+async def withdraw_report(
+    principal: Annotated[Principal, require(Permission.REPORT_READ_OWN)],
+    db: DbSession,
+    storage: Storage,
+    report_id: uuid.UUID,
+) -> ReportOwnerView:
+    """Withdraw your own report. It is kept (and stays on its issue's
+    history) but no longer counts. Refused while matching is still placing
+    it, or once the issue is resolved or closed."""
+    await withdraw.withdraw(db, principal, report_id)
+    view = await service.get_owner_view(db, storage, report_id)
+    assert view is not None
+    return view

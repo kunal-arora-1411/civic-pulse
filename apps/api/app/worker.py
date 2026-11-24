@@ -33,6 +33,7 @@ celery_app = Celery(
         "app.domains.priority.tasks",
         "app.domains.ai.tasks",
         "app.domains.matching.tasks",
+        "app.domains.operations.tasks",
     ],
 )
 
@@ -76,6 +77,11 @@ celery_app.conf.update(
             "schedule": 60.0,
         },
         # 02:40 IST: issues age by a day, so every open issue's score moves.
+        # Closes resolved issues whose resolution window has passed (Phase 3).
+        "close-resolved-issues": {
+            "task": "civicpulse.operations.close_resolved",
+            "schedule": crontab(minute="*/15"),
+        },
         "priority-nightly": {
             "task": "civicpulse.priority.nightly",
             "schedule": crontab(hour=21, minute=10),

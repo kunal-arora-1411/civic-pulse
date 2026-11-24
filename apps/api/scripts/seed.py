@@ -39,7 +39,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import get_engine
 from app.core.tenancy import system_session
-from app.domains.org.models import Department, Jurisdiction, JurisdictionKind
+from app.domains.org.models import (
+    Department,
+    Jurisdiction,
+    JurisdictionKind,
+    Team,
+    TeamCategory,
+    TeamJurisdiction,
+    TeamMember,
+)
 from app.domains.rbac.models import UserRole
 from app.domains.rbac.roles import Role
 from app.domains.tenants.models import Tenant
@@ -249,6 +257,47 @@ async def _upsert_user(
     return user_id
 
 
+async def _upsert_team(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    department_id: uuid.UUID,
+    *,
+    jurisdiction_id: uuid.UUID,
+    category_ids: list[uuid.UUID],
+    lead_id: uuid.UUID,
+) -> uuid.UUID:
+    """Phase 3: a field team in Roads covering Zone North, with the seeded
+    field worker as its lead."""
+    team_id = await db.scalar(
+        pg_insert(Team)
+        .values(
+            tenant_id=tenant_id,
+            department_id=department_id,
+            name="Roads North",
+            schedule={
+                "timezone": "Asia/Kolkata",
+                "days": [{"weekday": d, "start": "09:00", "end": "18:00"} for d in range(6)],
+            },
+        )
+        .on_conflict_do_update(
+            constraint="uq_teams_tenant_id_department_id_name", set_={"is_active": True}
+        )
+        .returning(Team.id)
+    )
+    assert team_id is not None
+    for model, values in (
+        (TeamMember, {"user_id": lead_id, "team_role": "lead"}),
+        (TeamJurisdiction, {"jurisdiction_id": jurisdiction_id}),
+        *((TeamCategory, {"category_id": c}) for c in category_ids),
+    ):
+        await db.execute(
+            pg_insert(model)
+            .values(tenant_id=tenant_id, team_id=team_id, **values)
+            .on_conflict_do_nothing()
+        )
+    return team_id
+
+
 async def run() -> dict[str, int]:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed synthetic data into a production environment.")
@@ -275,6 +324,14 @@ async def run() -> dict[str, int]:
         categories = await phase1.seed_categories(db, demo, departments)
         for tenant_id in tenant_ids.values():
             await install_default_transitions(db, tenant_id)
+        await _upsert_team(
+            db,
+            demo,
+            departments["ROADS"],
+            jurisdiction_id=areas["SYN-ZN"],
+            category_ids=[categories["pothole"]],
+            lead_id=user_ids["+919000000004"],
+        )
 
     wards = {areas[area.code]: area.bbox for area in AREAS if area.kind is JurisdictionKind.WARD}
     issues = await phase1.seed_issues(

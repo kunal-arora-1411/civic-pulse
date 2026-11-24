@@ -98,4 +98,7 @@ class Category(TimestampMixin, Base):
     # Phase 2: how severity is worked out for this category's issues (see
     # app/domains/priority/rules.py). Null: always the default `medium`.
     severity_rules: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    # Phase 3: closure policy (FR-070, FR-071). NULL: the defaults in
+    # categories.schemas.ClosurePolicy.
+    closure_policy: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
