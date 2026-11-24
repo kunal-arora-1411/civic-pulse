@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 import { AccountMenu } from "@/components/account-menu";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/navigation";
 
@@ -18,6 +19,7 @@ export default function FieldLayout({
             <Badge variant="primary">{t("badge")}</Badge>
           </Link>
           <div className="flex items-center gap-2">
+            <ThemeSwitcher className="hidden sm:flex" />
             <LanguageSwitcher />
             <AccountMenu />
           </div>

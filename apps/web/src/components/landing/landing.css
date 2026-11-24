@@ -1,0 +1,263 @@
+/*
+ * Landing page motion. Everything here is decoration: the page is complete
+ * and readable with none of it (no JavaScript, older browsers, or
+ * prefers-reduced-motion), which is why every animation lives inside the
+ * no-preference query and scroll-linked ones sit behind @supports.
+ *
+ * Scroll-linked reveals use view(), which tracks the nearest scroll
+ * container. overflow: hidden makes one, so landing components clip with
+ * overflow: clip instead; otherwise those reveals would never finish.
+ */
+.landing {
+  --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: light;
+}
+
+@keyframes lp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes lp-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes lp-drift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(-18px, 14px, 0) rotate(-1.5deg);
+  }
+}
+
+@keyframes lp-glass {
+  from {
+    background-color: rgb(255 255 255 / 0);
+    border-color: rgb(233 234 231 / 0);
+    backdrop-filter: blur(0);
+  }
+  to {
+    background-color: rgb(255 255 255 / 0.82);
+    border-color: rgb(233 234 231 / 1);
+    backdrop-filter: blur(14px);
+  }
+}
+
+/* The new-report toast: slides in, waits, slides out, rests. */
+@keyframes lp-toast {
+  0%,
+  8% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  14%,
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+  78%,
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* One pin changes from open to fixed, then back, on a loop. */
+@keyframes lp-morph-out {
+  0%,
+  40% {
+    opacity: 1;
+    transform: none;
+  }
+  48%,
+  92% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lp-morph-in {
+  0%,
+  42% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  50%,
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  98%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes lp-ripple {
+  0%,
+  44% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 0.9;
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes lp-pulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+@keyframes lp-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lp-sweep {
+  0%,
+  100% {
+    left: 50%;
+  }
+  30% {
+    left: 22%;
+  }
+  65% {
+    left: 78%;
+  }
+}
+
+@keyframes lp-fill {
+  from {
+    transform: scaleX(0.15);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lp-rise {
+    animation: lp-rise 900ms var(--lp-ease) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  .lp-caret {
+    animation: lp-blink 1.05s steps(1) infinite;
+  }
+
+  .lp-ribbon {
+    animation: lp-drift 14s ease-in-out infinite alternate;
+    transform-origin: 100% 0;
+  }
+
+  .lp-toast {
+    animation: lp-toast 8s var(--lp-ease) infinite;
+  }
+
+  .lp-morph-out {
+    animation: lp-morph-out 6s var(--lp-ease) infinite;
+    transform-origin: 50% 100%;
+  }
+
+  .lp-morph-in {
+    animation: lp-morph-in 6s var(--lp-ease) infinite;
+    transform-origin: 50% 100%;
+  }
+
+  .lp-ripple {
+    animation: lp-ripple 6s ease-out infinite;
+  }
+
+  .lp-pulse {
+    animation: lp-pulse 2s ease-out infinite;
+  }
+
+  .lp-drop {
+    animation: lp-drop 700ms var(--lp-ease) both;
+    animation-delay: calc(400ms + var(--i, 0) * 90ms);
+  }
+
+  .lp-sweep {
+    animation: lp-sweep 7s var(--lp-ease) infinite;
+  }
+
+  .lp-fill {
+    animation: lp-fill 2.4s var(--lp-ease) infinite alternate;
+    transform-origin: 0 50%;
+  }
+
+  @supports (animation-timeline: view()) {
+    .lp-reveal {
+      animation: lp-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+
+    .lp-reveal-late {
+      animation: lp-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 35%;
+    }
+
+    /* The footer wordmark rises letter by letter as it scrolls in. */
+    .lp-letter {
+      display: inline-block;
+      animation: lp-rise linear both;
+      animation-timeline: view();
+      /* Entry-only ranges: the wordmark sits at the very bottom of the
+         page, so a range reaching into "cover" would never complete. */
+      animation-range: entry calc(var(--i, 0) * 5%) entry
+        calc(45% + var(--i, 0) * 5%);
+    }
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .lp-header {
+      animation: lp-glass linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 64px;
+    }
+  }
+}
+
+/* Tight Latin tracking crowds Devanagari matras and conjuncts. */
+.landing:lang(hi) [class*="tracking-"] {
+  letter-spacing: -0.005em;
+}

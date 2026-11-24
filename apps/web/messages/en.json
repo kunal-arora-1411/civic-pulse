@@ -14,26 +14,14 @@
     "label": "Language",
     "switching": "Switching language…"
   },
+  "theme": {
+    "label": "Theme",
+    "system": "Match device",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "citizen": {
-    "headline": "Tell your city what needs <accent>fixing</accent>.",
-    "intro": "Potholes, overflowing bins, broken streetlights, blocked drains: report them to your municipality and follow each one until it's done.",
-    "reportCta": "Report an issue",
-    "myReports": "My reports",
-    "loadingReports": "Loading your reports…",
-    "signInToSeeTitle": "Sign in to see your reports",
-    "signInToSeeBody": "All you need is your mobile number. No password.",
-    "signIn": "Sign in",
-    "staffShortcut": "Go to the admin console",
-    "howItWorks": "How it works",
-    "step1Title": "Report",
-    "step1Body": "Take a photo, drop a pin and choose what kind of problem it is.",
-    "step2Title": "Routed",
-    "step2Body": "Your report reaches the department and ward responsible for it.",
-    "step3Title": "Fixed",
-    "step3Body": "Follow each update, and confirm when the work is actually done.",
-    "footer": "CivicPulse never shows your name or phone number publicly.",
-    "reportHint": "Takes about a minute. You'll need a photo and the location.",
-    "seeAllReports": "See all {count} reports"
+    "footer": "CivicPulse never shows your name or phone number publicly."
   },
   "account": {
     "signIn": "Sign in",
@@ -1055,7 +1043,18 @@
       "tooMany": "Remove {extra, plural, one {# photo} other {# photos}}: you can add up to {max}.",
       "limitReached": "You've added the most photos allowed ({max}).",
       "skipped": "{count, plural, one {# photo wasn't} other {# photos weren't}} added: you can add up to {max}.",
-      "tip": "Tip: step back a little so the surroundings show too. It helps the team find the spot."
+      "tip": "Tip: step back a little so the surroundings show too. It helps the team find the spot.",
+      "camera": {
+        "title": "Take a photo",
+        "close": "Close the camera",
+        "preview": "Camera preview",
+        "capture": "Take photo",
+        "switch": "Switch camera",
+        "starting": "Starting the camera…",
+        "denied": "Camera access is blocked. Allow the camera for this site in your browser settings, or choose a photo file instead.",
+        "unavailable": "We couldn't find a camera on this device. Choose a photo file instead.",
+        "useFiles": "Choose a photo file"
+      }
     },
     "location": {
       "title": "Where is the problem?",
@@ -1244,6 +1243,218 @@
       "placedTitle": "Tracked as issue {reference}",
       "badgeChecking": "Checking for similar reports",
       "badgeReview": "Being checked by staff"
+    }
+  },
+  "landing": {
+    "metaTitle": "Report civic problems and see them fixed",
+    "nav": {
+      "label": "Main",
+      "home": "CivicPulse home",
+      "howItWorks": "How it works",
+      "liveMap": "Live map",
+      "forCities": "For cities",
+      "signIn": "Sign in",
+      "report": "Report an issue"
+    },
+    "hero": {
+      "titleLead": "What needs fixing",
+      "titleMuted": "on your street?",
+      "composerLabel": "Start a report",
+      "location": "Sector 7, Ward 42 · auto-detected",
+      "examples": [
+        "Deep pothole outside the bus stop, bikes are swerving round it",
+        "Streetlight on the park road has been out for a week",
+        "The bins by the market haven't been cleared since Monday",
+        "Drain on Station Road is blocked and the lane floods when it rains"
+      ],
+      "category": "Pothole",
+      "photos": "1 photo",
+      "languages": "EN · हिं",
+      "railLabel": "Report by category",
+      "helper": "No app to install. Free for every citizen, in English and हिन्दी."
+    },
+    "categories": {
+      "pothole": "Pothole",
+      "streetlight": "Streetlight",
+      "garbage": "Garbage",
+      "drain": "Blocked drain",
+      "water": "Water leak",
+      "tree": "Fallen tree"
+    },
+    "stats": {
+      "label": "CivicPulse in numbers",
+      "resolved": "Issues resolved this year",
+      "resolvedNote": "+3 in the last hour",
+      "median": "Median time to fix",
+      "medianUnit": "days",
+      "medianNote": "18% faster since launch",
+      "wards": "Wards reporting live",
+      "wardsNote": "across 3 pilot cities",
+      "hindi": "Reports in हिन्दी",
+      "hindiNote": "translated for staff",
+      "disclaimer": "Illustrative pilot figures, shown until the pilot's public statistics are live."
+    },
+    "recent": {
+      "title": "Welcome back. <muted>Here are your latest reports.</muted>",
+      "loading": "Loading your reports…",
+      "empty": "You haven't reported anything yet. When you do, it shows up here.",
+      "all": "All my reports",
+      "staff": "Go to the admin console"
+    },
+    "status": {
+      "open": "Open",
+      "inProgress": "In progress",
+      "fixed": "Fixed",
+      "overdue": "Overdue"
+    },
+    "map": {
+      "title": "See your city, live. <muted>Every report is a pin. Every pin has a status. Every status change is public, ward by ward.</muted>",
+      "track": "Track your reports",
+      "label": "Illustration: a ward map with reports marked open, in progress and fixed",
+      "all": "All",
+      "toast": "New report · Streetlight out · MG Road",
+      "now": "now",
+      "selectedTitle": "Pothole by the bus stop",
+      "selectedRef": "CP-2611 · Sector 7 · Ward 42",
+      "selectedTimeline": "Reported Mon → fixed Thu",
+      "updated": "Ward 42 · updated 12s ago"
+    },
+    "bento": {
+      "title": "From photo to fixed. <muted>One flow for citizens, one queue for the city, and nothing lost in between.</muted>",
+      "report": {
+        "title": "Report in thirty seconds. <muted>Photo, pin and category; your location fills itself in.</muted>",
+        "what": "What is it?",
+        "send": "Send report",
+        "uploading": "Uploading on 2G",
+        "located": "Located to ±6 m"
+      },
+      "routed": {
+        "title": "Routed to the right desk. <muted>Category and ward decide who owns it.</muted>",
+        "report": "Report",
+        "reportValue": "CP-2611 · Pothole",
+        "ward": "Ward",
+        "wardValue": "42 · Sector 7",
+        "department": "Department",
+        "departmentValue": "Roads & Works",
+        "assigned": "Assigned",
+        "assignedValue": "Crew 7 · 6h SLA"
+      },
+      "updates": {
+        "title": "Every step, out loud. <muted>A message at each change of status.</muted>",
+        "first": "CP-2611 received. We'll keep you posted.",
+        "second": "Assigned to Roads & Works, Ward 42.",
+        "third": "Fixed ✓ Reply 1 to confirm, 2 to reopen.",
+        "firstTime": "Mon 9:12",
+        "secondTime": "Mon 11:40",
+        "thirdTime": "Thu 16:05"
+      },
+      "proof": {
+        "title": "Proof, not promises. <muted>Crews close the loop with an after photo.</muted>",
+        "before": "Before",
+        "after": "After",
+        "confirmed": "Confirmed by citizen"
+      },
+      "hindi": {
+        "title": "हिन्दी, first class. <muted>Every screen, message and status in both languages.</muted>",
+        "english": "English",
+        "hindi": "हिन्दी",
+        "sample": "बस स्टॉप के पास गहरा गड्ढा",
+        "ward": "CP-2611 · वार्ड 42",
+        "status": "ठीक हो गया"
+      }
+    },
+    "cities": {
+      "title": "A work queue your teams will actually use. <muted>Triage, assign and close issues across every ward, with SLAs and a full audit trail.</muted>",
+      "walkthrough": "Book a walkthrough",
+      "tabsLabel": "Console views",
+      "tabs": {
+        "queue": "Queue",
+        "map": "Map",
+        "audit": "Audit log",
+        "field": "Field app"
+      },
+      "consoleLabel": "Illustration of the staff console",
+      "search": "Search reference, address or description",
+      "team": "Roads & Works · Ward 42",
+      "kpis": {
+        "open": "Open",
+        "overdue": "Overdue",
+        "inProgress": "In progress",
+        "fixedToday": "Fixed today"
+      },
+      "columns": {
+        "ref": "Ref",
+        "issue": "Issue",
+        "ward": "Ward",
+        "department": "Department",
+        "status": "Status",
+        "sla": "SLA",
+        "assignee": "Assignee"
+      },
+      "unassigned": "Unassigned",
+      "departments": {
+        "sanitation": "Sanitation",
+        "electrical": "Electrical",
+        "parks": "Parks",
+        "roads": "Roads & Works"
+      },
+      "sla": {
+        "over": "{hours}h over",
+        "hoursLeft": "{hours}h left",
+        "daysLeft": "{days}d left",
+        "closed": "Closed"
+      },
+      "mapPanel": "The same issues on a map, clustered by ward and coloured by status. Pick a pin to open it in the queue.",
+      "audit": {
+        "first": "Status changed from In progress to Fixed",
+        "second": "Assigned to Crew 7",
+        "third": "Priority raised: near a school",
+        "firstWho": "S. Kumar · Supervisor",
+        "secondWho": "A. Patel · Operator",
+        "thirdWho": "Rules engine"
+      },
+      "field": {
+        "title": "Today's jobs · Crew 7",
+        "first": "Pothole · Sector 7 · bus stop",
+        "second": "Fallen tree · Lake road",
+        "third": "Streetlight · MG Road",
+        "start": "Start",
+        "photo": "Add after photo"
+      },
+      "features": {
+        "routingTitle": "Auto-routing",
+        "routingBody": "Category and ward decide the department. No inbox to sort.",
+        "slaTitle": "SLA timers",
+        "slaBody": "Every issue has a clock. Overdue work floats to the top.",
+        "auditTitle": "Audit trail",
+        "auditBody": "Who changed what and when, with the before and after.",
+        "rolesTitle": "Roles and wards",
+        "rolesBody": "Operators, supervisors and crews see only their own scope."
+      }
+    },
+    "cta": {
+      "title": "Your street is waiting. <muted>Report the first thing you see on the way home tonight.</muted>",
+      "report": "Report an issue",
+      "talk": "Talk to our team"
+    },
+    "footer": {
+      "label": "Footer",
+      "blurb": "Civic reporting for Indian cities. Report it, track it, see it fixed.",
+      "status": "All systems normal",
+      "product": "Product",
+      "report": "Report an issue",
+      "myReports": "My reports",
+      "howItWorks": "How it works",
+      "liveMap": "Live map",
+      "cities": "For cities",
+      "staffConsole": "Staff console",
+      "fieldApp": "Field crew app",
+      "walkthrough": "Book a walkthrough",
+      "account": "Account",
+      "signIn": "Sign in",
+      "profile": "Profile",
+      "privacy": "CivicPulse never shows your name or phone number publicly.",
+      "copyright": "© CivicPulse"
     }
   }
 }
