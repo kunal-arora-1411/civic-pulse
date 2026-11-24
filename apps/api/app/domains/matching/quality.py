@@ -15,7 +15,7 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass, field, fields
 from datetime import date, datetime, time, timedelta
-from typing import Any
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, distinct, exists, func, or_, select
@@ -108,7 +108,8 @@ async def weekly_rollup(db: AsyncSession, week: date) -> dict[Key, WeekRollup]:
 
     async def put(query: Any, count: Any, attr: str) -> None:
         rows: Iterable[Any] = await db.execute(query.add_columns(count).group_by(*key_cols))
-        for tenant_id, code, n in rows:
+        for row in rows:
+            tenant_id, code, n = cast("tuple[Any, Any, Any]", tuple(row))
             roll = out.setdefault((tenant_id, code), WeekRollup())
             setattr(roll, attr, getattr(roll, attr) + int(n))
 
