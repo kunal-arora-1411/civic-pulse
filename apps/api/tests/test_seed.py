@@ -68,6 +68,16 @@ async def test_seed_is_idempotent_and_usable(
 ) -> None:
     # As in the compose stack: photos are only public after a face check.
     monkeypatch.setattr(settings, "ai_face_blur", True)
+    # As in compose: the AI worker has registered the same model this process
+    # embeds with. Other tests leave their own models in the shared registry.
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO model_registry (id, task, name, version, deployed_at) "
+                "VALUES ('fake-vision@1', 'embedding', 'Fake vision', '1', now()) "
+                "ON CONFLICT (id) DO UPDATE SET deployed_at = now()"
+            )
+        )
     await seed.run()
     first = await _counts(owner_engine)
     await seed.run()
