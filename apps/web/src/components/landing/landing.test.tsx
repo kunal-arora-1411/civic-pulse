@@ -99,6 +99,13 @@ describe("Landing page", () => {
     expect(
       within(header).getByRole("link", { name: "Report an issue" }),
     ).toHaveAttribute("href", "/report");
+    // The public tracker is one click away, in the nav and the final CTA.
+    expect(
+      within(header).getByRole("link", { name: "Track issues" }),
+    ).toHaveAttribute("href", "/track");
+    expect(
+      screen.getByRole("link", { name: "Track issues in your city" }),
+    ).toHaveAttribute("href", "/track");
   });
 
   it("shows final figures and labels them as illustrative without motion", () => {

@@ -38,6 +38,8 @@ export function useFactorText() {
         return t("age", { count });
       case "recurrence":
         return t("recurrence", { count });
+      case "community":
+        return t("community", { count });
       case "near_places":
         return value === true || count > 0 ? t("nearPlaces") : t("noPlaces");
       default: {

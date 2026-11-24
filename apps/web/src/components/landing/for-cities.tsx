@@ -379,6 +379,16 @@ export function CtaBanner() {
               >
                 {t("report")}
               </Link>
+              <Link
+                href="/track"
+                className={cn(
+                  buttonBase,
+                  buttonTone.ghostDark,
+                  "h-11 px-4 text-[15px]",
+                )}
+              >
+                {t("track")}
+              </Link>
               {CONTACT_URL ? (
                 <a
                   href={CONTACT_URL}
