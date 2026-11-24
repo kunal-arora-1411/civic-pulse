@@ -61,5 +61,14 @@ def decide(
     closure round. C3.1's configurable rules engine replaces this function;
     the callers and the state changes stay.
     """
-    # TODO(you): implement the FR-073 default rule. See the request below.
-    raise NotImplementedError
+    answers = list(outcomes)
+    # One "still broken" outweighs any number of confirmations: a human
+    # looks again before the issue can be resolved.
+    if VerificationOutcome.UNRESOLVED in answers:
+        return Decision.SEND_BACK
+    if requires_approval:
+        return Decision.WAIT  # only a supervisor can resolve this category
+    confirmed = sum(1 for a in answers if a == VerificationOutcome.RESOLVED)
+    if confirmed >= max(1, confirmations_required):
+        return Decision.RESOLVE
+    return Decision.WAIT
