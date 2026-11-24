@@ -5,7 +5,7 @@ import { API_URL, PHOTO_PATH, TENANT } from "./env";
 
 const COMPOSE = "docker compose -f infra/docker-compose.yml";
 const START_HINT = `Start it from the repo root with:\n  ${COMPOSE} up -d --build --wait`;
-const SEED_HINT = `Seed it with:\n  ${COMPOSE} exec -T api python scripts/seed.py`;
+const SEED_HINT = `Seed it with:\n  ${COMPOSE} exec -T ai-worker python scripts/seed.py`;
 
 const SEEDED_CATEGORIES = [
   "pothole",

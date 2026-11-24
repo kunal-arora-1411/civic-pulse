@@ -26,7 +26,7 @@ CivicPulse lets citizens report civic problems (potholes, overflowing bins, dark
 docker compose -f infra/docker-compose.yml up -d --build --wait
 
 # 2. Load the synthetic demo data (safe to run again)
-docker compose -f infra/docker-compose.yml exec -T api python scripts/seed.py
+docker compose -f infra/docker-compose.yml exec -T ai-worker python scripts/seed.py
 
 # 3. Run the web app
 pnpm install

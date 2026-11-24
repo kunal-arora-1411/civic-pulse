@@ -195,6 +195,7 @@ async def _upsert_user(
 async def run() -> dict[str, int]:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed synthetic data into a production environment.")
+    await phase2.check_vision_model()
 
     async with system_session(reason="development seed") as db:
         tenant_ids = {slug: await _upsert_tenant(db, slug, name) for slug, name in TENANTS.items()}

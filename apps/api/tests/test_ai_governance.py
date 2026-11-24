@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
@@ -135,6 +136,24 @@ async def test_governance_endpoints_need_config_read(client: httpx.AsyncClient, 
 # --- the AI worker registers its models at start-up -----------------------------------------
 
 
+@pytest.fixture
+async def real_models(
+    owner_engine: AsyncEngine, settings: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> AsyncIterator[None]:
+    """The onnx provider with the committed lock (no weights needed to
+    describe the models). The registry is shared by the whole suite, so
+    the rows go again afterwards and the fake model is the active one."""
+    shutil.copy(LOCK, tmp_path / "models.lock.json")
+    monkeypatch.setattr(settings, "ai_provider", "onnx")
+    monkeypatch.setattr(settings, "ai_model_dir", str(tmp_path))
+    yield
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            text("DELETE FROM model_registry WHERE id IN (:a, :b)"),
+            {"a": "clip-vit-b32@onnx-1", "b": "yunet-2023mar@onnx-1"},
+        )
+
+
 class _Consumer:
     """What Celery's worker_ready hands the signal: just the queue table."""
 
@@ -156,18 +175,8 @@ def test_only_the_worker_on_the_ai_queue_registers_models() -> None:
 
 
 async def test_registering_the_real_models_records_lock_details_and_metrics(
-    client: httpx.AsyncClient,
-    owner_engine: AsyncEngine,
-    city: City,
-    settings: Any,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
+    client: httpx.AsyncClient, owner_engine: AsyncEngine, city: City, real_models: None
 ) -> None:
-    # Only the lock is read to describe the models; no weights needed.
-    shutil.copy(LOCK, tmp_path / "models.lock.json")
-    monkeypatch.setattr(settings, "ai_provider", "onnx")
-    monkeypatch.setattr(settings, "ai_model_dir", str(tmp_path))
-
     assert await register_models() == ["clip-vit-b32@onnx-1", "yunet-2023mar@onnx-1"]
 
     body = (await client.get(MODELS, headers=city.admin.headers)).json()
@@ -194,19 +203,10 @@ async def test_registering_the_real_models_records_lock_details_and_metrics(
     assert count == 1
 
 
-async def test_matching_uses_the_registered_model_floor(
-    owner_engine: AsyncEngine,
-    city: City,
-    settings: Any,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
+async def test_matching_uses_the_registered_model_floor(real_models: None) -> None:
     from app.core.db import get_session_factory
     from app.domains.matching.service import model_visual_floor
 
-    shutil.copy(LOCK, tmp_path / "models.lock.json")
-    monkeypatch.setattr(settings, "ai_provider", "onnx")
-    monkeypatch.setattr(settings, "ai_model_dir", str(tmp_path))
     await register_models()
     async with get_session_factory()() as db:
         assert await model_visual_floor(db, "clip-vit-b32@onnx-1") == 0.92

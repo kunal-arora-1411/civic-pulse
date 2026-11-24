@@ -169,7 +169,7 @@ jobs:
         run: docker compose -f infra/docker-compose.yml up -d --build --wait
 
       - name: Seed demo data
-        run: docker compose -f infra/docker-compose.yml exec -T api python scripts/seed.py
+        run: docker compose -f infra/docker-compose.yml exec -T ai-worker python scripts/seed.py
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

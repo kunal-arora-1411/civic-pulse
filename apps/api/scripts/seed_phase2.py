@@ -6,8 +6,9 @@ Called from scripts/seed.py after the Phase 1 seed. Everything is SYNTHETIC.
 * Schools and hospitals near some seeded issues, so the severity raise
   and the priority factor show up in the data.
 * The default matching and priority configuration, stored explicitly.
-* Embeddings for every seeded photo (with whatever vision model this
-  process has; the fake one in development).
+* Embeddings for every seeded photo, with the vision model this process
+  has, which must be the AI worker's: in the compose stack the seed runs
+  in the ai-worker container, and it refuses to embed with another model.
 * Three duplicate clusters: extra reports a few metres from an open issue
   with a near-identical photo. They go through the real matcher and are
   linked automatically, so their match decisions are genuine.
@@ -165,6 +166,31 @@ def near_identical(data: bytes, n: int) -> bytes:
     return buffer.getvalue()
 
 
+async def check_vision_model() -> None:
+    """Refuse to seed with another vision model than the AI worker's.
+
+    Seeded photos are embedded, and embeddings are only ever compared
+    within one model, so with any other model no new report could match a
+    seeded issue. Registers this process's model if none is yet.
+    """
+    model = get_vision_model()
+    async with system_session(reason="development seed: vision model") as db:
+        active = await db.scalar(
+            select(ModelRegistryEntry.id)
+            .where(ModelRegistryEntry.task == ModelTask.EMBEDDING)
+            .order_by(ModelRegistryEntry.deployed_at.desc(), ModelRegistryEntry.id)
+            .limit(1)
+        )
+        if active is not None and active != model.model_id:
+            raise SystemExit(
+                f"The AI worker runs {active}, but this process would embed the seeded "
+                f"photos with {model.model_id}. Run the seed in the ai-worker container:\n"
+                "  docker compose -f infra/docker-compose.yml exec -T ai-worker "
+                "python scripts/seed.py"
+            )
+        await ensure_registered(db, model)
+
+
 async def seed_rules_places_configs(
     tenant_id: uuid.UUID, wards: dict[uuid.UUID, tuple[float, float, float, float]]
 ) -> int:
@@ -198,12 +224,6 @@ async def seed_rules_places_configs(
                 .values(tenant_id=tenant_id, key=key.value, value=config.model_dump(mode="json"))
                 .on_conflict_do_nothing(constraint="pk_tenant_configs")
             )
-        # The fake model is listed unless the AI worker registered a real one.
-        has_model = await db.scalar(
-            select(ModelRegistryEntry.id).where(ModelRegistryEntry.task == ModelTask.EMBEDDING)
-        )
-        if has_model is None:
-            await ensure_registered(db, get_vision_model())
     return len(PLACES)
 
 

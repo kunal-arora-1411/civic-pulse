@@ -1,6 +1,13 @@
 # Local development stack for CivicPulse.
 #
-#   docker compose -f infra/docker-compose.yml up -d --build
+#   docker compose -f infra/docker-compose.yml up -d --build --wait
+#   docker compose -f infra/docker-compose.yml exec -T ai-worker python scripts/seed.py
+#
+# This runs the real AI worker (CLIP and YuNet on CPU; the first build
+# downloads about 600 MB of weights). To run the same stack with the
+# deterministic fake models instead, add the override file:
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.fake-ai.yml up -d --build --wait
 #
 # Every credential below is a development default for this stack only.
 # Override any of them from your shell or with `--env-file .env`.
@@ -43,8 +50,11 @@ x-api-env: &api-env
   S3_SECRET_KEY: ${S3_APP_SECRET_KEY:-civicpulse-app-secret}
   # Public Nominatim, kept to 1 request/second; set GEOCODER=none offline.
   GEOCODER: ${GEOCODER:-nominatim}
-  # Vision models: the deterministic fake unless a service says otherwise.
-  AI_PROVIDER: ${AI_PROVIDER:-fake}
+  # Faces in citizen photos are blurred before any public copy exists: the
+  # worker holds each photo at "processing" and the AI worker's face check
+  # publishes it. Both must agree, hence one setting for every service.
+  # Only the ai-worker loads models (AI_PROVIDER there); nothing else does.
+  AI_FACE_BLUR: ${AI_FACE_BLUR:-true}
 
 services:
   db:
@@ -192,11 +202,12 @@ services:
       retries: 10
       start_period: 10s
 
+  # Media processing, housekeeping, priority recomputes and the matching
+  # watchdog. Never the `ai` queue: that belongs to the ai-worker, so every
+  # embedding in the database comes from one model.
   worker:
     image: civicpulse-api:dev
     pull_policy: never
-    # Also consumes the `ai` queue (with the fake models) until a dedicated
-    # AI worker with the real models takes it over.
     command:
       - celery
       - -A
@@ -204,7 +215,7 @@ services:
       - worker
       - --loglevel=INFO
       - --concurrency=2
-      - --queues=default,ai
+      - --queues=default
     environment:
       <<: *api-env
     depends_on:
@@ -221,10 +232,13 @@ services:
       retries: 5
       start_period: 20s
 
-  # Celery worker for the `ai` queue: embeddings, classification, matching
-  # and face blurring on CPU. The image bakes in the weights pinned by
-  # apps/api/models.lock.json (see infra/ai-worker/Dockerfile for why they
-  # aren't in a volume). Expect ~1.5 GB of RAM while it works.
+  # Celery worker for the `ai` queue, and its only consumer: embeddings,
+  # classification, matching and face blurring on CPU. The image bakes in
+  # the weights pinned by apps/api/models.lock.json (see
+  # infra/ai-worker/Dockerfile for why they aren't in a volume) and records
+  # them in model_registry when it starts. Expect ~1.5 GB of RAM while it
+  # works. The seed runs here too, so seeded photos are embedded with the
+  # same model as everything else.
   ai-worker:
     build:
       context: ../apps/api
@@ -233,7 +247,6 @@ services:
     environment:
       <<: *api-env
       AI_PROVIDER: onnx
-      AI_FACE_BLUR: "true"
     depends_on:
       migrate:
         condition: service_completed_successfully

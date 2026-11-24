@@ -1,0 +1,31 @@
+# Override: run the `ai` queue with the deterministic fake models instead of
+# the real AI worker image.
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.fake-ai.yml up -d --build --wait
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.fake-ai.yml exec -T ai-worker python scripts/seed.py
+#
+# The ai-worker becomes a second container of the API image with
+# AI_PROVIDER=fake (apps/api/app/ai/fake.py): no weights to build or
+# download, and embeddings, classification, matching and the face check all
+# still run, deterministically. It is what CI's main e2e job uses; the
+# tests that need the real model notice the fake one and skip.
+#
+# Start from a fresh database (`down -v`) when switching between the two:
+# embeddings from different models are never compared, so photos embedded
+# by one aren't visible to matching under the other.
+services:
+  ai-worker:
+    build: !reset null
+    image: civicpulse-api:dev
+    pull_policy: never
+    command:
+      - celery
+      - -A
+      - app.worker:celery_app
+      - worker
+      - --loglevel=INFO
+      - --concurrency=2
+      - --queues=ai
+      - --hostname=ai@%h
+    environment:
+      AI_PROVIDER: fake

@@ -8,7 +8,7 @@ From the repo root:
 
 ```sh
 docker compose -f infra/docker-compose.yml up -d --build --wait
-docker compose -f infra/docker-compose.yml exec api python scripts/seed.py
+docker compose -f infra/docker-compose.yml exec ai-worker python scripts/seed.py
 ```
 
 | Service | Port | Notes |

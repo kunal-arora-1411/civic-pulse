@@ -167,3 +167,21 @@ async def test_seed_is_idempotent_and_usable(
     assert supervisor.user["roles"][0]["department_id"] is not None
     platform = await login(client, sms, "+919000000000", None)
     assert platform.user["permissions"] == ["tenant:manage"]
+
+
+async def test_the_seed_refuses_another_model_than_the_ai_worker_s(
+    owner_engine: AsyncEngine,
+) -> None:
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO model_registry (id, task, name, version, deployed_at) "
+                "VALUES ('real-model@1', 'embedding', 'Real model', '1', now() + interval '1 day')"
+            )
+        )
+    try:
+        with pytest.raises(SystemExit, match=r"exec -T ai-worker python scripts/seed.py"):
+            await seed.run()
+    finally:
+        async with owner_engine.begin() as conn:
+            await conn.execute(text("DELETE FROM model_registry WHERE id = 'real-model@1'"))
