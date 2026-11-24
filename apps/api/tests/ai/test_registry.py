@@ -112,6 +112,7 @@ def test_onnx_provider_loads_the_real_models_once(
     classifier = registry.get_classifier()
     assert isinstance(classifier, PromptZeroShotClassifier)
     assert classifier.model_id == model.model_id
+    assert classifier.threshold == 0  # the API applies each tenant's threshold
     assert isinstance(registry.get_face_detector(), YuNetFaceDetector)
     rows = [m.registry_row() for m in registry.deployed_models()]
     assert {r["task"] for r in rows} == {"embedding", "face_detection"}

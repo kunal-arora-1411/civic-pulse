@@ -7,11 +7,14 @@ from datetime import timedelta
 from typing import Any
 
 import httpx
+import numpy as np
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.ai import registry
+from app.ai.interfaces import CategoryScore
+from app.ai.zero_shot import scores_from_similarities
 from app.domains.ai.classifications import run
 from app.domains.matching.service import watchdog
 from tests.helpers import InlineJobs, Session
@@ -78,6 +81,66 @@ async def test_the_threshold_comes_from_the_matching_config(
     )
     media = await scene_photo(client, city.citizen, 3, label="pothole:0.40")
     assert (await _classify(client, city.citizen, media)).json()["needs_manual"] is False
+
+
+class _ThresholdedClassifier:
+    """Answers like PromptZeroShotClassifier built with a threshold of its
+    own: below it, `unknown` comes first with 1 - top, then the full
+    distribution, so the scores add up to more than 1."""
+
+    def __init__(self, similarities: dict[str, float], threshold: float) -> None:
+        self.similarities = similarities
+        self.threshold = threshold
+
+    def classify(self, image_embeddings: Any, prompts: dict[str, list[str]]) -> list[CategoryScore]:
+        codes = sorted(prompts)
+        sims = np.array([self.similarities.get(code, 0.0) for code in codes])
+        return scores_from_similarities(codes, sims, temperature=0.02, threshold=self.threshold)
+
+
+@pytest.mark.parametrize(
+    ("tenant_threshold", "needs_manual"),
+    [(0.30, False), (0.45, True), (0.60, True)],
+)
+async def test_the_tenant_threshold_wins_over_the_classifier_own(
+    client: httpx.AsyncClient,
+    owner_engine: AsyncEngine,
+    city: City,
+    monkeypatch: pytest.MonkeyPatch,
+    tenant_threshold: float,
+    needs_manual: bool,
+) -> None:
+    # Pothole wins with about 0.42 of the probability: under the
+    # classifier's own 0.45, so it also returns `unknown` at about 0.58.
+    stub = _ThresholdedClassifier({"pothole": 0.30, "waste": 0.295, "not_civic": 0.29}, 0.45)
+    monkeypatch.setattr(registry, "get_classifier", lambda: stub)
+    await client.put(
+        "/api/v1/admin/matching-config",
+        headers=city.admin.headers,
+        json={"classification_threshold": tenant_threshold},
+    )
+    media = await scene_photo(client, city.citizen, 9)
+    body = (await _classify(client, city.citizen, media)).json()
+
+    assert body["status"] == "done"
+    assert body["needs_manual"] is needs_manual
+    assert body["not_civic"] is False
+    top = body["suggestions"][0]
+    assert top["code"] == "pothole"
+    assert 0.35 < top["confidence"] < 0.45
+    assert sum(s["confidence"] for s in body["suggestions"]) <= 1.0
+
+    # What is stored is the distribution alone, led by the real winner.
+    async with owner_engine.connect() as conn:
+        row = (
+            await conn.execute(
+                text("SELECT scores, top_code, top_confidence FROM classifications WHERE id = :i"),
+                {"i": body["id"]},
+            )
+        ).one()
+    assert "unknown" not in {s["code"] for s in row.scores}
+    assert sum(s["confidence"] for s in row.scores) == pytest.approx(1.0, abs=1e-3)
+    assert (row.top_code, row.top_confidence) == ("pothole", top["confidence"])
 
 
 async def test_a_slow_classification_answers_202_and_is_polled(

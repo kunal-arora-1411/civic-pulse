@@ -136,18 +136,25 @@ async def suggestions_for(db: AsyncSession, classification: Classification) -> l
 
 
 async def to_out(db: AsyncSession, classification: Classification) -> ClassificationOut:
+    """The API view, with the tenant's threshold applied now.
+
+    The stored scores are the classifier's plain distribution; whether it
+    is confident enough is a tenant setting that can change after the
+    fact, so it's decided here rather than in the worker.
+    """
     suggestions = await suggestions_for(db, classification)
     threshold = (await matching_config(db)).classification_threshold
     done = classification.status == ClassificationStatus.DONE
+    confident = (classification.top_confidence or 0.0) >= threshold
     return ClassificationOut(
         id=classification.id,
         status=ClassificationStatus(classification.status),
         model_id=classification.model_id,
         suggestions=suggestions,
-        not_civic=done and classification.top_code == NOT_CIVIC,
+        not_civic=done and classification.top_code == NOT_CIVIC and confident,
         needs_manual=(
             not done
-            or classification.top_code == UNKNOWN
+            or classification.top_code in (UNKNOWN, NOT_CIVIC)
             or not suggestions
             or suggestions[0].confidence < threshold
         ),
@@ -250,7 +257,14 @@ async def run(classification_id: uuid.UUID, tenant_id: uuid.UUID) -> str:
             await db.commit()
             return ClassificationStatus.FAILED
 
-        ranked = sorted(scores, key=lambda s: -s.confidence)
+        # Only the distribution is stored. A classifier built with a
+        # threshold of its own puts the reserved `unknown` first (with
+        # 1 - top as its confidence), which would make the list add up to
+        # more than 1 and hide the real winner; the tenant's threshold is
+        # applied on read instead (`to_out`).
+        ranked = sorted(
+            (s for s in scores if s.code != UNKNOWN), key=lambda s: (-s.confidence, s.code)
+        )
         top = ranked[0] if ranked else None
         await db.execute(
             update(Classification)

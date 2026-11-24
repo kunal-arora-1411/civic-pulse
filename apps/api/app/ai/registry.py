@@ -41,11 +41,18 @@ def get_vision_model() -> VisionModel:
 
 @cache
 def get_classifier() -> ZeroShotClassifier:
+    """The classifier with no confidence threshold of its own.
+
+    Each tenant sets ``matching_config.classification_threshold`` and can
+    change it at any time, while this instance lives for the whole
+    process. So the classifier always returns the plain distribution and
+    the API applies the tenant's threshold when it answers.
+    """
     if get_settings().ai_provider == "fake":
         return cast(ZeroShotClassifier, _fake("FakeZeroShotClassifier"))
     from app.ai.zero_shot import PromptZeroShotClassifier
 
-    return PromptZeroShotClassifier(get_vision_model())
+    return PromptZeroShotClassifier(get_vision_model(), threshold=0.0)
 
 
 @cache
