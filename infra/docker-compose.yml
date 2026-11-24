@@ -221,6 +221,33 @@ services:
       retries: 5
       start_period: 20s
 
+  # Celery worker for the `ai` queue: embeddings, classification, matching
+  # and face blurring on CPU. The image bakes in the weights pinned by
+  # apps/api/models.lock.json (see infra/ai-worker/Dockerfile for why they
+  # aren't in a volume). Expect ~1.5 GB of RAM while it works.
+  ai-worker:
+    build:
+      context: ../apps/api
+      dockerfile: ../../infra/ai-worker/Dockerfile
+    image: civicpulse-ai-worker:dev
+    environment:
+      <<: *api-env
+      AI_PROVIDER: onnx
+      AI_FACE_BLUR: "true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.worker:celery_app inspect ping -d ai@$$HOSTNAME --timeout 5"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+
   # Celery Beat: schedules the hourly housekeeping job onto the worker.
   # Exactly one beat may run per environment, or jobs are scheduled twice.
   # The schedule state file lives in /tmp because the image runs as a

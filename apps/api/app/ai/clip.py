@@ -283,6 +283,9 @@ class ClipOnnxModel:
     def _open(self, path: Path) -> onnxruntime.InferenceSession:
         import onnxruntime as ort
 
+        # Some builds send usage telemetry; citizen photos never leave the box,
+        # and neither should anything about how we process them.
+        ort.disable_telemetry_events()
         return ort.InferenceSession(
             str(path),
             sess_options=_session_options(self._threads),
