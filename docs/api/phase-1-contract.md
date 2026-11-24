@@ -17,13 +17,18 @@ Fields ending in `_i18n` are objects keyed by locale, for example `{ "en": "Poth
 - Coordinates in GeoJSON and map settings are `[lng, lat]`, following GeoJSON order. Request and response bodies that name them use `lat` and `lng` fields.
 
 ### Scope
-Staff see the issues and reports in the jurisdiction subtree of their grants: a role scoped to a zone covers its wards, and a role with no jurisdiction covers the whole tenant. Issues with no ward are visible only to tenant-wide staff. Anything outside a caller's scope answers `404 not_found`, exactly like something that doesn't exist, so nothing about its existence leaks.
+Staff see the issues and reports in the jurisdiction subtree of their grants: a role scoped to a zone covers its wards, and a role with no jurisdiction covers the whole tenant. Issues with no ward are visible only to tenant-wide staff.
+
+A grant can also carry a department (PRD FR-006: tenant, department and geography). A department grant covers the issues whose category's default department is that department (a subcategory with none inherits its parent's); an issue with no category is visible only to grants without a department. This applies to every role, but in practice only supervisors are given departments: operators triage across categories and municipal admins are tenant-wide, so both are granted without one. Each grant is its own rule (its jurisdiction AND its department) and a caller sees the union of their grants. The issue list, the map, issue detail and every issue action use the same rule; report visibility is still by jurisdiction only.
+
+Anything outside a caller's scope answers `404 not_found`, exactly like something that doesn't exist, so nothing about its existence leaks.
 
 ### New error codes
 | Code | Status | When |
 |---|---|---|
 | `unsupported_media_type` | 422 | Upload content type isn't JPEG, PNG or WebP |
 | `file_too_large` | 422 | Upload is over the size limit |
+| `rate_limited` | 429 | `POST /reports`: the citizen has filed too many reports, by default 10 an hour or 30 a day (settings `REPORT_MAX_PER_HOUR`, `REPORT_MAX_PER_DAY`). `Retry-After` and `details.retry_after` give the seconds to wait. Idempotent replays don't count, and if the limiter's store is down submissions are allowed rather than refused. |
 | `too_many_uploads` | 429 | The caller already holds 20 unexpired, incomplete uploads (`details.limit`; no `Retry-After`) |
 | `upload_verification_failed` | 422 | The uploaded object doesn't match what was declared (`details.reason`) |
 | `out_of_jurisdiction` | 422 | The report's point is outside the city |

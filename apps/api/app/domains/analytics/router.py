@@ -26,6 +26,8 @@ from app.domains.analytics.schemas import (
 from app.domains.analytics.service import Scope
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
+from app.domains.rbac.principal import Principal
+from app.domains.rbac.scope import issue_access
 from app.domains.workflow.statuses import IssueStatus
 
 router = APIRouter(
@@ -36,7 +38,9 @@ router = APIRouter(
 RESPONSES = error_responses(401, 403, 422)
 
 
-def _scope(
+async def _scope(
+    principal: Annotated[Principal, require(Permission.ANALYTICS_READ)],
+    db: DbSession,
     from_: Annotated[
         date | None,
         Query(alias="from", description="First IST day, inclusive (default: 30 days ago)."),
@@ -48,7 +52,8 @@ def _scope(
     ward_id: uuid.UUID | None = None,
     status: Annotated[list[IssueStatus] | None, Query(description="Issue states.")] = None,
 ) -> Scope:
-    return Scope.build(from_, to, category_id, ward_id, status)
+    access = await issue_access(db, principal, Permission.ANALYTICS_READ)
+    return Scope.build(from_, to, category_id, ward_id, status, access)
 
 
 ScopeDep = Annotated[Scope, Depends(_scope)]

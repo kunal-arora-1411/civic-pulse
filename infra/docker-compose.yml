@@ -41,6 +41,11 @@ x-api-env: &api-env
   # whole team and the e2e suite. The 30-second resend cooldown stays.
   OTP_MAX_PER_HOUR: ${OTP_MAX_PER_HOUR:-60}
   OTP_MAX_PER_IP_PER_HOUR: ${OTP_MAX_PER_IP_PER_HOUR:-1000}
+  # Report submissions per citizen, looser than production's 10 an hour
+  # and 30 a day for the same reason: the seeded citizen is shared by the
+  # team and by e2e runs repeated back to back.
+  REPORT_MAX_PER_HOUR: ${REPORT_MAX_PER_HOUR:-500}
+  REPORT_MAX_PER_DAY: ${REPORT_MAX_PER_DAY:-5000}
   # Server-side calls go to minio over the compose network; URLs handed to
   # browsers are signed for the host port instead (see app/core/storage.py).
   S3_ENDPOINT: http://minio:9000

@@ -55,7 +55,8 @@ export function submitErrorInfo(error: unknown): SubmitErrorInfo {
     case "rate_limited":
       return {
         key: "rate_limited",
-        retryable: true,
+        // Retrying is pointless until the window has passed.
+        retryable: (error.retryAfter ?? 0) < 60,
         retryAfter: error.retryAfter ?? undefined,
       };
     case "out_of_jurisdiction":
@@ -85,4 +86,31 @@ export function submitErrorInfo(error: unknown): SubmitErrorInfo {
         retryable: true,
       };
   }
+}
+
+export type RateLimitMessage =
+  | { key: "rate_limited" }
+  | { key: "rate_limited_wait"; values: { seconds: number } }
+  | { key: "rate_limited_minutes"; values: { minutes: number } }
+  | { key: "rate_limited_hours"; values: { hours: number } };
+
+/**
+ * The wait, in the largest unit that reads naturally. The per-citizen
+ * report limits run per hour and per day, so a wait is often long.
+ */
+export function rateLimitMessage(retryAfter?: number): RateLimitMessage {
+  if (!retryAfter || retryAfter <= 0) return { key: "rate_limited" };
+  if (retryAfter < 60) {
+    return { key: "rate_limited_wait", values: { seconds: retryAfter } };
+  }
+  if (retryAfter < 3600) {
+    return {
+      key: "rate_limited_minutes",
+      values: { minutes: Math.ceil(retryAfter / 60) },
+    };
+  }
+  return {
+    key: "rate_limited_hours",
+    values: { hours: Math.ceil(retryAfter / 3600) },
+  };
 }

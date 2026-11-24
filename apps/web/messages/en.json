@@ -1331,6 +1331,8 @@
       "server": "Something went wrong on our side. Your report is saved, so try again in a moment. It won't be sent twice.",
       "rate_limited": "You've sent several reports in a short time. Wait a little, then try again.",
       "rate_limited_wait": "You've sent several reports in a short time. Try again in {seconds, plural, one {# second} other {# seconds}}.",
+      "rate_limited_minutes": "You've sent several reports in a short time. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+      "rate_limited_hours": "You've reached today's limit for new reports. Try again in {hours, plural, one {# hour} other {# hours}}.",
       "out_of_jurisdiction": "This location is outside the city's area, so the municipality can't act on it. Move the pin inside the city.",
       "evidence_required": "This kind of problem needs a different number of photos. Check the photos step.",
       "invalid_media": "One or more photos couldn't be attached; they may have expired. Remove them and add them again.",
