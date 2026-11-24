@@ -11,6 +11,7 @@ from app.domains.issues.models import CivicIssue, IssueEvent, IssueRelation, Ref
 from app.domains.matching.models import MatchDecision, ReviewTask
 from app.domains.media.models import MediaAsset
 from app.domains.org.models import Department, Jurisdiction
+from app.domains.places.models import PlaceOfInterest
 from app.domains.rbac.models import UserRole
 from app.domains.reports.models import Report
 from app.domains.tenants.models import Tenant
@@ -34,6 +35,7 @@ __all__ = [
     "MediaEmbedding",
     "ModelRegistryEntry",
     "OtpChallenge",
+    "PlaceOfInterest",
     "ReferenceCounter",
     "Report",
     "ReviewTask",

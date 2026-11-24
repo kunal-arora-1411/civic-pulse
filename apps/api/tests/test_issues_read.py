@@ -102,14 +102,20 @@ async def _ids(client: httpx.AsyncClient, session: Any, **params: Any) -> list[s
     return [item["id"] for item in response.json()["items"]]
 
 
-async def test_list_shape_and_default_order(client: httpx.AsyncClient, queue: Queue) -> None:
-    response = await client.get(ISSUES, headers=queue.city.operator.headers)
+async def test_list_shape_and_newest_first_order(client: httpx.AsyncClient, queue: Queue) -> None:
+    response = await client.get(
+        ISSUES, headers=queue.city.operator.headers, params={"sort": "-created_at"}
+    )
     page = response.json()
     assert page["total"] == 5
     q = queue
-    assert [i["id"] for i in page["items"]] == [
+    newest_first = [
         str(x.id) for x in (q.no_ward, q.pothole_se, q.waste_nw, q.pothole_ne, q.waste_sw)
     ]
+    assert [i["id"] for i in page["items"]] == newest_first
+    # The default sort is by priority; none of these has one computed yet,
+    # so they fall back to newest first.
+    assert await _ids(client, queue.city.operator) == newest_first
     item = next(i for i in page["items"] if i["id"] == str(q.pothole_ne.id))
     assert item == {
         "id": str(q.pothole_ne.id),
@@ -121,7 +127,7 @@ async def test_list_shape_and_default_order(client: httpx.AsyncClient, queue: Qu
         "ward": {"id": str(q.city.wards["NE"]), "name": "Ward NE"},
         "report_count": 1,
         "unique_reporter_count": 1,
-        "severity": None,
+        "severity": {"level": "medium", "source": "rule", "reason": None},
         "priority": None,
         "thumb_url": None,
         "created_at": item["created_at"],
@@ -284,6 +290,8 @@ async def test_geojson_shape_and_filters(client: httpx.AsyncClient, queue: Queue
                 "status": "reported",
                 "category_code": "pothole",
                 "report_count": 1,
+                "severity": "medium",
+                "priority_band": None,
             },
         }
     ]

@@ -30,6 +30,7 @@ TENANT_TABLES = (
     "review_tasks",
     "issue_relations",
     "tenant_configs",
+    "places_of_interest",
 )
 
 
@@ -104,6 +105,13 @@ async def _seed(conn: AsyncConnection) -> Seeded:
     )
     await conn.execute(
         text("INSERT INTO tenant_configs (tenant_id, key, value) VALUES (:t, 'matching', '{}')"),
+        params,
+    )
+    await conn.execute(
+        text(
+            "INSERT INTO places_of_interest (tenant_id, kind, name, geom) "
+            "VALUES (:t, 'school', 'Test School', ST_SetSRID(ST_MakePoint(77.6, 12.98), 4326))"
+        ),
         params,
     )
     return Seeded(tenant, citizen.id, first, second)

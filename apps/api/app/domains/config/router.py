@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 
 from app.core.db import DbSession
 from app.core.errors import error_responses
@@ -12,6 +12,7 @@ from app.domains.config.schemas import MatchingConfig, PriorityConfig
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
+from app.jobs import JobsDep
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -62,9 +63,16 @@ async def get_priority_config(_: ConfigReader, db: DbSession) -> PriorityConfig:
     responses=error_responses(401, 403, 422),
 )
 async def update_priority_config(
-    principal: ConfigManager, db: DbSession, body: PriorityConfig
+    principal: ConfigManager,
+    db: DbSession,
+    jobs: JobsDep,
+    background: BackgroundTasks,
+    body: PriorityConfig,
 ) -> PriorityConfig:
     """Replace the whole document; a field left out goes back to its default.
     Weights must add up to 100 and the bands must fall from critical to
-    medium. Audited."""
-    return await service.replace(db, principal, ConfigKey.PRIORITY, body)
+    medium. Audited. Every issue is then recomputed in the background."""
+    saved = await service.replace(db, principal, ConfigKey.PRIORITY, body)
+    assert principal.tenant_id is not None
+    background.add_task(jobs.recompute_priorities, principal.tenant_id)
+    return saved

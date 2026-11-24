@@ -41,8 +41,9 @@ async def list_issues(
     sort: Annotated[
         str | None,
         Query(
-            description="`-created_at` (default), `created_at`, `-updated_at`, `updated_at`, "
-            "`-report_count` or `report_count`."
+            description="`-priority` (default: effective band, then score), `priority`, "
+            "`-created_at`, `created_at`, `-updated_at`, `updated_at`, `-report_count` or "
+            "`report_count`."
         ),
     ] = None,
 ) -> IssuePage:

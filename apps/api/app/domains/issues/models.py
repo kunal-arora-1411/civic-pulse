@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    Numeric,
     PrimaryKeyConstraint,
     SmallInteger,
     String,
@@ -28,7 +29,13 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, TimestampMixin
+from app.domains.priority.rules import PriorityBand, SeverityLevel
 from app.domains.workflow.statuses import IssueStatus, sql_in
+
+
+class SeveritySource(StrEnum):
+    RULE = "rule"
+    OVERRIDE = "override"
 
 
 class CivicIssue(TimestampMixin, Base):
@@ -79,6 +86,29 @@ class CivicIssue(TimestampMixin, Base):
             name="counts_consistent",
         ),
         CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint(f"severity IN ({sql_in(SeverityLevel)})", name="severity_values"),
+        CheckConstraint(
+            f"severity_source IN ({sql_in(SeveritySource)})", name="severity_source_values"
+        ),
+        CheckConstraint(
+            "severity_source = 'rule' OR severity_reason IS NOT NULL", name="override_has_reason"
+        ),
+        CheckConstraint(
+            f"priority_band IS NULL OR priority_band IN ({sql_in(PriorityBand)})",
+            name="priority_band_values",
+        ),
+        CheckConstraint(
+            f"priority_override_band IS NULL OR priority_override_band IN ({sql_in(PriorityBand)})",
+            name="priority_override_values",
+        ),
+        CheckConstraint(
+            "(priority_override_band IS NULL) = (priority_override_reason IS NULL)",
+            name="priority_override_has_reason",
+        ),
+        CheckConstraint(
+            "priority_score IS NULL OR priority_score BETWEEN 0 AND 100",
+            name="priority_score_range",
+        ),
         Index("ix_civic_issues_location", "location", postgresql_using="gist"),
         Index("ix_civic_issues_search_document", "search_document", postgresql_using="gin"),
         Index("ix_civic_issues_tenant_status_created", "tenant_id", "status", "created_at"),
@@ -88,6 +118,13 @@ class CivicIssue(TimestampMixin, Base):
         Index("ix_civic_issues_tenant_ward", "tenant_id", "ward_id"),
         Index("ix_civic_issues_tenant_report_count", "tenant_id", "report_count"),
         Index("ix_civic_issues_merged_into_id", "merged_into_id"),
+        Index("ix_civic_issues_tenant_priority_score", "tenant_id", "priority_score"),
+        # Issues waiting for their first priority computation.
+        Index(
+            "ix_civic_issues_priority_pending",
+            "created_at",
+            postgresql_where=text("priority_computed_at IS NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -102,9 +139,24 @@ class CivicIssue(TimestampMixin, Base):
     ward_id: Mapped[uuid.UUID | None] = mapped_column()
     report_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     unique_reporter_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
-    # Phase 2 fills these in; until then they stay NULL.
-    severity: Mapped[str | None] = mapped_column(String(16))
-    priority: Mapped[str | None] = mapped_column(String(16))
+    # Severity (FR-038): computed from the category's rules unless a person
+    # overrode it (`severity_source = override`, with their reason).
+    severity: Mapped[str] = mapped_column(
+        String(16), default=SeverityLevel.MEDIUM, server_default=text("'medium'")
+    )
+    severity_source: Mapped[str] = mapped_column(
+        String(16), default=SeveritySource.RULE, server_default=text("'rule'")
+    )
+    severity_reason: Mapped[str | None] = mapped_column(Text)
+    # Priority (FR-039 to FR-044): the computed score and band with the
+    # factors behind them, and an optional manual band that takes effect
+    # over the computed one. NULL score: not computed yet.
+    priority_score: Mapped[float | None] = mapped_column(Numeric(5, 2, asdecimal=False))
+    priority_band: Mapped[str | None] = mapped_column(String(16))
+    priority_override_band: Mapped[str | None] = mapped_column(String(16))
+    priority_override_reason: Mapped[str | None] = mapped_column(Text)
+    priority_factors: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB(none_as_null=True))
+    priority_computed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     cover_media_id: Mapped[uuid.UUID | None] = mapped_column()
     status_changed_at: Mapped[datetime] = mapped_column(
@@ -191,7 +243,7 @@ class IssueEvent(Base):
     # Phase 2: the other issue in a merge or split, and structured details
     # (moved report ids, old and new values) for the staff timeline.
     related_issue_id: Mapped[uuid.UUID | None] = mapped_column()
-    data: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    data: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
 
 
 class IssueRelation(Base):

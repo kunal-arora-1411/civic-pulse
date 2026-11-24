@@ -27,7 +27,11 @@ celery_app = Celery(
     "civicpulse",
     broker=settings.broker_url,
     backend=settings.broker_url,
-    include=["app.domains.media.tasks", "app.domains.housekeeping.tasks"],
+    include=[
+        "app.domains.media.tasks",
+        "app.domains.housekeeping.tasks",
+        "app.domains.priority.tasks",
+    ],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -48,6 +52,11 @@ celery_app.conf.update(
         "housekeeping-cleanup": {
             "task": "civicpulse.housekeeping.cleanup",
             "schedule": crontab(minute=17),
+        },
+        # 02:40 IST: issues age by a day, so every open issue's score moves.
+        "priority-nightly": {
+            "task": "civicpulse.priority.nightly",
+            "schedule": crontab(hour=21, minute=10),
         },
     },
 )

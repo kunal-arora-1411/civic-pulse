@@ -3105,6 +3105,7 @@
           "admin"
         ],
         "summary": "Admin Update Category",
+        "description": "Changing `severity_rules` recomputes the category's issues in the\nbackground, after this change has committed.",
         "operationId": "admin_update_category",
         "security": [
           {
@@ -3960,10 +3961,10 @@
                   "type": "null"
                 }
               ],
-              "description": "`-created_at` (default), `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`.",
+              "description": "`-priority` (default: effective band, then score), `priority`, `-created_at`, `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`.",
               "title": "Sort"
             },
-            "description": "`-created_at` (default), `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`."
+            "description": "`-priority` (default: effective band, then score), `priority`, `-created_at`, `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`."
           },
           {
             "name": "limit",
@@ -4131,6 +4132,48 @@
               "title": "Q"
             },
             "description": "Searches issue and report references, addresses and report descriptions. Words match by prefix; Hindi works too."
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeverityLevel"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Repeatable; matches any.",
+              "title": "Severity"
+            },
+            "description": "Repeatable; matches any."
+          },
+          {
+            "name": "priority_band",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PriorityBand"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The effective band (an override counts). Repeatable.",
+              "title": "Priority Band"
+            },
+            "description": "The effective band (an override counts). Repeatable."
           },
           {
             "name": "X-Tenant",
@@ -4352,6 +4395,48 @@
               "title": "Q"
             },
             "description": "Searches issue and report references, addresses and report descriptions. Words match by prefix; Hindi works too."
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeverityLevel"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Repeatable; matches any.",
+              "title": "Severity"
+            },
+            "description": "Repeatable; matches any."
+          },
+          {
+            "name": "priority_band",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PriorityBand"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The effective band (an override counts). Repeatable.",
+              "title": "Priority Band"
+            },
+            "description": "The effective band (an override counts). Repeatable."
           },
           {
             "name": "X-Tenant",
@@ -4939,7 +5024,7 @@
           "admin"
         ],
         "summary": "Update Priority Config",
-        "description": "Replace the whole document; a field left out goes back to its default.\nWeights must add up to 100 and the bands must fall from critical to\nmedium. Audited.",
+        "description": "Replace the whole document; a field left out goes back to its default.\nWeights must add up to 100 and the bands must fall from critical to\nmedium. Audited. Every issue is then recomputed in the background.",
         "operationId": "admin_update_priority_config",
         "security": [
           {
@@ -5515,6 +5600,35 @@
           "dedup": {
             "$ref": "#/components/schemas/Dedup"
           },
+          "ai_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "minLength": 3
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Prompts",
+            "description": "English prompts for the AI classifier, replacing the built-in ones for this code. Null: use the built-in prompts."
+          },
+          "severity_rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeverityRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sort_order": {
             "type": "integer",
             "maximum": 10000.0,
@@ -5668,7 +5782,32 @@
           },
           "dedup": {
             "$ref": "#/components/schemas/Dedup",
-            "description": "Stored now; duplicate matching uses it from Phase 2."
+            "description": "Duplicate matching: search radius and time window."
+          },
+          "ai_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Prompts"
+          },
+          "severity_rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeverityRules"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How severity is worked out for this category's issues. Null: `medium`."
           },
           "sort_order": {
             "type": "integer",
@@ -5691,6 +5830,8 @@
           "fields",
           "default_department_id",
           "dedup",
+          "ai_prompts",
+          "severity_rules",
           "sort_order",
           "is_active"
         ],
@@ -5880,6 +6021,35 @@
               }
             ]
           },
+          "ai_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "minLength": 3
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Prompts",
+            "description": "English prompts for the AI classifier, replacing the built-in ones for this code. Null: use the built-in prompts."
+          },
+          "severity_rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeverityRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sort_order": {
             "anyOf": [
               {
@@ -5908,7 +6078,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "CategoryUpdate",
-        "description": "Partial update. Send only what changes; `parent_id` and\n`default_department_id` can be set to null to clear them."
+        "description": "Partial update. Send only what changes; `parent_id`,\n`default_department_id`, `ai_prompts` and `severity_rules` can be set to\nnull to clear them."
       },
       "Dedup": {
         "properties": {
@@ -6164,6 +6334,45 @@
         ],
         "title": "FieldOption"
       },
+      "FieldRule": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "title": "Field",
+            "description": "A category field key."
+          },
+          "equals": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Equals",
+            "description": "The answer that triggers the rule."
+          },
+          "set": {
+            "$ref": "#/components/schemas/SeverityLevel"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field",
+          "equals",
+          "set"
+        ],
+        "title": "FieldRule"
+      },
       "HealthOut": {
         "properties": {
           "status": {
@@ -6229,28 +6438,18 @@
             "title": "Unique Reporter Count"
           },
           "severity": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Severity",
-            "description": "Null until Phase 2."
+            "$ref": "#/components/schemas/SeverityOut"
           },
           "priority": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/PriorityDetailOut"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Priority",
-            "description": "Null until Phase 2."
+            "description": "Null only until the issue's priority is first computed (seconds)."
           },
           "thumb_url": {
             "anyOf": [
@@ -6402,6 +6601,20 @@
           "report_count": {
             "type": "integer",
             "title": "Report Count"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/SeverityLevel"
+          },
+          "priority_band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriorityBand"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The effective band."
           }
         },
         "type": "object",
@@ -6410,7 +6623,9 @@
           "reference",
           "status",
           "category_code",
-          "report_count"
+          "report_count",
+          "severity",
+          "priority_band"
         ],
         "title": "IssueFeatureProperties"
       },
@@ -6467,28 +6682,18 @@
             "title": "Unique Reporter Count"
           },
           "severity": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Severity",
-            "description": "Null until Phase 2."
+            "$ref": "#/components/schemas/SeverityOut"
           },
           "priority": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/PriorityOut"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Priority",
-            "description": "Null until Phase 2."
+            "description": "Null only until the issue's priority is first computed (seconds)."
           },
           "thumb_url": {
             "anyOf": [
@@ -7352,6 +7557,39 @@
         ],
         "title": "MyReportPage"
       },
+      "NearPlacesRule": {
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceKind"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Kinds"
+          },
+          "within_m": {
+            "type": "integer",
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Within M"
+          },
+          "raise_by": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Raise By",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kinds",
+          "within_m"
+        ],
+        "title": "NearPlacesRule"
+      },
       "OtpRequestIn": {
         "properties": {
           "phone": {
@@ -7422,6 +7660,17 @@
           "code"
         ],
         "title": "OtpVerifyIn"
+      },
+      "PlaceKind": {
+        "type": "string",
+        "enum": [
+          "school",
+          "hospital",
+          "bus_stop",
+          "market",
+          "other"
+        ],
+        "title": "PlaceKind"
       },
       "PlatformTenant": {
         "properties": {
@@ -7550,6 +7799,16 @@
         ],
         "title": "PointOut"
       },
+      "PriorityBand": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "PriorityBand"
+      },
       "PriorityBands": {
         "properties": {
           "critical": {
@@ -7610,6 +7869,137 @@
         "additionalProperties": false,
         "type": "object",
         "title": "PriorityConfig"
+      },
+      "PriorityDetailOut": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "0-100, from the rules (an override doesn't change it)."
+          },
+          "band": {
+            "$ref": "#/components/schemas/PriorityBand",
+            "description": "The effective band: the override when present."
+          },
+          "computed_band": {
+            "$ref": "#/components/schemas/PriorityBand"
+          },
+          "overridden": {
+            "type": "boolean",
+            "title": "Overridden"
+          },
+          "override_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Reason"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/PriorityFactorOut"
+            },
+            "type": "array",
+            "title": "Factors",
+            "description": "Largest contribution first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "band",
+          "computed_band",
+          "overridden",
+          "override_reason",
+          "factors"
+        ],
+        "title": "PriorityDetailOut"
+      },
+      "PriorityFactorOut": {
+        "properties": {
+          "factor": {
+            "type": "string",
+            "title": "Factor",
+            "examples": [
+              "severity"
+            ]
+          },
+          "value": {
+            "title": "Value",
+            "description": "The raw input: a level, a count, days, or true/false."
+          },
+          "normalized": {
+            "type": "number",
+            "title": "Normalized",
+            "description": "0-1"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points",
+            "description": "normalized x the factor's weight"
+          },
+          "explanation_key": {
+            "type": "string",
+            "title": "Explanation Key",
+            "description": "Localised by the client.",
+            "examples": [
+              "priority.severity"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "factor",
+          "value",
+          "normalized",
+          "points",
+          "explanation_key"
+        ],
+        "title": "PriorityFactorOut"
+      },
+      "PriorityOut": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "0-100, from the rules (an override doesn't change it)."
+          },
+          "band": {
+            "$ref": "#/components/schemas/PriorityBand",
+            "description": "The effective band: the override when present."
+          },
+          "computed_band": {
+            "$ref": "#/components/schemas/PriorityBand"
+          },
+          "overridden": {
+            "type": "boolean",
+            "title": "Overridden"
+          },
+          "override_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "band",
+          "computed_band",
+          "overridden",
+          "override_reason"
+        ],
+        "title": "PriorityOut"
       },
       "PriorityWeights": {
         "properties": {
@@ -8157,6 +8547,29 @@
         ],
         "title": "ReporterOut"
       },
+      "ReporterRule": {
+        "properties": {
+          "unique_reporters_gte": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Unique Reporters Gte"
+          },
+          "raise_by": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Raise By",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "unique_reporters_gte"
+        ],
+        "title": "ReporterRule"
+      },
       "ReporterWithContactOut": {
         "properties": {
           "id": {
@@ -8317,6 +8730,46 @@
         ],
         "title": "RolesUpdate"
       },
+      "SeverityLevel": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "SeverityLevel"
+      },
+      "SeverityOut": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/SeverityLevel"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SeveritySource",
+            "description": "`rule`, or `override` when staff set it."
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "How the rules got there, or the override's reason (staff wording)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "source",
+          "reason"
+        ],
+        "title": "SeverityOut"
+      },
       "SeverityPoints": {
         "properties": {
           "low": {
@@ -8351,6 +8804,49 @@
         "additionalProperties": false,
         "type": "object",
         "title": "SeverityPoints"
+      },
+      "SeverityRules": {
+        "properties": {
+          "base": {
+            "$ref": "#/components/schemas/SeverityLevel",
+            "default": "medium"
+          },
+          "field_rules": {
+            "items": {
+              "$ref": "#/components/schemas/FieldRule"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Field Rules"
+          },
+          "near_places": {
+            "items": {
+              "$ref": "#/components/schemas/NearPlacesRule"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Near Places"
+          },
+          "report_count_raise": {
+            "items": {
+              "$ref": "#/components/schemas/ReporterRule"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Report Count Raise"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SeverityRules"
+      },
+      "SeveritySource": {
+        "type": "string",
+        "enum": [
+          "rule",
+          "override"
+        ],
+        "title": "SeveritySource"
       },
       "StatusChange": {
         "properties": {

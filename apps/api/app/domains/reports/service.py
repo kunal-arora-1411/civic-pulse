@@ -32,6 +32,7 @@ from app.domains.issues.references import allocate
 from app.domains.media.models import MediaAsset, MediaPurpose, MediaStatus
 from app.domains.media.service import thumb_url, to_media_out
 from app.domains.org.models import Jurisdiction
+from app.domains.priority import service as priority
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 from app.domains.rbac.scope import accessible_jurisdiction_ids
@@ -246,6 +247,7 @@ async def create_report(db: AsyncSession, principal: Principal, body: ReportCrea
             "report_id": str(report.id),
         },
     )
+    await priority.recompute(db, issue.id)
     return report.id
 
 

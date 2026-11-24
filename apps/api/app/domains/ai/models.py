@@ -139,7 +139,7 @@ class Classification(TimestampMixin, Base):
     model_id: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(16), default=ClassificationStatus.PENDING)
     # [{"code": ..., "confidence": ...}], best first, as the classifier said.
-    scores: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    scores: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB(none_as_null=True))
     top_code: Mapped[str | None] = mapped_column(String(50))
     top_confidence: Mapped[float | None] = mapped_column(Float)
     error: Mapped[str | None] = mapped_column(String(100))

@@ -73,7 +73,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E40
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.redis import get_redis  # noqa: E402
-from tests.helpers import RecordingMediaQueue, RecordingSms  # noqa: E402
+from tests.helpers import InlineJobs, RecordingMediaQueue, RecordingSms  # noqa: E402
 
 
 def _dsn(url: URL) -> str:
@@ -174,12 +174,23 @@ def media_queue() -> RecordingMediaQueue:
 
 
 @pytest.fixture(scope="session")
+def jobs() -> InlineJobs:
+    return InlineJobs()
+
+
+@pytest.fixture(autouse=True)
+def _reset_jobs(jobs: InlineJobs) -> None:
+    jobs.reset()
+
+
+@pytest.fixture(scope="session")
 async def app(
-    database: None, sms: RecordingSms, media_queue: RecordingMediaQueue
+    database: None, sms: RecordingSms, media_queue: RecordingMediaQueue, jobs: InlineJobs
 ) -> AsyncIterator[FastAPI]:
     from app.core.db import get_engine
     from app.domains.auth.sms import get_sms_provider
     from app.domains.media.tasks import get_media_queue
+    from app.jobs import get_jobs
     from app.main import create_app
 
     redis = get_redis()
@@ -189,6 +200,9 @@ async def app(
     # Tests run media processing explicitly (tests/phase1.py); nothing may
     # reach the Celery broker from the suite.
     application.dependency_overrides[get_media_queue] = lambda: media_queue
+    # Background jobs run inline, right after the request has committed,
+    # exactly as a worker would pick them up (see tests/helpers.py).
+    application.dependency_overrides[get_jobs] = lambda: jobs
     yield application
     await get_engine().dispose()
     await redis.aclose()

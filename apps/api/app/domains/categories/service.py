@@ -20,8 +20,10 @@ from app.domains.categories.schemas import (
     Dedup,
     Evidence,
     fields_as_json,
+    unknown_rule_fields,
 )
 from app.domains.org.models import Department
+from app.domains.priority.rules import SeverityRules
 from app.domains.rbac.principal import Principal
 
 SORTS = {
@@ -47,10 +49,22 @@ def to_out(category: Category) -> CategoryOut:
             "dedup": Dedup(
                 radius_m=category.dedup_radius_m, window_days=category.dedup_window_days
             ),
+            "ai_prompts": category.ai_prompts,
+            "severity_rules": category.severity_rules,
             "sort_order": category.sort_order,
             "is_active": category.is_active,
         }
     )
+
+
+def _rules_json(rules: SeverityRules | None) -> dict[str, Any] | None:
+    return rules.model_dump(mode="json") if rules is not None else None
+
+
+def severity_rules(category: Category) -> SeverityRules | None:
+    if not category.severity_rules:
+        return None
+    return SeverityRules.model_validate(category.severity_rules)
 
 
 def to_ref(category: Category) -> CategoryRef:
@@ -147,6 +161,8 @@ async def create(db: AsyncSession, actor: Principal, body: CategoryCreate) -> Ca
         default_department_id=body.default_department_id,
         dedup_radius_m=body.dedup.radius_m,
         dedup_window_days=body.dedup.window_days,
+        ai_prompts=body.ai_prompts,
+        severity_rules=_rules_json(body.severity_rules),
         sort_order=body.sort_order,
         is_active=body.is_active,
     )
@@ -204,6 +220,25 @@ async def update(
     if body.dedup is not None:
         category.dedup_radius_m = body.dedup.radius_m
         category.dedup_window_days = body.dedup.window_days
+    if "ai_prompts" in changes:
+        category.ai_prompts = body.ai_prompts
+    if "severity_rules" in changes:
+        category.severity_rules = _rules_json(body.severity_rules)
+    keys = {f["key"] for f in category.fields}
+    unknown = unknown_rule_fields(severity_rules(category), keys)
+    if unknown:
+        raise ValidationFailed(
+            "Severity rules name fields this category doesn't have.",
+            details={
+                "errors": [
+                    {
+                        "loc": ["body", "severity_rules", "field_rules"],
+                        "msg": f"Unknown fields: {', '.join(unknown)}.",
+                        "type": "value_error",
+                    }
+                ]
+            },
+        )
     if body.sort_order is not None:
         category.sort_order = body.sort_order
     if body.is_active is not None:

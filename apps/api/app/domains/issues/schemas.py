@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.pagination import Page
 from app.domains.categories.schemas import CategoryRef
-from app.domains.issues.models import EventType, Visibility
+from app.domains.issues.models import EventType, SeveritySource, Visibility
+from app.domains.priority.rules import PriorityBand, SeverityLevel
 from app.domains.reports.schemas import ReportStaffView, WardRef
 from app.domains.workflow.statuses import IssueStatus
 
@@ -16,6 +17,36 @@ from app.domains.workflow.statuses import IssueStatus
 class PointOut(BaseModel):
     lat: float
     lng: float
+
+
+class SeverityOut(BaseModel):
+    level: SeverityLevel
+    source: SeveritySource = Field(description="`rule`, or `override` when staff set it.")
+    reason: str | None = Field(
+        description="How the rules got there, or the override's reason (staff wording)."
+    )
+
+
+class PriorityFactorOut(BaseModel):
+    factor: str = Field(examples=["severity"])
+    value: Any = Field(description="The raw input: a level, a count, days, or true/false.")
+    normalized: float = Field(description="0-1")
+    points: float = Field(description="normalized x the factor's weight")
+    explanation_key: str = Field(
+        examples=["priority.severity"], description="Localised by the client."
+    )
+
+
+class PriorityOut(BaseModel):
+    score: float = Field(description="0-100, from the rules (an override doesn't change it).")
+    band: PriorityBand = Field(description="The effective band: the override when present.")
+    computed_band: PriorityBand
+    overridden: bool
+    override_reason: str | None
+
+
+class PriorityDetailOut(PriorityOut):
+    factors: list[PriorityFactorOut] = Field(description="Largest contribution first.")
 
 
 class IssueListItem(BaseModel):
@@ -28,8 +59,10 @@ class IssueListItem(BaseModel):
     ward: WardRef | None
     report_count: int
     unique_reporter_count: int
-    severity: str | None = Field(description="Null until Phase 2.")
-    priority: str | None = Field(description="Null until Phase 2.")
+    severity: SeverityOut
+    priority: PriorityOut | None = Field(
+        description="Null only until the issue's priority is first computed (seconds)."
+    )
     thumb_url: str | None
     created_at: datetime
     updated_at: datetime
@@ -65,6 +98,9 @@ class AllowedTransition(BaseModel):
 
 
 class IssueDetail(IssueListItem):
+    priority: PriorityDetailOut | None = Field(
+        description="Null only until the issue's priority is first computed (seconds)."
+    )
     reports: list[ReportStaffView] = Field(description="Oldest first.")
     timeline: list[TimelineEvent] = Field(description="Oldest first.")
     allowed_transitions: list[AllowedTransition] = Field(
@@ -106,6 +142,8 @@ class IssueFeatureProperties(BaseModel):
     status: IssueStatus
     category_code: str
     report_count: int
+    severity: SeverityLevel
+    priority_band: PriorityBand | None = Field(description="The effective band.")
 
 
 class IssueFeature(BaseModel):
