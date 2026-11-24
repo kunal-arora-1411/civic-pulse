@@ -1,7 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRightLeft, MapPin, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRightLeft,
+  Combine,
+  MapPin,
+  Split,
+  Tags,
+  UserRound,
+} from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { use, useState } from "react";
 import { useDetailLabels } from "@/components/citizen/report-detail";
@@ -29,6 +37,7 @@ import { IssueTimeline } from "./issue-timeline";
 import { PriorityDialog, SeverityDialog } from "./override-dialogs";
 import { PriorityCard } from "./priority-card";
 import { StatusDialog } from "./status-dialog";
+import { CategoryDialog, MergeDialog, SplitDialog } from "./structure-dialogs";
 
 function ReportItem({ report }: { report: StaffReport }) {
   const t = useTranslations("admin.issueDetail");
@@ -97,7 +106,9 @@ function Body({
   const { user } = useSession();
   const can = (permission: string) => hasPermission(user, permission);
   const [changing, setChanging] = useState(false);
-  const [dialog, setDialog] = useState<"priority" | "severity" | null>(null);
+  const [dialog, setDialog] = useState<
+    "priority" | "severity" | "category" | "merge" | "split" | null
+  >(null);
   const closeDialog = (open: boolean) => {
     if (!open) setDialog(null);
   };
@@ -123,12 +134,32 @@ function Body({
             {issue.ward?.name}
           </p>
         </div>
-        {issue.allowed_transitions.length > 0 ? (
-          <Button onClick={() => setChanging(true)}>
-            <ArrowRightLeft aria-hidden="true" />
-            {t("changeStatus")}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          {can("issue:update") ? (
+            <Button variant="outline" onClick={() => setDialog("category")}>
+              <Tags aria-hidden="true" />
+              {t("actions.category")}
+            </Button>
+          ) : null}
+          {can("issue:merge") ? (
+            <Button variant="outline" onClick={() => setDialog("merge")}>
+              <Combine aria-hidden="true" />
+              {t("actions.merge")}
+            </Button>
+          ) : null}
+          {can("issue:merge") && issue.reports.length > 1 ? (
+            <Button variant="outline" onClick={() => setDialog("split")}>
+              <Split aria-hidden="true" />
+              {t("actions.split")}
+            </Button>
+          ) : null}
+          {issue.allowed_transitions.length > 0 ? (
+            <Button onClick={() => setChanging(true)}>
+              <ArrowRightLeft aria-hidden="true" />
+              {t("changeStatus")}
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -230,6 +261,24 @@ function Body({
       <SeverityDialog
         issue={issue}
         open={dialog === "severity"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <CategoryDialog
+        issue={issue}
+        open={dialog === "category"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <MergeDialog
+        issue={issue}
+        open={dialog === "merge"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <SplitDialog
+        issue={issue}
+        open={dialog === "split"}
         onOpenChange={closeDialog}
         onReload={onReload}
       />

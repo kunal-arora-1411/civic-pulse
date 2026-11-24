@@ -426,6 +426,69 @@
         "reason": "Reason (staff only)",
         "publicNote": "Note shown to the citizen"
       },
+      "actions": {
+        "category": "Change category",
+        "merge": "Merge into this",
+        "split": "Split"
+      },
+      "picker": {
+        "help": "Search by reference (like CP-26-000123) or address.",
+        "placeholder": "Reference or address",
+        "searching": "Searching…",
+        "noResults": "No other issues match.",
+        "resultCount": "{count, plural, one {# issue found} other {# issues found}}",
+        "results": "Matching issues",
+        "selected": "Chosen issues",
+        "remove": "Remove {reference}",
+        "noAddress": "no address",
+        "reports": "{count, plural, one {# report} other {# reports}}"
+      },
+      "categoryDialog": {
+        "title": "Change the category of {reference}",
+        "description": "It's filed as {category}. Correcting it recalculates severity and priority, and the correction helps measure how well category suggestions work.",
+        "legend": "New category",
+        "chooseCategory": "Choose the right category.",
+        "reasonRequired": "Say why the category was wrong.",
+        "submit": "Change category",
+        "changed": "{reference} is now filed as {category}"
+      },
+      "mergeDialog": {
+        "title": "Merge other issues into {reference}",
+        "description": "Use this when several issues are the same problem. {reference} stays; the others redirect to it, and their reports and history move over.",
+        "pickLabel": "Issues to merge in",
+        "pickRequired": "Choose at least one issue to merge in.",
+        "preview": "{reference} will have {total, plural, one {# report} other {# reports}} after merging: {moved, plural, one {# report} other {# reports}} from {count, plural, one {# issue} other {# issues}}.",
+        "reasonRequired": "Say why these are the same problem.",
+        "next": "Review the merge",
+        "back": "Back",
+        "confirmTitle": "Merge {count, plural, one {# issue} other {# issues}} into {reference}?",
+        "confirmLead": "Please check before you merge",
+        "confirmMoves": "{count, plural, one {# report moves} other {# reports move}} over from {sources}.",
+        "confirmTotal": "{reference} will then have {total, plural, one {# report} other {# reports}}, and keeps its own status.",
+        "confirmRedirect": "{sources} will redirect here and leave the work queue and the map.",
+        "confirmCitizens": "Citizens will see \"Combined with another report of the same problem\".",
+        "confirmUndo": "This can only be undone by splitting the reports back out.",
+        "reasonLabel": "Reason",
+        "confirm": "Merge {count, plural, one {# issue} other {# issues}}",
+        "merged": "Merged {count, plural, one {# issue} other {# issues}} into {reference}",
+        "invalidMerge": "These issues can't be merged. One of them may already have been merged; reload and check."
+      },
+      "splitDialog": {
+        "title": "Split reports out of {reference}",
+        "description": "Move reports that describe a different problem to a new issue or to another existing one.",
+        "reportsLegend": "Reports to move",
+        "anonymous": "Citizen (no name given)",
+        "pickReports": "Choose at least one report to move.",
+        "keepOne": "At least one report has to stay on this issue. Untick one, or merge instead.",
+        "targetLegend": "Move them to",
+        "targetNew": "A new issue",
+        "targetExisting": "An existing issue",
+        "pickTarget": "Issue to move them to",
+        "targetRequired": "Choose the issue to move them to.",
+        "reasonRequired": "Say why these reports are a different problem.",
+        "submit": "{count, plural, =0 {Move reports} one {Move # report} other {Move # reports}}",
+        "split": "Moved {count, plural, one {# report} other {# reports}} to {reference}"
+      },
       "dialog": {
         "close": "Close",
         "cancel": "Cancel",
@@ -698,7 +761,9 @@
     "invalid_media": "One of the photos can no longer be attached. Remove it and add it again.",
     "version_conflict": "Someone else changed this while you were looking at it. Reload to see the latest version.",
     "invalid_transition": "That status change isn't allowed from the current status.",
-    "reason_required": "This change needs a reason."
+    "reason_required": "This change needs a reason.",
+    "invalid_merge": "These issues can't be merged. One of them may already have been merged.",
+    "cannot_empty_issue": "At least one report has to stay on the issue."
   },
   "priorityFactors": {
     "severity": "Severity is {level}",
