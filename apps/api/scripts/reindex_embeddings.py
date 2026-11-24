@@ -135,7 +135,7 @@ async def reindex(
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "Re-embed photos").splitlines()[0])
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--tenant", type=uuid.UUID)
     parser.add_argument("--batch-size", type=int, default=50)
