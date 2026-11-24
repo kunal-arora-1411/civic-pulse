@@ -6200,6 +6200,220 @@
         }
       }
     },
+    "/api/v1/admin/ai/models": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Ai Models",
+        "description": "Deployed models with their source, licence and evaluation metrics;\n`active` marks the most recently deployed model per task.",
+        "operationId": "admin_list_ai_models",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ai/quality": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Ai Quality",
+        "description": "Counts for a window of whole days: classifications done and failed,\nsuggestions accepted and corrected by category, how reports were\nmatched, review outcomes, and feedback on automatic links.",
+        "operationId": "admin_get_ai_quality",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day (Asia/Kolkata). Default: 29 days before `to`.",
+              "title": "From"
+            },
+            "description": "First day (Asia/Kolkata). Default: 29 days before `to`."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day. Default: today.",
+              "title": "To"
+            },
+            "description": "Last day. Default: today."
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/review-tasks": {
       "get": {
         "tags": [
@@ -7723,6 +7937,42 @@
         "title": "CategoryUpdate",
         "description": "Partial update. Send only what changes; `parent_id`,\n`default_department_id`, `ai_prompts` and `severity_rules` can be set to\nnull to clear them."
       },
+      "ClassificationCounts": {
+        "properties": {
+          "done": {
+            "type": "integer",
+            "title": "Done"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "accepted_by_category": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Accepted By Category",
+            "description": "Reports whose citizen kept the top suggestion, by category code."
+          },
+          "corrected_by_category": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Corrected By Category",
+            "description": "Reports whose citizen chose another category, by the chosen code."
+          }
+        },
+        "type": "object",
+        "required": [
+          "done",
+          "failed",
+          "accepted_by_category",
+          "corrected_by_category"
+        ],
+        "title": "ClassificationCounts"
+      },
       "ClassificationCreate": {
         "properties": {
           "media_ids": {
@@ -8109,6 +8359,24 @@
           "incorrect"
         ],
         "title": "Feedback"
+      },
+      "FeedbackCounts": {
+        "properties": {
+          "correct": {
+            "type": "integer",
+            "title": "Correct"
+          },
+          "incorrect": {
+            "type": "integer",
+            "title": "Incorrect"
+          }
+        },
+        "type": "object",
+        "required": [
+          "correct",
+          "incorrect"
+        ],
+        "title": "FeedbackCounts"
       },
       "FeedbackIn": {
         "properties": {
@@ -9119,6 +9387,30 @@
         "type": "object",
         "title": "MatchingConfig"
       },
+      "MatchingCounts": {
+        "properties": {
+          "auto_linked": {
+            "type": "integer",
+            "title": "Auto Linked"
+          },
+          "sent_to_review": {
+            "type": "integer",
+            "title": "Sent To Review"
+          },
+          "new_issue": {
+            "type": "integer",
+            "title": "New Issue",
+            "description": "Started a new issue without a review."
+          }
+        },
+        "type": "object",
+        "required": [
+          "auto_linked",
+          "sent_to_review",
+          "new_issue"
+        ],
+        "title": "MatchingCounts"
+      },
       "MatchingStatus": {
         "type": "string",
         "enum": [
@@ -9521,6 +9813,105 @@
           "code"
         ],
         "title": "MfaVerifyIn"
+      },
+      "ModelList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ModelOut"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Newest deployment first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ModelList"
+      },
+      "ModelOut": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "task": {
+            "type": "string",
+            "title": "Task"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "deployed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deployed At"
+          },
+          "intended_use": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intended Use"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metrics"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "description": "The most recently deployed model for its task."
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_id",
+          "task",
+          "name",
+          "version",
+          "source",
+          "license",
+          "deployed_at",
+          "intended_use",
+          "metrics",
+          "active"
+        ],
+        "title": "ModelOut"
       },
       "MyReportIssue": {
         "properties": {
@@ -10232,6 +10623,42 @@
         ],
         "title": "PublicTimelineEvent",
         "description": "What a citizen may see of an issue's history: no notes marked\ninternal, no reasons, no staff identities."
+      },
+      "QualityOut": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "title": "From"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "title": "To"
+          },
+          "classifications": {
+            "$ref": "#/components/schemas/ClassificationCounts"
+          },
+          "matching": {
+            "$ref": "#/components/schemas/MatchingCounts"
+          },
+          "reviews": {
+            "$ref": "#/components/schemas/ReviewCounts"
+          },
+          "auto_link_feedback": {
+            "$ref": "#/components/schemas/FeedbackCounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "classifications",
+          "matching",
+          "reviews",
+          "auto_link_feedback"
+        ],
+        "title": "QualityOut"
       },
       "ReadinessOut": {
         "properties": {
@@ -11002,6 +11429,24 @@
           "issue"
         ],
         "title": "ReviewCandidate"
+      },
+      "ReviewCounts": {
+        "properties": {
+          "linked": {
+            "type": "integer",
+            "title": "Linked"
+          },
+          "new_issue": {
+            "type": "integer",
+            "title": "New Issue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "linked",
+          "new_issue"
+        ],
+        "title": "ReviewCounts"
       },
       "ReviewResolution": {
         "type": "string",

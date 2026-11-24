@@ -48,26 +48,3 @@ class ClassificationOut(BaseModel):
         "manual selection."
     )
     created_at: datetime
-
-
-# --- governance (contract G) --------------------------------------------------------------
-
-
-class ModelOut(BaseModel):
-    id: str
-    task: str
-    name: str
-    version: str
-    source: str | None
-    license: str | None
-    deployed_at: datetime
-    intended_use: str | None
-    metrics: dict[str, object]
-
-
-class ModelsOut(BaseModel):
-    models: list[ModelOut] = Field(description="Newest deployment first.")
-    active: dict[str, str | None] = Field(
-        description="Per task (`embedding`, `classification`, `face_detection`): the most "
-        "recently deployed model, or null."
-    )

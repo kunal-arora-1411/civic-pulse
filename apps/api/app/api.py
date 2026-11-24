@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.domains.ai.router import admin_router as ai_admin_router
 from app.domains.ai.router import router as ai_router
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
@@ -37,4 +38,5 @@ api_router.include_router(reports_router)
 api_router.include_router(issues_router)
 api_router.include_router(config_router)
 api_router.include_router(ai_router)
+api_router.include_router(ai_admin_router)
 api_router.include_router(matching_router)
