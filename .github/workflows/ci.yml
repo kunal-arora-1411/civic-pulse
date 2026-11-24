@@ -96,5 +96,69 @@ jobs:
       - name: Typecheck
         run: pnpm --filter @civicpulse/web typecheck
 
+      - name: Typecheck the e2e suite
+        run: pnpm --filter @civicpulse/e2e typecheck
+
       - name: Build
         run: pnpm --filter @civicpulse/web build
+
+  e2e:
+    name: End-to-end (Playwright, full stack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The whole compose stack, as developers run it. The geocoder is off
+      # so the run doesn't depend on (or load) the public Nominatim server;
+      # wards come from PostGIS either way and the tests accept a missing
+      # street address.
+      - name: Start the stack
+        env:
+          GEOCODER: none
+        run: docker compose -f infra/docker-compose.yml up -d --build --wait
+
+      - name: Seed demo data
+        run: docker compose -f infra/docker-compose.yml exec -T api python scripts/seed.py
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Chromium
+        run: pnpm --filter @civicpulse/e2e exec playwright install --with-deps chromium
+
+      # Built here rather than by Playwright's webServer, so a build
+      # failure shows up as its own step; the suite then only runs
+      # `next start`.
+      - name: Build the web app
+        run: pnpm --filter @civicpulse/web build
+
+      - name: Run Playwright
+        run: pnpm --filter @civicpulse/e2e test
+
+      - name: Upload the Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 14
+
+      - name: Service logs
+        if: failure()
+        run: docker compose -f infra/docker-compose.yml logs api worker
