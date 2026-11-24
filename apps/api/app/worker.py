@@ -80,6 +80,12 @@ celery_app.conf.update(
             "task": "civicpulse.priority.nightly",
             "schedule": crontab(hour=21, minute=10),
         },
+        # Monday 06:30 IST: matching quality against the 4-week baseline.
+        # Alerts are log lines only; nothing is changed.
+        "matching-quality-weekly": {
+            "task": "civicpulse.matching.quality_check",
+            "schedule": crontab(day_of_week=1, hour=1, minute=0),
+        },
     },
 )
 
