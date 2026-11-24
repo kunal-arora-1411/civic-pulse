@@ -1,0 +1,350 @@
+{
+  "model_id": "clip-vit-b32@onnx-1",
+  "chosen_floor": 0.92,
+  "max_fmr": 0.01,
+  "test_pairs": {
+    "positive": 81,
+    "negative": 619
+  },
+  "calib_pairs": {
+    "positive": 78,
+    "negative": 577
+  },
+  "test_roc_auc": 0.9887113823570474,
+  "test_average_precision": 0.8883203580971404,
+  "test_at_contract_floor": {
+    "floor": 0.8,
+    "recall": 1.0,
+    "false_merge_rate": 0.1098546042003231,
+    "precision": 0.5436241610738255
+  },
+  "test_at_chosen_floor": {
+    "floor": 0.92,
+    "recall": 0.5432098765432098,
+    "false_merge_rate": 0.008077544426494346,
+    "precision": 0.8979591836734694
+  },
+  "calib_at_chosen_floor": {
+    "floor": 0.92,
+    "recall": 0.44871794871794873,
+    "false_merge_rate": 0.006932409012131715,
+    "precision": 0.8974358974358975
+  },
+  "test_cosine_percentiles": {
+    "positive": [
+      0.840888500213623,
+      0.8592139482498169,
+      0.8863216042518616,
+      0.9240002632141113,
+      0.9449620246887207,
+      0.9658005833625793,
+      0.9744863510131836
+    ],
+    "re_upload": [
+      0.8936609625816345,
+      0.9242969155311584,
+      0.9597858786582947,
+      0.979279637336731,
+      0.9876005053520203,
+      0.9987993240356445,
+      0.9997543096542358
+    ],
+    "negative": [
+      0.4169644927978516,
+      0.480353519320488,
+      0.5838675498962402,
+      0.6630392074584961,
+      0.7404847145080566,
+      0.8365948259830475,
+      0.9038737630844126
+    ]
+  },
+  "test_phash": {
+    "re_upload_boost_rate": 1.0,
+    "augmented_boost_rate": 0.0,
+    "negative_boost_rate": 0.0,
+    "negative_min_distance": 20
+  },
+  "sweep": [
+    {
+      "calib": {
+        "floor": 0.6,
+        "recall": 1.0,
+        "false_merge_rate": 0.8162911611785095,
+        "precision": 0.14207650273224043
+      },
+      "test": {
+        "floor": 0.6,
+        "recall": 1.0,
+        "false_merge_rate": 0.715670436187399,
+        "precision": 0.15458015267175573
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.62,
+        "recall": 1.0,
+        "false_merge_rate": 0.7538994800693241,
+        "precision": 0.15204678362573099
+      },
+      "test": {
+        "floor": 0.62,
+        "recall": 1.0,
+        "false_merge_rate": 0.6526655896607432,
+        "precision": 0.1670103092783505
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.64,
+        "recall": 1.0,
+        "false_merge_rate": 0.6967071057192374,
+        "precision": 0.1625
+      },
+      "test": {
+        "floor": 0.64,
+        "recall": 1.0,
+        "false_merge_rate": 0.5977382875605816,
+        "precision": 0.17960088691796008
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.66,
+        "recall": 1.0,
+        "false_merge_rate": 0.6204506065857885,
+        "precision": 0.17889908256880735
+      },
+      "test": {
+        "floor": 0.66,
+        "recall": 1.0,
+        "false_merge_rate": 0.5218093699515347,
+        "precision": 0.2004950495049505
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.68,
+        "recall": 1.0,
+        "false_merge_rate": 0.5355285961871751,
+        "precision": 0.20155038759689922
+      },
+      "test": {
+        "floor": 0.68,
+        "recall": 1.0,
+        "false_merge_rate": 0.4491114701130856,
+        "precision": 0.22562674094707522
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.7,
+        "recall": 1.0,
+        "false_merge_rate": 0.45753899480069327,
+        "precision": 0.22807017543859648
+      },
+      "test": {
+        "floor": 0.7,
+        "recall": 1.0,
+        "false_merge_rate": 0.3764135702746365,
+        "precision": 0.25796178343949044
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.72,
+        "recall": 1.0,
+        "false_merge_rate": 0.35528596187175043,
+        "precision": 0.2756183745583039
+      },
+      "test": {
+        "floor": 0.72,
+        "recall": 1.0,
+        "false_merge_rate": 0.3150242326332795,
+        "precision": 0.29347826086956524
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.74,
+        "recall": 1.0,
+        "false_merge_rate": 0.29116117850953205,
+        "precision": 0.3170731707317073
+      },
+      "test": {
+        "floor": 0.74,
+        "recall": 1.0,
+        "false_merge_rate": 0.25363489499192243,
+        "precision": 0.3403361344537815
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.76,
+        "recall": 0.9871794871794872,
+        "false_merge_rate": 0.2270363951473137,
+        "precision": 0.3701923076923077
+      },
+      "test": {
+        "floor": 0.76,
+        "recall": 1.0,
+        "false_merge_rate": 0.1938610662358643,
+        "precision": 0.40298507462686567
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.78,
+        "recall": 0.9871794871794872,
+        "false_merge_rate": 0.1733102253032929,
+        "precision": 0.4350282485875706
+      },
+      "test": {
+        "floor": 0.78,
+        "recall": 1.0,
+        "false_merge_rate": 0.14539579967689822,
+        "precision": 0.47368421052631576
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.8,
+        "recall": 0.9871794871794872,
+        "false_merge_rate": 0.13518197573656845,
+        "precision": 0.4967741935483871
+      },
+      "test": {
+        "floor": 0.8,
+        "recall": 1.0,
+        "false_merge_rate": 0.1098546042003231,
+        "precision": 0.5436241610738255
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.82,
+        "recall": 0.9871794871794872,
+        "false_merge_rate": 0.10051993067590988,
+        "precision": 0.5703703703703704
+      },
+      "test": {
+        "floor": 0.82,
+        "recall": 0.9876543209876543,
+        "false_merge_rate": 0.07592891760904685,
+        "precision": 0.6299212598425197
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.84,
+        "recall": 0.9615384615384616,
+        "false_merge_rate": 0.06412478336221837,
+        "precision": 0.6696428571428571
+      },
+      "test": {
+        "floor": 0.84,
+        "recall": 0.9876543209876543,
+        "false_merge_rate": 0.045234248788368334,
+        "precision": 0.7407407407407407
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.86,
+        "recall": 0.9230769230769231,
+        "false_merge_rate": 0.04679376083188908,
+        "precision": 0.7272727272727273
+      },
+      "test": {
+        "floor": 0.86,
+        "recall": 0.9382716049382716,
+        "false_merge_rate": 0.029079159935379646,
+        "precision": 0.8085106382978723
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.88,
+        "recall": 0.8589743589743589,
+        "false_merge_rate": 0.01733102253032929,
+        "precision": 0.8701298701298701
+      },
+      "test": {
+        "floor": 0.88,
+        "recall": 0.8024691358024691,
+        "false_merge_rate": 0.01938610662358643,
+        "precision": 0.8441558441558441
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.9,
+        "recall": 0.6794871794871795,
+        "false_merge_rate": 0.010398613518197574,
+        "precision": 0.8983050847457628
+      },
+      "test": {
+        "floor": 0.9,
+        "recall": 0.7037037037037037,
+        "false_merge_rate": 0.011308562197092083,
+        "precision": 0.890625
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.92,
+        "recall": 0.44871794871794873,
+        "false_merge_rate": 0.006932409012131715,
+        "precision": 0.8974358974358975
+      },
+      "test": {
+        "floor": 0.92,
+        "recall": 0.5432098765432098,
+        "false_merge_rate": 0.008077544426494346,
+        "precision": 0.8979591836734694
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.94,
+        "recall": 0.21794871794871795,
+        "false_merge_rate": 0.0017331022530329288,
+        "precision": 0.9444444444444444
+      },
+      "test": {
+        "floor": 0.94,
+        "recall": 0.3333333333333333,
+        "false_merge_rate": 0.008077544426494346,
+        "precision": 0.84375
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.96,
+        "recall": 0.038461538461538464,
+        "false_merge_rate": 0.0,
+        "precision": 1.0
+      },
+      "test": {
+        "floor": 0.96,
+        "recall": 0.09876543209876543,
+        "false_merge_rate": 0.0,
+        "precision": 1.0
+      }
+    },
+    {
+      "calib": {
+        "floor": 0.98,
+        "recall": 0.0,
+        "false_merge_rate": 0.0,
+        "precision": 1.0
+      },
+      "test": {
+        "floor": 0.98,
+        "recall": 0.0,
+        "false_merge_rate": 0.0,
+        "precision": 1.0
+      }
+    }
+  ]
+}
