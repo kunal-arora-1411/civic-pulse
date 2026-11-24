@@ -195,21 +195,6 @@ class FakeFaceDetector:
         return parse_faces(value) if value else []
 
 
-def fake_perceptual_hash(image: Image.Image) -> int:
-    """A 64-bit difference hash: a stand-in until app/ai/phash.py lands.
-
-    Each bit says whether a pixel of a 9 x 8 greyscale thumbnail is brighter
-    than its right-hand neighbour, which survives recompression and resizing.
-    """
-    grey = ImageOps.exif_transpose(image).convert("L").resize((9, 8), Image.Resampling.BOX)
-    pixels = np.asarray(grey, dtype=np.int16)
-    bits = (pixels[:, 1:] > pixels[:, :-1]).reshape(-1)
-    value = 0
-    for bit in bits:
-        value = (value << 1) | int(bit)
-    return value
-
-
 # --- pictures for tests and the development seed ------------------------------------------
 
 

@@ -28,6 +28,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import registry
+from app.ai.prompts import DEFAULT_PROMPTS, NOT_CIVIC, UNKNOWN
 from app.core.config import get_settings
 from app.core.db import get_session_factory
 from app.core.errors import NotFound
@@ -36,7 +37,6 @@ from app.core.tenancy import set_tenant
 from app.domains.ai.analysis import AIUnavailable, ensure_embeddings
 from app.domains.ai.models import Classification, ClassificationStatus
 from app.domains.ai.schemas import ClassificationCreate, ClassificationOut, Suggestion
-from app.domains.ai.vision import category_prompts, default_prompts
 from app.domains.categories.models import Category
 from app.domains.config.service import matching_config
 from app.domains.media.models import MediaAsset, MediaPurpose, MediaStatus
@@ -46,8 +46,6 @@ from app.jobs import Jobs
 
 logger = logging.getLogger(__name__)
 
-NOT_CIVIC = "not_civic"
-UNKNOWN = "unknown"
 AI_UNAVAILABLE = "ai_unavailable"
 MAX_SUGGESTIONS = 3
 _USABLE = (MediaStatus.PROCESSING, MediaStatus.READY)
@@ -187,6 +185,15 @@ def _parse_vector(value: str) -> list[float]:
     return [float(v) for v in value.strip("[]").split(",")]
 
 
+def category_prompts(category: Category) -> list[str]:
+    """The category's own prompts, else the tuned defaults for its code,
+    else one generic prompt from its English name (a tenant's own category)."""
+    if category.ai_prompts:
+        return list(category.ai_prompts)
+    name = category.name_i18n.get("en", category.code)
+    return list(DEFAULT_PROMPTS.get(category.code) or [f"a photo of {name.lower()}"])
+
+
 async def run(classification_id: uuid.UUID, tenant_id: uuid.UUID) -> str:
     """The `classify` task. Idempotent: anything not pending is left alone.
     Storage errors propagate so the task retries."""
@@ -224,10 +231,10 @@ async def run(classification_id: uuid.UUID, tenant_id: uuid.UUID) -> str:
             )
         ]
         prompts = {
-            c.code: category_prompts(c.code, c.name_i18n.get("en", c.code), c.ai_prompts)
+            c.code: category_prompts(c)
             for c in await db.scalars(select(Category).where(Category.is_active.is_(True)))
         }
-        prompts[NOT_CIVIC] = default_prompts().get(NOT_CIVIC, [])
+        prompts[NOT_CIVIC] = list(DEFAULT_PROMPTS[NOT_CIVIC])
         await db.commit()
         if not vectors:
             await _fail(db, classification_id, AI_UNAVAILABLE)

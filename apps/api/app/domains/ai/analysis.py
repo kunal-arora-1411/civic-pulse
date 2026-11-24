@@ -25,15 +25,16 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai import registry
+from app.ai.faces import blur_regions
 from app.ai.fake import FAKE_MODEL_ID
 from app.ai.interfaces import VisionModel
+from app.ai.phash import perceptual_hash, to_signed64
 from app.core.config import get_settings
 from app.core.db import get_session_factory
 from app.core.logging import log_fields
 from app.core.storage import ObjectStorage, get_storage
 from app.core.tenancy import set_tenant
 from app.domains.ai.models import EMBEDDING_DIM, ModelRegistryEntry, ModelTask
-from app.domains.ai.vision import blur_regions, perceptual_hash, to_signed64
 from app.domains.media.inspect import InvalidImage
 from app.domains.media.models import MediaAsset, MediaStatus
 from app.domains.media.processing import decode_upright, render_image_variants

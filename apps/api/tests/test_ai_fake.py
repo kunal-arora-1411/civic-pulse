@@ -15,7 +15,6 @@ from app.ai.fake import (
     FakeFaceDetector,
     FakeVisionModel,
     FakeZeroShotClassifier,
-    fake_perceptual_hash,
     make_scene,
 )
 from app.ai.interfaces import (
@@ -24,6 +23,7 @@ from app.ai.interfaces import (
     ZeroShotClassifier,
     perceptual_hash_distance,
 )
+from app.ai.phash import perceptual_hash
 
 PROMPTS = {code: [f"a photo of {code}"] for code in ("pothole", "waste", "drainage", "not_civic")}
 
@@ -120,10 +120,12 @@ def test_the_face_detector_reports_the_hooked_boxes() -> None:
     assert FakeFaceDetector().detect(_open(make_scene(11))) == []
 
 
-def test_perceptual_hash_survives_recompression_and_separates_scenes() -> None:
-    base = fake_perceptual_hash(_open(make_scene(12)))
+def test_scene_variants_are_the_same_photo_to_the_perceptual_hash() -> None:
+    # Matching tests lean on this: another shot of a scene counts as the
+    # same photo (distance <= 6), a different scene doesn't.
+    base = perceptual_hash(_open(make_scene(12)))
     assert 0 <= base < 2**64
     for other in (make_scene(12, variant=1), _recompress(make_scene(12))):
-        assert perceptual_hash_distance(base, fake_perceptual_hash(_open(other))) <= 6
-    far = [fake_perceptual_hash(_open(make_scene(seed))) for seed in range(50, 60)]
+        assert perceptual_hash_distance(base, perceptual_hash(_open(other))) <= 6
+    far = [perceptual_hash(_open(make_scene(seed))) for seed in range(50, 60)]
     assert min(perceptual_hash_distance(base, h) for h in far) > 10
