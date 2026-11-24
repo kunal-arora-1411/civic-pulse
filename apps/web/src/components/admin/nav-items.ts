@@ -1,10 +1,13 @@
 import {
+  Cpu,
+  Gauge,
   GitCompareArrows,
   Inbox,
   LayoutDashboard,
   type LucideIcon,
   Map as MapIcon,
   ScrollText,
+  SlidersHorizontal,
   Tags,
   UsersRound,
 } from "lucide-react";
@@ -17,6 +20,9 @@ export type AdminNavKey =
   | "review"
   | "map"
   | "categories"
+  | "matching"
+  | "priority"
+  | "ai"
   | "users"
   | "audit";
 
@@ -28,6 +34,9 @@ export type AdminNavItem = {
     | "/admin/review"
     | "/admin/map"
     | "/admin/categories"
+    | "/admin/settings/matching"
+    | "/admin/settings/priority"
+    | "/admin/ai"
     | "/admin/users"
     | "/admin/audit";
   icon: LucideIcon;
@@ -59,6 +68,19 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: Tags,
     permission: "config:read",
   },
+  {
+    key: "matching",
+    href: "/admin/settings/matching",
+    icon: SlidersHorizontal,
+    permission: "config:read",
+  },
+  {
+    key: "priority",
+    href: "/admin/settings/priority",
+    icon: Gauge,
+    permission: "config:read",
+  },
+  { key: "ai", href: "/admin/ai", icon: Cpu, permission: "config:read" },
   {
     key: "users",
     href: "/admin/users",

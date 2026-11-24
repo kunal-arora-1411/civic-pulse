@@ -45,6 +45,9 @@ describe("visibleNavItems", () => {
     expect(visibleNavItems(makeAdmin()).map((item) => item.key)).toEqual([
       "overview",
       "categories",
+      "matching",
+      "priority",
+      "ai",
       "users",
       "audit",
     ]);
@@ -82,7 +85,15 @@ describe("AdminNav", () => {
     const links = Array.from(nav.querySelectorAll("a")).map(
       (a) => a.textContent,
     );
-    expect(links).toEqual(["Overview", "Categories", "Users", "Audit log"]);
+    expect(links).toEqual([
+      "Overview",
+      "Categories",
+      "Matching",
+      "Priority rules",
+      "AI models",
+      "Users",
+      "Audit log",
+    ]);
     expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute(
       "aria-current",
       "page",
