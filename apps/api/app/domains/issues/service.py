@@ -57,6 +57,7 @@ from app.domains.rbac.scope import accessible_jurisdiction_ids, jurisdiction_sub
 from app.domains.reports import service as reports
 from app.domains.reports.models import Report
 from app.domains.reports.schemas import WardRef
+from app.domains.sla.rules import SlaState, overdue_clause, sla_state
 from app.domains.users.models import User
 from app.domains.workflow import service as workflow
 from app.domains.workflow.statuses import IssueStatus
@@ -67,6 +68,7 @@ SORTS = {
     "created_at": CivicIssue.created_at,
     "updated_at": CivicIssue.updated_at,
     "report_count": CivicIssue.report_count,
+    "due_at": CivicIssue.due_at,
 }
 DEFAULT_SORT = "-priority"
 # For validation and the error message only; `_order` handles `priority`.
@@ -133,6 +135,9 @@ async def _apply_filters[*Ts](
         stmt = stmt.where(CivicIssue.severity.in_([s.value for s in filters.severities]))
     if filters.priority_bands:
         stmt = stmt.where(EFFECTIVE_BAND.in_([b.value for b in filters.priority_bands]))
+    if filters.overdue is not None:
+        clause = overdue_clause(datetime.now(UTC))
+        stmt = stmt.where(clause if filters.overdue else ~clause)
     if filters.statuses:
         stmt = stmt.where(CivicIssue.status.in_([s.value for s in filters.statuses]))
     if filters.category_ids:
@@ -200,6 +205,7 @@ def priority_detail_out(issue: CivicIssue) -> PriorityDetailOut | None:
 
 def _list_item(storage: ObjectStorage, row: Any) -> IssueListItem:
     issue, x, y, category, ward_name, cover_status, cover_thumb = row
+    state = sla_state(issue, datetime.now(UTC))
     return IssueListItem(
         id=issue.id,
         reference=issue.reference,
@@ -214,6 +220,9 @@ def _list_item(storage: ObjectStorage, row: Any) -> IssueListItem:
         severity=severity_out(issue),
         priority=priority_out(issue),
         thumb_url=thumb_url(storage, cover_status, cover_thumb),
+        due_at=issue.due_at,
+        overdue=state is SlaState.OVERDUE,
+        sla_state=state,
         created_at=issue.created_at,
         updated_at=issue.updated_at,
         version=issue.version,
@@ -488,6 +497,8 @@ async def get_detail(
         merged_into=await _merged_into(db, issue),
         related=await related_issues(db, storage, principal, issue.id),
         operations=await operations_view(db, storage, issue),
+        breached_at=issue.breached_at,
+        escalation_level=issue.escalation_level,
     )
 
 

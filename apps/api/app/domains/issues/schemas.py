@@ -12,6 +12,7 @@ from app.domains.issues.models import EventType, SeveritySource, Visibility
 from app.domains.operations.schemas import OperationsOut
 from app.domains.priority.rules import PriorityBand, SeverityLevel
 from app.domains.reports.schemas import ReportStaffView, WardRef
+from app.domains.sla.rules import SlaState
 from app.domains.workflow.statuses import IssueStatus
 
 
@@ -66,6 +67,14 @@ class IssueListItem(BaseModel):
         description="Null only until the issue's priority is first computed (seconds)."
     )
     thumb_url: str | None
+    due_at: datetime | None = Field(
+        description="The SLA resolution deadline; null when no target applies. "
+        "Frozen once the issue is resolved, rejected or closed."
+    )
+    overdue: bool = Field(description="Open and past `due_at`.")
+    sla_state: SlaState = Field(
+        description="`due_soon`: a quarter or less of the target time is left."
+    )
     created_at: datetime
     updated_at: datetime
     version: int
@@ -128,6 +137,12 @@ class IssueDetail(IssueListItem):
     related: list[RelatedIssueOut] = Field(description="Issues marked as related (FR-060).")
     operations: OperationsOut = Field(
         description="The open assignment and pending closure request (Phase 3)."
+    )
+    breached_at: datetime | None = Field(
+        description="When the SLA scanner first found the issue past its deadline."
+    )
+    escalation_level: int = Field(
+        ge=0, le=2, description="0: none; 1: supervisors told; 2: municipal admins told."
     )
 
 

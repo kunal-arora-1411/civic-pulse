@@ -530,7 +530,7 @@ async def test_workload_counts_open_work_per_member(client: httpx.AsyncClient, o
     response = await client.get("/api/v1/workload", headers=ops.city.supervisor.headers)
     assert response.status_code == 200, response.text
     (team,) = response.json()["items"]
-    assert (team["open"], team["pending_acceptance"], team["overdue"]) == (2, 2, None)
+    assert (team["open"], team["pending_acceptance"], team["overdue"]) == (2, 2, 0)
     assert sorted(m["open"] for m in team["members"]) == [1, 1]
     assert (await client.get("/api/v1/workload", headers=ops.worker.headers)).status_code == 403
 
