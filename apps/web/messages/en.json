@@ -299,6 +299,40 @@
         "allSeverities": "All severities"
       }
     },
+    "review": {
+      "signals": {
+        "scoreHeading": "Match score",
+        "signalsHeading": "Signals",
+        "score": "Match score",
+        "thresholdReview": "Review {value}",
+        "thresholdAuto": "Auto-link {value}",
+        "outcomeAuto": "Strong enough to be linked automatically.",
+        "outcomeAutoBlocked": "High enough to link automatically, but {why}, so a person decides.",
+        "blocked_visual": "the photos aren't similar enough",
+        "blocked_distance": "it's outside the matching radius",
+        "blocked_no_visual": "the photos couldn't be compared",
+        "outcomeReview": "Between the review threshold ({review}) and the auto-link threshold ({auto}), so a person decides.",
+        "outcomeLow": "Below the review threshold ({review}).",
+        "name_geo": "Distance",
+        "name_visual": "Photo similarity",
+        "name_category": "Category",
+        "name_time": "Recency",
+        "strength": "Strength",
+        "distanceEvidence": "{distance} m apart. Matching radius {radius} m.",
+        "withinRadius": "Within the radius",
+        "outsideRadius": "Outside the radius",
+        "visualEvidence": "Linking automatically needs at least {min}.",
+        "visualMeets": "Meets the auto-link minimum",
+        "visualBelow": "Below the auto-link minimum",
+        "visualUnavailable": "Not available",
+        "visualUnavailableBody": "The photos couldn't be compared (no photos, or the AI was unavailable). The other signals count for more instead.",
+        "samePhoto": "Looks like the same photo",
+        "categorySame": "Same category.",
+        "categoryParent": "A related category in the same group.",
+        "ageEvidence": "{count, plural, one {{days} day} other {{days} days}} since the issue's last report.",
+        "contribution": "Weight {weight} · adds {points}"
+      }
+    },
     "issueDetail": {
       "metaTitle": "Issue",
       "back": "Work queue",

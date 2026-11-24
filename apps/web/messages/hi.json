@@ -299,6 +299,40 @@
         "allSeverities": "सभी स्तर"
       }
     },
+    "review": {
+      "signals": {
+        "scoreHeading": "मिलान स्कोर",
+        "signalsHeading": "संकेत",
+        "score": "मिलान स्कोर",
+        "thresholdReview": "समीक्षा {value}",
+        "thresholdAuto": "स्वतः जोड़ना {value}",
+        "outcomeAuto": "इतना मज़बूत कि अपने-आप जोड़ा जा सके।",
+        "outcomeAutoBlocked": "स्कोर अपने-आप जोड़ने लायक है, लेकिन {why}, इसलिए फ़ैसला कोई व्यक्ति करेगा।",
+        "blocked_visual": "फ़ोटो काफ़ी मिलती-जुलती नहीं हैं",
+        "blocked_distance": "यह मिलान के दायरे से बाहर है",
+        "blocked_no_visual": "फ़ोटो की तुलना नहीं हो सकी",
+        "outcomeReview": "समीक्षा सीमा ({review}) और स्वतः जोड़ने की सीमा ({auto}) के बीच, इसलिए फ़ैसला कोई व्यक्ति करेगा।",
+        "outcomeLow": "समीक्षा सीमा ({review}) से कम।",
+        "name_geo": "दूरी",
+        "name_visual": "फ़ोटो की समानता",
+        "name_category": "श्रेणी",
+        "name_time": "हाल में",
+        "strength": "मज़बूती",
+        "distanceEvidence": "{distance} मी. दूर। मिलान का दायरा {radius} मी.।",
+        "withinRadius": "दायरे के अंदर",
+        "outsideRadius": "दायरे से बाहर",
+        "visualEvidence": "अपने-आप जोड़ने के लिए कम से कम {min} चाहिए।",
+        "visualMeets": "स्वतः जोड़ने की न्यूनतम सीमा पूरी",
+        "visualBelow": "स्वतः जोड़ने की न्यूनतम सीमा से कम",
+        "visualUnavailable": "उपलब्ध नहीं",
+        "visualUnavailableBody": "फ़ोटो की तुलना नहीं हो सकी (फ़ोटो नहीं थी, या AI उपलब्ध नहीं था)। इसकी जगह बाकी संकेतों को ज़्यादा महत्व दिया गया।",
+        "samePhoto": "एक ही फ़ोटो लगती है",
+        "categorySame": "एक ही श्रेणी।",
+        "categoryParent": "उसी समूह की मिलती-जुलती श्रेणी।",
+        "ageEvidence": "मुद्दे की पिछली रिपोर्ट को {count, plural, one {{days} दिन} other {{days} दिन}} हुए।",
+        "contribution": "भार {weight} · जोड़ता है {points}"
+      }
+    },
     "issueDetail": {
       "metaTitle": "मुद्दा",
       "back": "कार्य सूची",
