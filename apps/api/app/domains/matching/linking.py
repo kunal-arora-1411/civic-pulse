@@ -128,7 +128,9 @@ async def link_report(
             issue_id=issue.id,
             report_id=report.id,
             type=EventType.REPORT_LINKED,
-            visibility=Visibility.PUBLIC,
+            # Staff timeline only: citizens follow the issue's status, and a
+            # neighbour's report joining it isn't theirs to see.
+            visibility=Visibility.INTERNAL,
             actor_id=actor.user_id if actor else None,
             data={"reason": reason},
         )

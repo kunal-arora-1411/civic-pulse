@@ -364,6 +364,8 @@ async def owner_view(db: AsyncSession, storage: ObjectStorage, row: ReportRow) -
             id=row.issue.id,
             reference=row.issue.reference,
             status=IssueStatus(row.issue.status),
+            report_count=row.issue.report_count,
+            unique_reporter_count=row.issue.unique_reporter_count,
             timeline=await public_timeline(db, row.issue.id),
         )
     return ReportOwnerView(
@@ -387,6 +389,7 @@ async def staff_views(
         return []
     media = await media_for_reports(db, [row.report.id for row in rows])
     matches = await match_views.summaries(db, [row.report.id for row in rows])
+    decisions = await match_views.decisions(db, [row.report.id for row in rows])
     reporter_ids = {row.report.reporter_id for row in rows}
     users = {
         u.id: u
@@ -417,6 +420,7 @@ async def staff_views(
                 client_created_at=row.report.client_created_at,
                 category_source=CategorySource(row.report.category_source),
                 match=matches.get(row.report.id),
+                match_decisions=decisions.get(row.report.id, []),
                 issue=IssueRef(
                     id=row.issue.id,
                     reference=row.issue.reference,

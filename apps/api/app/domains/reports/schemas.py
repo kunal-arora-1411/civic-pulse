@@ -10,7 +10,7 @@ from app.core.pagination import Page
 from app.domains.categories.models import MAX_PHOTOS_PER_REPORT
 from app.domains.categories.schemas import CategoryRef
 from app.domains.issues.models import EventType
-from app.domains.matching.schemas import MatchSummary
+from app.domains.matching.schemas import MatchDecisionOut, MatchSummary
 from app.domains.media.schemas import MediaOut
 from app.domains.reports.models import (
     MAX_DESCRIPTION_LENGTH,
@@ -101,6 +101,8 @@ class IssueRef(BaseModel):
 
 
 class ReportIssue(IssueRef):
+    report_count: int
+    unique_reporter_count: int
     timeline: list[PublicTimelineEvent]
 
 
@@ -153,6 +155,10 @@ class ReportStaffView(_ReportBase):
     match: MatchSummary | None = Field(
         description="The decision that placed the report (the link made, else the best "
         "candidate considered); null when no candidate was found."
+    )
+    match_decisions: list[MatchDecisionOut] = Field(
+        description="Every candidate considered for this report, best-ranked first; "
+        "feedback goes to POST /match-decisions/{id}/feedback."
     )
 
 

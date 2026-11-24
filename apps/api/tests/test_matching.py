@@ -77,7 +77,8 @@ async def test_a_duplicate_links_and_counts_distinct_reporters(
     )
     assert second["matching_status"] == "linked"
     assert second["issue"]["id"] == issue_id
-    assert [e["type"] for e in second["issue"]["timeline"]] == ["created", "report_linked"]
+    assert [e["type"] for e in second["issue"]["timeline"]] == ["created"]  # internal event
+    assert (second["issue"]["report_count"], second["issue"]["unique_reporter_count"]) == (2, 2)
 
     detail = await issue(client, city.operator, issue_id)
     assert (detail["report_count"], detail["unique_reporter_count"]) == (2, 2)

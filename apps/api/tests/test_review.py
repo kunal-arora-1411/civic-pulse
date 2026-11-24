@@ -236,7 +236,9 @@ async def test_feedback_on_an_auto_link_is_stored_and_audited(
         media_ids=[await scene_photo(client, city.citizen, 10, variant=1)],
     )
     detail = await issue(client, city.operator, first["issue"]["id"])
-    (auto,) = [d for d in detail["match_decisions"] if d["report_id"] == dup["id"]]
+    (dup_view,) = [r for r in detail["reports"] if r["id"] == dup["id"]]
+    (auto,) = dup_view["match_decisions"]
+    assert auto["candidate_issue_id"] == first["issue"]["id"]
     assert auto["decision"] == "auto_linked"
     assert auto["candidate_issue"]["reference"] == detail["reference"]
 

@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.core.pagination import Page
 from app.domains.categories.schemas import CategoryRef
 from app.domains.issues.models import EventType, SeveritySource, Visibility
-from app.domains.matching.schemas import MatchDecisionOut
 from app.domains.priority.rules import PriorityBand, SeverityLevel
 from app.domains.reports.schemas import ReportStaffView, WardRef
 from app.domains.workflow.statuses import IssueStatus
@@ -106,11 +105,6 @@ class IssueDetail(IssueListItem):
     timeline: list[TimelineEvent] = Field(description="Oldest first.")
     allowed_transitions: list[AllowedTransition] = Field(
         description="What the caller may move this issue to right now."
-    )
-    match_decisions: list[MatchDecisionOut] = Field(
-        description="Every candidate considered for each of the issue's reports (group by "
-        "`report_id`), best-ranked first; feedback goes to "
-        "POST /match-decisions/{id}/feedback."
     )
 
 

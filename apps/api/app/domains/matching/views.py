@@ -55,6 +55,7 @@ def to_out(row: MatchDecision, reference: str, decider: str | None) -> MatchDeci
     return MatchDecisionOut(
         id=row.id,
         report_id=row.report_id,
+        candidate_issue_id=row.candidate_issue_id,
         candidate_issue=CandidateIssueRef(id=row.candidate_issue_id, reference=reference),
         rank=row.rank,
         score=row.score,

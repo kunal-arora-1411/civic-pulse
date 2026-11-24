@@ -31,6 +31,7 @@ class DecisionActor(BaseModel):
 class MatchDecisionOut(BaseModel):
     id: uuid.UUID
     report_id: uuid.UUID
+    candidate_issue_id: uuid.UUID
     candidate_issue: CandidateIssueRef
     rank: int
     score: float

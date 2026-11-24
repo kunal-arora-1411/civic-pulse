@@ -42,7 +42,6 @@ from app.domains.issues.schemas import (
     StatusChange,
     TimelineEvent,
 )
-from app.domains.matching import views as match_views
 from app.domains.media.models import MediaAsset
 from app.domains.media.service import thumb_url
 from app.domains.org.models import Jurisdiction
@@ -474,11 +473,4 @@ async def get_detail(
         ),
         timeline=await _timeline(db, issue.id),
         allowed_transitions=await allowed_transitions(db, principal, issue),
-        match_decisions=[
-            decision
-            for report_decisions in (
-                await match_views.decisions(db, [r.report.id for r in report_rows])
-            ).values()
-            for decision in report_decisions
-        ],
     )

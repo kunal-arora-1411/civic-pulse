@@ -7402,14 +7402,6 @@
             "type": "array",
             "title": "Allowed Transitions",
             "description": "What the caller may move this issue to right now."
-          },
-          "match_decisions": {
-            "items": {
-              "$ref": "#/components/schemas/MatchDecisionOut"
-            },
-            "type": "array",
-            "title": "Match Decisions",
-            "description": "Every candidate considered for each of the issue's reports (group by `report_id`), best-ranked first; feedback goes to POST /match-decisions/{id}/feedback."
           }
         },
         "type": "object",
@@ -7431,8 +7423,7 @@
           "version",
           "reports",
           "timeline",
-          "allowed_transitions",
-          "match_decisions"
+          "allowed_transitions"
         ],
         "title": "IssueDetail"
       },
@@ -7984,6 +7975,11 @@
             "format": "uuid",
             "title": "Report Id"
           },
+          "candidate_issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Issue Id"
+          },
           "candidate_issue": {
             "$ref": "#/components/schemas/CandidateIssueRef"
           },
@@ -8075,6 +8071,7 @@
         "required": [
           "id",
           "report_id",
+          "candidate_issue_id",
           "candidate_issue",
           "rank",
           "score",
@@ -9345,6 +9342,14 @@
           "status": {
             "$ref": "#/components/schemas/IssueStatus"
           },
+          "report_count": {
+            "type": "integer",
+            "title": "Report Count"
+          },
+          "unique_reporter_count": {
+            "type": "integer",
+            "title": "Unique Reporter Count"
+          },
           "timeline": {
             "items": {
               "$ref": "#/components/schemas/PublicTimelineEvent"
@@ -9358,6 +9363,8 @@
           "id",
           "reference",
           "status",
+          "report_count",
+          "unique_reporter_count",
           "timeline"
         ],
         "title": "ReportIssue"
@@ -9603,6 +9610,14 @@
               }
             ],
             "description": "The decision that placed the report (the link made, else the best candidate considered); null when no candidate was found."
+          },
+          "match_decisions": {
+            "items": {
+              "$ref": "#/components/schemas/MatchDecisionOut"
+            },
+            "type": "array",
+            "title": "Match Decisions",
+            "description": "Every candidate considered for this report, best-ranked first; feedback goes to POST /match-decisions/{id}/feedback."
           }
         },
         "type": "object",
@@ -9623,7 +9638,8 @@
           "client_created_at",
           "issue",
           "category_source",
-          "match"
+          "match",
+          "match_decisions"
         ],
         "title": "ReportStaffView",
         "description": "What staff with `report:read` see. Contact details only with `user:manage`."
