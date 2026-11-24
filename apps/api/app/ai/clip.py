@@ -30,8 +30,8 @@ from PIL import Image
 from app.ai.models_lock import LockedModel, model_path, verify_model_dir
 
 if TYPE_CHECKING:
-    import onnxruntime
-    from tokenizers import Tokenizer
+    import onnxruntime  # pyright: ignore[reportMissingImports]
+    from tokenizers import Tokenizer  # pyright: ignore[reportMissingImports]
 
 CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
@@ -128,7 +128,7 @@ def default_threads() -> int:
 
 
 def _session_options(threads: int) -> onnxruntime.SessionOptions:
-    import onnxruntime as ort
+    import onnxruntime as ort  # pyright: ignore[reportMissingImports]
 
     options = ort.SessionOptions()
     options.intra_op_num_threads = threads
@@ -273,7 +273,7 @@ class ClipOnnxModel:
 
     def _get_tokenizer(self) -> Tokenizer:
         if self._tokenizer is None:
-            from tokenizers import Tokenizer
+            from tokenizers import Tokenizer  # pyright: ignore[reportMissingImports]
 
             with self._lock:
                 if self._tokenizer is None:
@@ -281,7 +281,7 @@ class ClipOnnxModel:
         return self._tokenizer
 
     def _open(self, path: Path) -> onnxruntime.InferenceSession:
-        import onnxruntime as ort
+        import onnxruntime as ort  # pyright: ignore[reportMissingImports]
 
         # Some builds send usage telemetry; citizen photos never leave the box,
         # and neither should anything about how we process them.

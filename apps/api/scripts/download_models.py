@@ -176,7 +176,7 @@ CANDIDATES: dict[str, Source] = {
 
 
 def _fetch(source: Source, model_dir: Path, locked: LockedModel | None) -> LockedModel:
-    from huggingface_hub import hf_hub_download
+    from huggingface_hub import hf_hub_download  # pyright: ignore[reportMissingImports]
 
     target = model_dir / source.key
     files: list[LockedFile] = []
@@ -223,7 +223,7 @@ def _check_against_hub(model: LockedModel, model_dir: Path) -> None:
     (tokenizer, licence) only have a git blob id, which is a sha1 over the
     content; that still proves the bytes are the ones committed at the pin.
     """
-    from huggingface_hub import HfApi
+    from huggingface_hub import HfApi  # pyright: ignore[reportMissingImports]
 
     info = HfApi().model_info(model.repo, revision=model.revision, files_metadata=True)
     siblings = {s.rfilename: s for s in info.siblings or []}

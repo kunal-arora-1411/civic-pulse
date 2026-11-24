@@ -31,7 +31,7 @@ from app.ai.interfaces import Box
 from app.ai.models_lock import model_path, verify_model_dir
 
 if TYPE_CHECKING:
-    import cv2
+    import cv2  # pyright: ignore[reportMissingImports]
 
 COARSE_SIDE = 640
 FINE_SIDE = 1920
@@ -103,7 +103,7 @@ class YuNetFaceDetector:
     def _detector(self) -> cv2.FaceDetectorYN:
         detector = getattr(self._local, "detector", None)
         if detector is None:
-            import cv2
+            import cv2  # pyright: ignore[reportMissingImports]
 
             detector = cv2.FaceDetectorYN.create(
                 str(self._model_file),

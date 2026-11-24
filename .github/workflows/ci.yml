@@ -81,6 +81,13 @@ jobs:
       - name: Install dependencies with the ai extra
         run: uv sync --frozen --extra ai
 
+      # The API job type-checks without the extra, where the model
+      # libraries' imports are marked as optional; here they are installed,
+      # so the code that calls onnxruntime, tokenizers and OpenCV is checked
+      # against their real types.
+      - name: Pyright (with the ai extra)
+        run: uv run pyright
+
       # ~600 MB of weights; the key changes whenever a pin or hash does.
       - name: Cache model weights
         uses: actions/cache@v4

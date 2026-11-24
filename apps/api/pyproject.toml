@@ -71,8 +71,6 @@ known-third-party = ["alembic"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 include = ["app", "tests", "alembic", "scripts"]
-venvPath = "."
-venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
