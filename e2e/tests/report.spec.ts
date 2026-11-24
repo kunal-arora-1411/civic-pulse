@@ -119,7 +119,8 @@ test("a citizen reports a pothole and follows it (AC-01)", async ({ page }) => {
   await page.goto("/reports");
   const card = page.getByRole("link").filter({ hasText: reference });
   await expect(card).toBeVisible();
-  await expect(card).toContainText("Reported");
+  // Matching may still be running when the list loads (Phase 2).
+  await expect(card).toContainText(/Reported|Checking for similar reports/);
   await card.click();
 
   // ...and its page shows the photo once the worker has processed it,

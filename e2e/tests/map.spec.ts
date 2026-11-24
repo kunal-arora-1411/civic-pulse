@@ -50,7 +50,9 @@ test("the issue map shows the seeded issues and picking a marker selects its row
   const reference = name.split(",")[0] ?? "";
   expect(reference).toMatch(/^CP-\d{2}-\d{6}$/);
 
-  await marker.click();
+  // With many seeded issues the first marker can sit under the sidebar;
+  // fire Leaflet's click on the marker itself rather than at a screen point.
+  await marker.dispatchEvent("click");
 
   const row = list.getByRole("button", { name: new RegExp(`^${reference}`) });
   await expect(row).toHaveAttribute("aria-pressed", "true");

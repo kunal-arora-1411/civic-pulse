@@ -39,7 +39,14 @@ test("a signed-out visitor can browse the tracker and open an issue", async ({
   await first.click();
 
   await expect(page).toHaveURL(/\/track\/[0-9a-f-]{36}$/);
-  await expect(page.getByText(reference ?? "", { exact: true })).toBeVisible();
+  // The tracker list stays mounted but hidden (<Activity>), so match only
+  // the visible copy of the reference.
+  await expect(
+    page
+      .getByText(reference ?? "", { exact: true })
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Progress" })).toBeVisible();
   // Signed out, support is offered through sign-in (or just counted on a
   // closed issue).
