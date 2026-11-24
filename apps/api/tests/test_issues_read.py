@@ -249,6 +249,49 @@ async def test_scope_limits_the_queue_and_hides_the_rest(
     assert {f["id"] for f in geo.json()["features"]} == {str(q.pothole_se.id), str(q.waste_sw.id)}
 
 
+async def test_department_scope_limits_issues_to_its_categories(
+    client: httpx.AsyncClient, sms: Any, owner_engine: AsyncEngine, queue: Queue
+) -> None:
+    q = queue
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE categories SET default_department_id = :d WHERE id = :c"),
+            {"d": q.city.roads, "c": q.city.pothole},
+        )
+    roads = await login_new(
+        client, sms, owner_engine, q.city, "supervisor", department_id=q.city.roads
+    )
+    roads_south = await login_new(
+        client,
+        sms,
+        owner_engine,
+        q.city,
+        "supervisor",
+        department_id=q.city.roads,
+        jurisdiction_id=q.city.zones["S"],
+    )
+    assert set(await _ids(client, roads)) == {str(q.pothole_ne.id), str(q.pothole_se.id)}
+    assert await _ids(client, roads_south) == [str(q.pothole_se.id)]
+
+    # Another department's issue is as missing as one that doesn't exist.
+    hidden = await client.get(f"{ISSUES}/{q.waste_nw.id}", headers=roads.headers)
+    assert hidden.status_code == 404
+    assert (await client.get(f"{ISSUES}/{q.pothole_ne.id}", headers=roads.headers)).is_success
+    moved = await client.patch(
+        f"{ISSUES}/{q.waste_nw.id}/status",
+        headers=roads.headers,
+        json={"to_status": "verified", "version": 1},
+    )
+    assert moved.status_code == 404
+
+    geo = await client.get(GEOJSON, headers=roads.headers, params={"bbox": "77.5,12.9,77.7,13.1"})
+    assert {f["id"] for f in geo.json()["features"]} == {str(q.pothole_ne.id), str(q.pothole_se.id)}
+
+    # Staff without a department keep the whole city.
+    assert len(await _ids(client, q.city.supervisor)) == 5
+    assert len(await _ids(client, q.city.admin)) == 5
+
+
 async def test_other_tenants_issues_do_not_exist(
     client: httpx.AsyncClient, sms: Any, owner_engine: AsyncEngine, queue: Queue
 ) -> None:

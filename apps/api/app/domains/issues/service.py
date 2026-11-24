@@ -53,7 +53,13 @@ from app.domains.priority.rules import BAND_ORDER, PriorityBand, SeverityLevel
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 from app.domains.rbac.roles import Role
-from app.domains.rbac.scope import accessible_jurisdiction_ids, jurisdiction_subtree, scope_filter
+from app.domains.rbac.scope import (
+    IssueAccess,
+    access_allows,
+    access_filter,
+    issue_access,
+    jurisdiction_subtree,
+)
 from app.domains.reports import service as reports
 from app.domains.reports.models import Report
 from app.domains.reports.schemas import WardRef
@@ -85,9 +91,14 @@ _PREFIX_SQL = text(
 )
 
 
-async def issue_scope(db: AsyncSession, principal: Principal) -> set[uuid.UUID] | None:
-    """Wards the caller may see issues in (None: the whole tenant)."""
-    return await accessible_jurisdiction_ids(db, principal, Permission.ISSUE_READ)
+async def issue_scope(db: AsyncSession, principal: Principal) -> IssueAccess:
+    """The wards and categories the caller may see issues in (None: the
+    whole tenant). See `rbac.scope.issue_access`."""
+    return await issue_access(db, principal, Permission.ISSUE_READ)
+
+
+def in_access(access: IssueAccess) -> ColumnElement[bool]:
+    return access_filter(CivicIssue.ward_id, CivicIssue.category_id, access)
 
 
 async def _prefix_query(db: AsyncSession, q: str) -> str:
@@ -125,7 +136,7 @@ async def _apply_filters[*Ts](
     # "OR bypass" form hides from it (see ADR 0002).
     stmt = stmt.where(
         CivicIssue.tenant_id == principal.tenant_id,
-        scope_filter(CivicIssue.ward_id, scope),
+        in_access(scope),
         # Merged issues are tombstones: readable by id, never listed.
         CivicIssue.merged_into_id.is_(None),
     )
@@ -321,8 +332,8 @@ async def get_in_scope(
     issue = await db.scalar(stmt)
     if issue is None:
         raise NotFound()
-    scope = await accessible_jurisdiction_ids(db, principal, permission)
-    if not reports.in_scope(scope, issue.ward_id):
+    access = await issue_access(db, principal, permission)
+    if not access_allows(access, issue.ward_id, issue.category_id):
         raise NotFound()
     return issue
 
@@ -335,9 +346,7 @@ async def list_items(
     if not issue_ids:
         return {}
     scope = await issue_scope(db, principal)
-    rows = await db.execute(
-        _list_select().where(CivicIssue.id.in_(issue_ids), scope_filter(CivicIssue.ward_id, scope))
-    )
+    rows = await db.execute(_list_select().where(CivicIssue.id.in_(issue_ids), in_access(scope)))
     return {row[0].id: _list_item(storage, row) for row in rows}
 
 
