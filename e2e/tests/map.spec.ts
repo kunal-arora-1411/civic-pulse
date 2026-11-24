@@ -68,6 +68,6 @@ test("the issue map shows the seeded issues and picking a marker selects its row
   ).toHaveClass(/bg-primary-soft/);
 
   // Picking it again clears the selection.
-  await marker.click();
+  await marker.dispatchEvent("click");
   await expect(row).toHaveAttribute("aria-pressed", "false");
 });

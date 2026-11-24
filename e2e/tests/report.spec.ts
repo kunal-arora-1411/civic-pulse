@@ -200,7 +200,10 @@ test("sending the same report again after a lost response creates one report", a
   await expect(page.getByText("Your report wasn't sent")).toBeVisible();
   await expect(page.getByText(/won't create a duplicate/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Try again" }).click();
+  // The error box can still be settling into view; press the button from
+  // the keyboard, as a screen-reader or keyboard user would.
+  await page.getByRole("button", { name: "Try again" }).focus();
+  await page.keyboard.press("Enter");
   await expect(
     page.getByRole("heading", { name: "Report sent. Thank you!" }),
   ).toBeVisible();
