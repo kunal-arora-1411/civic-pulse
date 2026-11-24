@@ -30,9 +30,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Dependencies, including onnxruntime (CPU), tokenizers and
-# opencv-python-headless. No torch, no CUDA.
+# opencv-python-headless. No torch, no CUDA. uv is mounted for this step
+# rather than copied in: the worker never needs it at runtime, and it would
+# add 40 MB to the image.
 COPY pyproject.toml uv.lock .python-version ./
 RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=from=ghcr.io/astral-sh/uv:0.13.9,source=/uv,target=/usr/local/bin/uv \
     uv sync --frozen --no-dev --no-install-project --extra ai
 
 # Weights, verified against the committed lock (the script exits non-zero
