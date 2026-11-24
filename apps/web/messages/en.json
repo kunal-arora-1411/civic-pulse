@@ -964,7 +964,8 @@
     "age": "{count, plural, =0 {Reported today} one {Open for # day} other {Open for # days}}",
     "recurrence": "{count, plural, =0 {No similar issues nearby recently} one {# similar issue nearby in recent months} other {# similar issues nearby in recent months}}",
     "nearPlaces": "Near a school, hospital or other sensitive place",
-    "noPlaces": "No sensitive places nearby"
+    "noPlaces": "No sensitive places nearby",
+    "community": "{count, plural, one {# neighbour says they face this too} other {# neighbours say they face this too}}"
   },
   "priority": {
     "label": "Priority",
@@ -1255,7 +1256,8 @@
       "blog": "Blog",
       "forCities": "For cities",
       "signIn": "Sign in",
-      "report": "Report an issue"
+      "report": "Report an issue",
+      "track": "Track issues"
     },
     "hero": {
       "titleLead": "What needs fixing",
@@ -1436,7 +1438,8 @@
     "cta": {
       "title": "Your street is waiting. <muted>Report the first thing you see on the way home tonight.</muted>",
       "report": "Report an issue",
-      "talk": "Talk to our team"
+      "talk": "Talk to our team",
+      "track": "Track issues in your city"
     },
     "footer": {
       "label": "Footer",
@@ -1502,6 +1505,125 @@
         "title": "Update",
         "body": "Something changed. Open it for details."
       }
+    }
+  },
+  "community": {
+    "support": {
+      "button": "I face this too",
+      "supported": "You face this too",
+      "pressedHint": "Press again to take it back.",
+      "count": "{count, plural, =0 {Be the first to say so} one {# person faces this} other {# people face this}}",
+      "signIn": "Sign in to say you face this too",
+      "failed": "We couldn't save that. Try again.",
+      "closed": "This issue is no longer open for support.",
+      "merged": "This issue was combined with another one. Support that one instead."
+    },
+    "verify": {
+      "title": "Is it fixed?",
+      "description": "The municipality says the work is done. Please check the spot and tell us whether the problem is really fixed.",
+      "requestedOn": "Marked as fixed on {date}",
+      "afterPhotos": "Photos after the work",
+      "afterPhotosOf": "Photos after the work on {reference}",
+      "noAfterPhotos": "No photos were added after the work.",
+      "closureNote": "Closure note: {note}",
+      "yes": "Yes, it's fixed",
+      "no": "No, still broken",
+      "noteLabel": "What's still wrong?",
+      "noteHint": "Your note helps the field team find what was missed.",
+      "noteRequired": "Tell us what's still wrong.",
+      "submitNo": "Send: still broken",
+      "cancel": "Cancel",
+      "answeredResolved": "Thanks. You said it's fixed.",
+      "answeredUnresolved": "Thanks. You said it's still broken, so the municipality will look at it again.",
+      "sentResolved": "Thanks for confirming",
+      "sentUnresolved": "Thanks, we've sent it back to the municipality",
+      "not_eligible": "Only people who reported this issue can confirm the fix.",
+      "already_verified": "You've already answered for this round of work.",
+      "invalid_transition": "This issue isn't waiting for confirmation any more. Reload to see where it is now."
+    },
+    "reopen": {
+      "button": "Reopen this issue",
+      "title": "Reopen this issue",
+      "description": "If the problem has come back or was never fixed, reopen it and the municipality will assign it again.",
+      "reasonLabel": "Why are you reopening it?",
+      "reasonRequired": "Tell us why you're reopening it.",
+      "submit": "Reopen",
+      "cancel": "Cancel",
+      "close": "Close",
+      "done": "Issue reopened",
+      "not_eligible": "Only people who reported this issue can reopen it.",
+      "invalid_transition": "This issue can't be reopened right now. Reload to see where it is."
+    }
+  },
+  "track": {
+    "metaTitle": "Track issues",
+    "metaDescription": "See the civic issues reported in your city, where they are, and how quickly they're being fixed. No sign-in needed.",
+    "title": "Track issues in your city",
+    "description": "Every reported problem, where it is and how it's going. Locations are approximate and no one's name is shown.",
+    "scorecardLink": "Ward scorecard",
+    "mapLabel": "Map of reported issues, coloured by status",
+    "markerLabel": "{reference}, {status}",
+    "truncated": "The map shows the first 2,000 issues. Filter to see the rest.",
+    "filters": {
+      "label": "Filter issues",
+      "status": "Status",
+      "category": "Category",
+      "ward": "Ward",
+      "all": "All",
+      "open": "Open",
+      "sort": "Sort by",
+      "reset": "Clear filters"
+    },
+    "sorts": {
+      "-created_at": "Newest first",
+      "created_at": "Oldest first",
+      "-updated_at": "Recently updated",
+      "-support_count": "Most supported",
+      "-report_count": "Most reported"
+    },
+    "results": "{count, plural, =0 {No issues} one {# issue} other {# issues}}",
+    "empty": "No issues match these filters.",
+    "loading": "Loading issues…",
+    "loadError": "We couldn't load the issues",
+    "retry": "Try again",
+    "more": "Show more",
+    "reports": "{count, plural, one {# report} other {# reports}}",
+    "supporters": "{count, plural, one {# supporter} other {# supporters}}",
+    "age": "{count, plural, =0 {Reported today} one {# day old} other {# days old}}",
+    "detail": {
+      "metaTitle": "Issue",
+      "back": "All issues",
+      "loading": "Loading the issue…",
+      "loadError": "We couldn't load this issue",
+      "notFoundTitle": "Issue not found",
+      "notFoundBody": "This issue doesn't exist or isn't public.",
+      "reportedOn": "Reported on {date}",
+      "before": "Before",
+      "after": "After",
+      "beforeOf": "Photos of issue {reference} as reported",
+      "afterOf": "Photos of issue {reference} after the work",
+      "noPhotos": "No photos.",
+      "progress": "Progress",
+      "location": "Approximate location",
+      "mapLabel": "Map showing the approximate area of the issue",
+      "precision": "Shown to within about {meters} m to protect people's privacy.",
+      "mergedInto": "This issue was combined with <link>{reference}</link>. Follow that one for updates.",
+      "mergedIntoPlain": "This issue was combined with {reference}."
+    },
+    "scorecard": {
+      "metaTitle": "Ward scorecard",
+      "title": "Ward scorecard",
+      "description": "Open and resolved issues in each ward, and the median number of days from report to fix.",
+      "back": "Back to the tracker",
+      "loading": "Loading the scorecard…",
+      "loadError": "We couldn't load the scorecard",
+      "empty": "No wards yet.",
+      "open": "Open",
+      "resolved": "Resolved",
+      "median": "Median days to fix",
+      "noMedian": "Nothing fixed yet",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "retry": "Try again"
     }
   }
 }
