@@ -6,6 +6,7 @@ import { LoginFlow } from "@/components/auth/login-flow";
 import { TenantName } from "@/components/auth/tenant-name";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Card } from "@/components/ui/card";
 import { Link } from "@/i18n/navigation";
 
@@ -60,7 +61,10 @@ export default function LoginPage() {
           <Link href="/" className="rounded-lg lg:invisible">
             <Logo />
           </Link>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <ThemeSwitcher />
+            <LanguageSwitcher />
+          </div>
         </header>
         <main
           id="main"

@@ -62,8 +62,13 @@
   --shadow-color: 245 30% 20%;
 }
 
+/*
+ * Dark tokens apply when the OS asks for dark and the person hasn't chosen
+ * light, or when they've chosen dark (data-theme, set by the theme switch
+ * and by the inline script in the root layout before first paint).
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
 
     --background: oklch(0.185 0.02 235);
@@ -108,6 +113,52 @@
     --grid-dot: oklch(0.95 0.008 95 / 0.06);
     --shadow-color: 235 40% 4%;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: oklch(0.185 0.02 235);
+  --foreground: oklch(0.95 0.008 95);
+
+  --card: oklch(0.22 0.022 235);
+  --card-foreground: var(--foreground);
+
+  --muted: oklch(0.255 0.02 235);
+  --muted-foreground: oklch(0.76 0.015 235);
+
+  --primary: oklch(0.79 0.105 178);
+  --primary-hover: oklch(0.84 0.1 178);
+  --primary-foreground: oklch(0.2 0.035 200);
+  --primary-soft: oklch(0.3 0.05 182);
+  --primary-soft-foreground: oklch(0.88 0.07 178);
+
+  --accent: oklch(0.83 0.14 78);
+  --accent-foreground: oklch(0.22 0.04 60);
+  --accent-soft: oklch(0.32 0.06 75);
+
+  --secondary: oklch(0.29 0.022 235);
+  --secondary-foreground: oklch(0.93 0.01 95);
+
+  --destructive: oklch(0.71 0.16 25);
+  --destructive-hover: oklch(0.76 0.15 25);
+  --destructive-foreground: oklch(0.2 0.04 25);
+  --destructive-soft: oklch(0.3 0.07 25);
+  --destructive-soft-foreground: oklch(0.88 0.07 25);
+
+  --success-soft: oklch(0.3 0.05 155);
+  --success-soft-foreground: oklch(0.88 0.08 155);
+  --warning-soft: oklch(0.32 0.06 75);
+  --warning-soft-foreground: oklch(0.9 0.09 85);
+  --info-soft: oklch(0.3 0.04 250);
+  --info-soft-foreground: oklch(0.88 0.06 250);
+
+  --border: oklch(0.32 0.02 235);
+  --input: oklch(0.56 0.02 235);
+  --ring: oklch(0.8 0.11 178);
+
+  --grid-dot: oklch(0.95 0.008 95 / 0.06);
+  --shadow-color: 235 40% 4%;
 }
 
 @theme inline {
