@@ -11,7 +11,9 @@ from fastapi import Depends
 import app.models  # noqa: F401  (every mapper configured in the worker process)
 from app.core.logging import log_fields
 from app.core.storage import StorageError
+from app.domains.media.models import MediaStatus
 from app.domains.media.processing import process_asset
+from app.jobs import ANALYZE_MEDIA
 from app.worker import celery_app, run_async
 
 logger = logging.getLogger(__name__)
@@ -25,7 +27,12 @@ logger = logging.getLogger(__name__)
     max_retries=6,
 )
 def process_media(asset_id: str, tenant_id: str) -> str:
-    return run_async(process_asset(uuid.UUID(asset_id), uuid.UUID(tenant_id)))
+    status = run_async(process_asset(uuid.UUID(asset_id), uuid.UUID(tenant_id)))
+    if status == MediaStatus.READY:
+        # Embed the photo (and blur faces) straight away, so matching and
+        # classification usually find the work done.
+        celery_app.send_task(ANALYZE_MEDIA, args=[asset_id, tenant_id])
+    return status
 
 
 class MediaQueue(Protocol):

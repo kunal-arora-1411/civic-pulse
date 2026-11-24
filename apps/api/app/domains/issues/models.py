@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    Numeric,
     PrimaryKeyConstraint,
     SmallInteger,
     String,
@@ -24,11 +25,17 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, TimestampMixin
+from app.domains.priority.rules import PriorityBand, SeverityLevel
 from app.domains.workflow.statuses import IssueStatus, sql_in
+
+
+class SeveritySource(StrEnum):
+    RULE = "rule"
+    OVERRIDE = "override"
 
 
 class CivicIssue(TimestampMixin, Base):
@@ -64,12 +71,44 @@ class CivicIssue(TimestampMixin, Base):
             name="fk_civic_issues_tenant_cover_media",
             use_alter=True,
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "merged_into_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_civic_issues_tenant_merged_into",
+        ),
         CheckConstraint(f"status IN ({sql_in(IssueStatus)})", name="status_values"),
+        CheckConstraint(
+            "merged_into_id IS NULL OR merged_into_id <> id", name="not_merged_into_self"
+        ),
         CheckConstraint(
             "report_count >= 0 AND unique_reporter_count BETWEEN 0 AND report_count",
             name="counts_consistent",
         ),
         CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint(f"severity IN ({sql_in(SeverityLevel)})", name="severity_values"),
+        CheckConstraint(
+            f"severity_source IN ({sql_in(SeveritySource)})", name="severity_source_values"
+        ),
+        CheckConstraint(
+            "severity_source = 'rule' OR severity_reason IS NOT NULL", name="override_has_reason"
+        ),
+        CheckConstraint(
+            f"priority_band IS NULL OR priority_band IN ({sql_in(PriorityBand)})",
+            name="priority_band_values",
+        ),
+        CheckConstraint(
+            f"priority_override_band IS NULL OR priority_override_band IN ({sql_in(PriorityBand)})",
+            name="priority_override_values",
+        ),
+        CheckConstraint(
+            "(priority_override_band IS NULL) = (priority_override_reason IS NULL)",
+            name="priority_override_has_reason",
+        ),
+        CheckConstraint(
+            "priority_score IS NULL OR priority_score BETWEEN 0 AND 100",
+            name="priority_score_range",
+        ),
         Index("ix_civic_issues_location", "location", postgresql_using="gist"),
         Index("ix_civic_issues_search_document", "search_document", postgresql_using="gin"),
         Index("ix_civic_issues_tenant_status_created", "tenant_id", "status", "created_at"),
@@ -78,6 +117,14 @@ class CivicIssue(TimestampMixin, Base):
         Index("ix_civic_issues_tenant_category", "tenant_id", "category_id"),
         Index("ix_civic_issues_tenant_ward", "tenant_id", "ward_id"),
         Index("ix_civic_issues_tenant_report_count", "tenant_id", "report_count"),
+        Index("ix_civic_issues_merged_into_id", "merged_into_id"),
+        Index("ix_civic_issues_tenant_priority_score", "tenant_id", "priority_score"),
+        # Issues waiting for their first priority computation.
+        Index(
+            "ix_civic_issues_priority_pending",
+            "created_at",
+            postgresql_where=text("priority_computed_at IS NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -92,9 +139,24 @@ class CivicIssue(TimestampMixin, Base):
     ward_id: Mapped[uuid.UUID | None] = mapped_column()
     report_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     unique_reporter_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
-    # Phase 2 fills these in; until then they stay NULL.
-    severity: Mapped[str | None] = mapped_column(String(16))
-    priority: Mapped[str | None] = mapped_column(String(16))
+    # Severity (FR-038): computed from the category's rules unless a person
+    # overrode it (`severity_source = override`, with their reason).
+    severity: Mapped[str] = mapped_column(
+        String(16), default=SeverityLevel.MEDIUM, server_default=text("'medium'")
+    )
+    severity_source: Mapped[str] = mapped_column(
+        String(16), default=SeveritySource.RULE, server_default=text("'rule'")
+    )
+    severity_reason: Mapped[str | None] = mapped_column(Text)
+    # Priority (FR-039 to FR-044): the computed score and band with the
+    # factors behind them, and an optional manual band that takes effect
+    # over the computed one. NULL score: not computed yet.
+    priority_score: Mapped[float | None] = mapped_column(Numeric(5, 2, asdecimal=False))
+    priority_band: Mapped[str | None] = mapped_column(String(16))
+    priority_override_band: Mapped[str | None] = mapped_column(String(16))
+    priority_override_reason: Mapped[str | None] = mapped_column(Text)
+    priority_factors: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB(none_as_null=True))
+    priority_computed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     cover_media_id: Mapped[uuid.UUID | None] = mapped_column()
     status_changed_at: Mapped[datetime] = mapped_column(
@@ -103,12 +165,24 @@ class CivicIssue(TimestampMixin, Base):
     search_document: Mapped[Any] = mapped_column(
         TSVECTOR, server_default=text("''::tsvector"), deferred=True
     )
+    # Set when this issue was merged into another (FR-033). A merged issue
+    # keeps its reference and history but has no reports and drops out of
+    # lists, the map and matching; reading it points at the survivor.
+    merged_into_id: Mapped[uuid.UUID | None] = mapped_column()
 
 
 class EventType(StrEnum):
     CREATED = "created"
     STATUS_CHANGED = "status_changed"
     NOTE = "note"
+    # Phase 2
+    REPORT_LINKED = "report_linked"  # a report joined this issue
+    MERGED = "merged"  # another issue was merged into this one
+    MERGED_INTO = "merged_into"  # this issue was merged into another
+    SPLIT = "split"  # reports moved out of (or into) this issue
+    CATEGORY_CHANGED = "category_changed"
+    SEVERITY_CHANGED = "severity_changed"
+    PRIORITY_CHANGED = "priority_changed"
 
 
 class Visibility(StrEnum):
@@ -138,6 +212,12 @@ class IssueEvent(Base):
             ondelete="RESTRICT",
             name="fk_issue_events_tenant_report",
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "related_issue_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_issue_events_tenant_related_issue",
+        ),
         CheckConstraint(f"type IN ({sql_in(EventType)})", name="type_values"),
         CheckConstraint(f"visibility IN ({sql_in(Visibility)})", name="visibility_values"),
         CheckConstraint(
@@ -159,6 +239,49 @@ class IssueEvent(Base):
     public_note: Mapped[str | None] = mapped_column(Text)
     visibility: Mapped[str] = mapped_column(String(16))
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # clock_timestamp(), not now(): several events written in one transaction
+    # (a merge, a split) keep the order they were written in.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.clock_timestamp()
+    )
+    # Phase 2: the other issue in a merge or split, and structured details
+    # (moved report ids, old and new values) for the staff timeline.
+    related_issue_id: Mapped[uuid.UUID | None] = mapped_column()
+    data: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+
+
+class IssueRelation(Base):
+    """Two issues marked as related without merging them (FR-060).
+
+    One row per unordered pair: `issue_id` is always the smaller id.
+    """
+
+    __tablename__ = "issue_relations"
+    __table_args__ = (
+        PrimaryKeyConstraint("issue_id", "related_issue_id"),
+        ForeignKeyConstraint(
+            ["tenant_id", "issue_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_issue_relations_tenant_issue",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "related_issue_id"],
+            ["civic_issues.tenant_id", "civic_issues.id"],
+            ondelete="RESTRICT",
+            name="fk_issue_relations_tenant_related_issue",
+        ),
+        CheckConstraint("issue_id < related_issue_id", name="ordered_pair"),
+        Index("ix_issue_relations_related_issue_id", "related_issue_id"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id", ondelete="RESTRICT"))
+    issue_id: Mapped[uuid.UUID] = mapped_column()
+    related_issue_id: Mapped[uuid.UUID] = mapped_column()
+    note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

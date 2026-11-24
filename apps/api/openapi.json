@@ -3105,6 +3105,7 @@
           "admin"
         ],
         "summary": "Admin Update Category",
+        "description": "Changing `severity_rules` recomputes the category's issues in the\nbackground, after this change has committed.",
         "operationId": "admin_update_category",
         "security": [
           {
@@ -3568,7 +3569,7 @@
           "reports"
         ],
         "summary": "Create Report",
-        "description": "Submit a report. Creates its civic issue in the same transaction.",
+        "description": "Submit a report. It is saved with `matching_status: \"pending\"` and no\nissue; duplicate matching runs in the background and then links it to\nan existing issue, sends it to review or starts a new issue.",
         "operationId": "reports_create",
         "security": [
           {
@@ -3960,10 +3961,10 @@
                   "type": "null"
                 }
               ],
-              "description": "`-created_at` (default), `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`.",
+              "description": "`-priority` (default: effective band, then score), `priority`, `-created_at`, `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`.",
               "title": "Sort"
             },
-            "description": "`-created_at` (default), `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`."
+            "description": "`-priority` (default: effective band, then score), `priority`, `-created_at`, `created_at`, `-updated_at`, `updated_at`, `-report_count` or `report_count`."
           },
           {
             "name": "limit",
@@ -4131,6 +4132,48 @@
               "title": "Q"
             },
             "description": "Searches issue and report references, addresses and report descriptions. Words match by prefix; Hindi works too."
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeverityLevel"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Repeatable; matches any.",
+              "title": "Severity"
+            },
+            "description": "Repeatable; matches any."
+          },
+          {
+            "name": "priority_band",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PriorityBand"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The effective band (an override counts). Repeatable.",
+              "title": "Priority Band"
+            },
+            "description": "The effective band (an override counts). Repeatable."
           },
           {
             "name": "X-Tenant",
@@ -4352,6 +4395,48 @@
               "title": "Q"
             },
             "description": "Searches issue and report references, addresses and report descriptions. Words match by prefix; Hindi works too."
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeverityLevel"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Repeatable; matches any.",
+              "title": "Severity"
+            },
+            "description": "Repeatable; matches any."
+          },
+          {
+            "name": "priority_band",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PriorityBand"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The effective band (an override counts). Repeatable.",
+              "title": "Priority Band"
+            },
+            "description": "The effective band (an override counts). Repeatable."
           },
           {
             "name": "X-Tenant",
@@ -4652,6 +4737,2166 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/merge": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Merge Issues",
+        "description": "Merge `source_issue_ids` into this issue, which survives and keeps\nits status. Their reports move here; they keep their references and\nhistory, point here with `merged_into` and leave lists and the map.\n`version` is this issue's. Into itself or into a merged issue:\n`422 invalid_merge`. A blank reason: `422 reason_required`.",
+        "operationId": "issues_merge",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/split": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Split Issue",
+        "description": "Move `report_ids` to a new issue (`{\"new_issue\": true}`: same\ncategory, at the oldest moved report, status `reported`) or to an\nexisting one (`{\"issue_id\"}`). Moving every report out is\n`422 cannot_empty_issue`.",
+        "operationId": "issues_split",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SplitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SplitResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/related": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Add Related Issue",
+        "description": "Mark another issue as related without merging (FR-060). Already\nrelated: `409 conflict`. Audited.",
+        "operationId": "issues_add_related",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelatedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedIssueOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/related/{other_id}": {
+      "delete": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Remove Related Issue",
+        "operationId": "issues_remove_related",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "other_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Other Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/severity": {
+      "patch": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Set Severity",
+        "description": "Override the severity (a reason is required) or, with `null`, go back\nto the rules. Priority is recomputed. Audited.",
+        "operationId": "issues_set_severity",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeverityOverride"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/priority": {
+      "patch": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Set Priority",
+        "description": "Override the priority band (a reason is required) or, with `null`,\ngo back to the computed band. The score is unchanged. Audited.",
+        "operationId": "issues_set_priority",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityOverride"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issues/{issue_id}/category": {
+      "patch": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Set Category",
+        "description": "Correct the category. The issue's reports follow and are marked\n`category_source: \"operator\"`; severity and priority are recomputed.\nAudited.",
+        "operationId": "issues_set_category",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/matching-config": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Matching Config",
+        "description": "Duplicate-matching weights and thresholds in effect (defaults if never set).",
+        "operationId": "admin_get_matching_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchingConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Matching Config",
+        "description": "Replace the whole document; a field left out goes back to its default.\nWeights must add up to 1 and `review` can't exceed `auto`. Audited.",
+        "operationId": "admin_update_matching_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchingConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchingConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/priority-config": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Priority Config",
+        "description": "Priority weights, scaling and bands in effect (defaults if never set).",
+        "operationId": "admin_get_priority_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriorityConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Priority Config",
+        "description": "Replace the whole document; a field left out goes back to its default.\nWeights must add up to 100 and the bands must fall from critical to\nmedium. Audited. Every issue is then recomputed in the background.",
+        "operationId": "admin_update_priority_config",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriorityConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/classifications": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Create Classification",
+        "description": "Suggest categories for the caller's uploaded photos (completed\nuploads only). Waits up to 4 s: `200` with the result if it is ready\n(`done`, or `failed` with `error: \"ai_unavailable\"`), otherwise `202`\nwith `status: \"pending\"`; poll GET every 1-2 s, for about 15 s.",
+        "operationId": "ai_create_classification",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassificationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Still running: poll GET.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/classifications/{classification_id}": {
+      "get": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Get Classification",
+        "description": "The caller's own classification; anyone else's is 404.",
+        "operationId": "ai_get_classification",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "classification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Classification Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ai/models": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Ai Models",
+        "description": "Deployed models with their source, licence and evaluation metrics;\n`active` marks the most recently deployed model per task.",
+        "operationId": "admin_list_ai_models",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ai/quality": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Ai Quality",
+        "description": "Counts for a window of whole days: classifications done and failed,\nsuggestions accepted and corrected by category, how reports were\nmatched, review outcomes, and feedback on automatic links.",
+        "operationId": "admin_get_ai_quality",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day (Asia/Kolkata). Default: 29 days before `to`.",
+              "title": "From"
+            },
+            "description": "First day (Asia/Kolkata). Default: 29 days before `to`."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day. Default: today.",
+              "title": "To"
+            },
+            "description": "Last day. Default: today."
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks": {
+      "get": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "List Review Tasks",
+        "description": "Ambiguous matches waiting for a person, within the caller's scope\n(by the report's ward).",
+        "operationId": "review_tasks_list",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReviewStatus",
+              "description": "`open` (default, oldest first) or `resolved` (most recently resolved first).",
+              "default": "open"
+            },
+            "description": "`open` (default, oldest first) or `resolved` (most recently resolved first)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Page size (1-100).",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Page size (1-100)."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of items to skip.",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of items to skip."
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTaskPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Get Review Task",
+        "operationId": "review_tasks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTaskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks/{task_id}/resolve": {
+      "post": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Resolve Review Task",
+        "description": "`{\"action\": \"link\", \"issue_id\"}` links the report to one of the\ncandidates (or to the issue it was merged into since); `{\"action\":\n\"new_issue\"}` starts a new issue. The chosen decision becomes\n`chosen_by_reviewer`, the rest `not_chosen`. Already resolved: `409`.",
+        "operationId": "review_tasks_resolve",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ResolveLink"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ResolveNewIssue"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "action",
+                  "mapping": {
+                    "link": "#/components/schemas/ResolveLink",
+                    "new_issue": "#/components/schemas/ResolveNewIssue"
+                  }
+                },
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTaskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/match-decisions/{decision_id}/feedback": {
+      "post": {
+        "tags": [
+          "matching"
+        ],
+        "summary": "Match Decision Feedback",
+        "description": "Mark a match as correct or incorrect (FR-035). Sending it again\nreplaces the earlier feedback. Audited.",
+        "operationId": "match_decisions_feedback",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "decision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Decision Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchDecisionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5070,6 +7315,60 @@
         ],
         "title": "AuditEventPage"
       },
+      "CandidateIssueRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference"
+        ],
+        "title": "CandidateIssueRef"
+      },
+      "CategoryChange": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Internal; never shown to citizens."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "The `version` you last saw (optimistic locking)."
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Category Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "category_id"
+        ],
+        "title": "CategoryChange"
+      },
       "CategoryCreate": {
         "properties": {
           "code": {
@@ -5146,6 +7445,35 @@
           },
           "dedup": {
             "$ref": "#/components/schemas/Dedup"
+          },
+          "ai_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "minLength": 3
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Prompts",
+            "description": "English prompts for the AI classifier, replacing the built-in ones for this code. Null: use the built-in prompts."
+          },
+          "severity_rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeverityRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sort_order": {
             "type": "integer",
@@ -5300,7 +7628,32 @@
           },
           "dedup": {
             "$ref": "#/components/schemas/Dedup",
-            "description": "Stored now; duplicate matching uses it from Phase 2."
+            "description": "Duplicate matching: search radius and time window."
+          },
+          "ai_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Prompts"
+          },
+          "severity_rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeverityRules"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How severity is worked out for this category's issues. Null: `medium`."
           },
           "sort_order": {
             "type": "integer",
@@ -5323,6 +7676,8 @@
           "fields",
           "default_department_id",
           "dedup",
+          "ai_prompts",
+          "severity_rules",
           "sort_order",
           "is_active"
         ],
@@ -5391,6 +7746,17 @@
         ],
         "title": "CategoryRef",
         "description": "The short form embedded in reports and issues."
+      },
+      "CategorySource": {
+        "type": "string",
+        "enum": [
+          "citizen",
+          "ai_accepted",
+          "ai_corrected",
+          "operator"
+        ],
+        "title": "CategorySource",
+        "description": "Who chose the report's category (FR-021: AI corrections are labels)."
       },
       "CategoryUpdate": {
         "properties": {
@@ -5512,6 +7878,35 @@
               }
             ]
           },
+          "ai_prompts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "minLength": 3
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Prompts",
+            "description": "English prompts for the AI classifier, replacing the built-in ones for this code. Null: use the built-in prompts."
+          },
+          "severity_rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeverityRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sort_order": {
             "anyOf": [
               {
@@ -5540,7 +7935,182 @@
         "additionalProperties": false,
         "type": "object",
         "title": "CategoryUpdate",
-        "description": "Partial update. Send only what changes; `parent_id` and\n`default_department_id` can be set to null to clear them."
+        "description": "Partial update. Send only what changes; `parent_id`,\n`default_department_id`, `ai_prompts` and `severity_rules` can be set to\nnull to clear them."
+      },
+      "ClassificationCounts": {
+        "properties": {
+          "done": {
+            "type": "integer",
+            "title": "Done"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "accepted_by_category": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Accepted By Category",
+            "description": "Reports whose citizen kept the top suggestion, by category code."
+          },
+          "corrected_by_category": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Corrected By Category",
+            "description": "Reports whose citizen chose another category, by the chosen code."
+          }
+        },
+        "type": "object",
+        "required": [
+          "done",
+          "failed",
+          "accepted_by_category",
+          "corrected_by_category"
+        ],
+        "title": "ClassificationCounts"
+      },
+      "ClassificationCreate": {
+        "properties": {
+          "media_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Media Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "media_ids"
+        ],
+        "title": "ClassificationCreate"
+      },
+      "ClassificationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ClassificationStatus"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id",
+            "examples": [
+              "clip-vit-b32@onnx-1"
+            ]
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/Suggestion"
+            },
+            "type": "array",
+            "title": "Suggestions",
+            "description": "Active categories only, best first, at most 3."
+          },
+          "not_civic": {
+            "type": "boolean",
+            "title": "Not Civic",
+            "description": "The photos look like something other than a civic problem. A soft warning only; the citizen can still report."
+          },
+          "needs_manual": {
+            "type": "boolean",
+            "title": "Needs Manual",
+            "description": "Too unsure to pre-select: ask the citizen to choose (also true while pending and when failed)."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "`ai_unavailable` when the AI couldn't run; the client just asks for manual selection."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "model_id",
+          "suggestions",
+          "not_civic",
+          "needs_manual",
+          "error",
+          "created_at"
+        ],
+        "title": "ClassificationOut"
+      },
+      "ClassificationStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "done",
+          "failed"
+        ],
+        "title": "ClassificationStatus"
+      },
+      "Decision": {
+        "type": "string",
+        "enum": [
+          "auto_linked",
+          "sent_to_review",
+          "rejected_candidate",
+          "chosen_by_reviewer",
+          "not_chosen"
+        ],
+        "title": "Decision"
+      },
+      "DecisionActor": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "DecisionActor"
       },
       "Dedup": {
         "properties": {
@@ -5735,7 +8305,14 @@
         "enum": [
           "created",
           "status_changed",
-          "note"
+          "note",
+          "report_linked",
+          "merged",
+          "merged_into",
+          "split",
+          "category_changed",
+          "severity_changed",
+          "priority_changed"
         ],
         "title": "EventType"
       },
@@ -5759,6 +8336,73 @@
         "additionalProperties": false,
         "type": "object",
         "title": "Evidence"
+      },
+      "ExistingIssueTarget": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "issue_id"
+        ],
+        "title": "ExistingIssueTarget"
+      },
+      "Feedback": {
+        "type": "string",
+        "enum": [
+          "correct",
+          "incorrect"
+        ],
+        "title": "Feedback"
+      },
+      "FeedbackCounts": {
+        "properties": {
+          "correct": {
+            "type": "integer",
+            "title": "Correct"
+          },
+          "incorrect": {
+            "type": "integer",
+            "title": "Incorrect"
+          }
+        },
+        "type": "object",
+        "required": [
+          "correct",
+          "incorrect"
+        ],
+        "title": "FeedbackCounts"
+      },
+      "FeedbackIn": {
+        "properties": {
+          "correct": {
+            "type": "boolean",
+            "title": "Correct"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "correct"
+        ],
+        "title": "FeedbackIn"
       },
       "FieldOption": {
         "properties": {
@@ -5788,6 +8432,45 @@
           "label_i18n"
         ],
         "title": "FieldOption"
+      },
+      "FieldRule": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "title": "Field",
+            "description": "A category field key."
+          },
+          "equals": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Equals",
+            "description": "The answer that triggers the rule."
+          },
+          "set": {
+            "$ref": "#/components/schemas/SeverityLevel"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field",
+          "equals",
+          "set"
+        ],
+        "title": "FieldRule"
       },
       "HealthOut": {
         "properties": {
@@ -5854,28 +8537,18 @@
             "title": "Unique Reporter Count"
           },
           "severity": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Severity",
-            "description": "Null until Phase 2."
+            "$ref": "#/components/schemas/SeverityOut"
           },
           "priority": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/PriorityDetailOut"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Priority",
-            "description": "Null until Phase 2."
+            "description": "Null only until the issue's priority is first computed (seconds)."
           },
           "thumb_url": {
             "anyOf": [
@@ -5925,6 +8598,25 @@
             "type": "array",
             "title": "Allowed Transitions",
             "description": "What the caller may move this issue to right now."
+          },
+          "merged_into": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssueRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when this issue was merged into another: redirect there."
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedIssueOut"
+            },
+            "type": "array",
+            "title": "Related",
+            "description": "Issues marked as related (FR-060)."
           }
         },
         "type": "object",
@@ -5946,7 +8638,9 @@
           "version",
           "reports",
           "timeline",
-          "allowed_transitions"
+          "allowed_transitions",
+          "merged_into",
+          "related"
         ],
         "title": "IssueDetail"
       },
@@ -6027,6 +8721,20 @@
           "report_count": {
             "type": "integer",
             "title": "Report Count"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/SeverityLevel"
+          },
+          "priority_band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriorityBand"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The effective band."
           }
         },
         "type": "object",
@@ -6035,7 +8743,9 @@
           "reference",
           "status",
           "category_code",
-          "report_count"
+          "report_count",
+          "severity",
+          "priority_band"
         ],
         "title": "IssueFeatureProperties"
       },
@@ -6092,28 +8802,18 @@
             "title": "Unique Reporter Count"
           },
           "severity": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Severity",
-            "description": "Null until Phase 2."
+            "$ref": "#/components/schemas/SeverityOut"
           },
           "priority": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/PriorityOut"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Priority",
-            "description": "Null until Phase 2."
+            "description": "Null only until the issue's priority is first computed (seconds)."
           },
           "thumb_url": {
             "anyOf": [
@@ -6214,6 +8914,25 @@
           "status"
         ],
         "title": "IssueRef"
+      },
+      "IssueRefOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference"
+        ],
+        "title": "IssueRefOut"
       },
       "IssueStatus": {
         "type": "string",
@@ -6480,6 +9199,295 @@
         "title": "MapConfig",
         "description": "Initial map view. Coordinates are `[lng, lat]`, in GeoJSON order."
       },
+      "MatchDecisionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Report Id"
+          },
+          "candidate_issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Issue Id"
+          },
+          "candidate_issue": {
+            "$ref": "#/components/schemas/CandidateIssueRef"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "signals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Signals"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionActor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the platform decided."
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Feedback"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feedback_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Note"
+          },
+          "feedback_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "report_id",
+          "candidate_issue_id",
+          "candidate_issue",
+          "rank",
+          "score",
+          "signals",
+          "decision",
+          "model_id",
+          "decided_by",
+          "decided_at",
+          "feedback",
+          "feedback_note",
+          "feedback_at"
+        ],
+        "title": "MatchDecisionOut"
+      },
+      "MatchSummary": {
+        "properties": {
+          "match_decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Match Decision Id"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "signals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Signals",
+            "description": "See the Phase 2 contract, D.3."
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_decision_id",
+          "decision",
+          "score",
+          "signals"
+        ],
+        "title": "MatchSummary",
+        "description": "How matching placed a report (staff only)."
+      },
+      "MatchingConfig": {
+        "properties": {
+          "auto_link_enabled": {
+            "type": "boolean",
+            "title": "Auto Link Enabled",
+            "default": true
+          },
+          "weights": {
+            "$ref": "#/components/schemas/MatchingWeights"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/MatchingThresholds"
+          },
+          "classification_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Classification Threshold",
+            "description": "Below this top-category confidence the citizen is asked to choose.",
+            "default": 0.45
+          },
+          "fallback_review_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Fallback Review Threshold",
+            "description": "Without the visual signal, a score this high opens a review task.",
+            "default": 0.4
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MatchingConfig"
+      },
+      "MatchingCounts": {
+        "properties": {
+          "auto_linked": {
+            "type": "integer",
+            "title": "Auto Linked"
+          },
+          "sent_to_review": {
+            "type": "integer",
+            "title": "Sent To Review"
+          },
+          "new_issue": {
+            "type": "integer",
+            "title": "New Issue",
+            "description": "Started a new issue without a review."
+          }
+        },
+        "type": "object",
+        "required": [
+          "auto_linked",
+          "sent_to_review",
+          "new_issue"
+        ],
+        "title": "MatchingCounts"
+      },
+      "MatchingStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "review",
+          "linked",
+          "new_issue"
+        ],
+        "title": "MatchingStatus",
+        "description": "Where duplicate matching stands for a report (Phase 2)."
+      },
+      "MatchingThresholds": {
+        "properties": {
+          "auto": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Auto",
+            "description": "Score needed to link on its own.",
+            "default": 0.85
+          },
+          "review": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Review",
+            "description": "Score that asks a person.",
+            "default": 0.6
+          },
+          "visual_min": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Visual Min",
+            "description": "Visual similarity an automatic link also needs.",
+            "default": 0.8
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MatchingThresholds"
+      },
+      "MatchingWeights": {
+        "properties": {
+          "geo": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Geo",
+            "default": 0.4
+          },
+          "visual": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Visual",
+            "default": 0.4
+          },
+          "category": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Category",
+            "default": 0.1
+          },
+          "time": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Time",
+            "default": 0.1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MatchingWeights"
+      },
       "MediaAssetOut": {
         "properties": {
           "id": {
@@ -6688,6 +9696,47 @@
         ],
         "title": "MediaVariants"
       },
+      "MergeRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Internal; never shown to citizens."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "The `version` you last saw (optimistic locking)."
+          },
+          "source_issue_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Source Issue Ids",
+            "description": "Merged into the issue in the path."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "source_issue_ids"
+        ],
+        "title": "MergeRequest"
+      },
       "MfaChallengeResponse": {
         "properties": {
           "mfa_required": {
@@ -6765,6 +9814,105 @@
         ],
         "title": "MfaVerifyIn"
       },
+      "ModelList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ModelOut"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Newest deployment first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ModelList"
+      },
+      "ModelOut": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "task": {
+            "type": "string",
+            "title": "Task"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "deployed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deployed At"
+          },
+          "intended_use": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intended Use"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metrics"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "description": "The most recently deployed model for its task."
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_id",
+          "task",
+          "name",
+          "version",
+          "source",
+          "license",
+          "deployed_at",
+          "intended_use",
+          "metrics",
+          "active"
+        ],
+        "title": "ModelOut"
+      },
       "MyReportIssue": {
         "properties": {
           "reference": {
@@ -6823,6 +9971,9 @@
             ],
             "title": "Address Text"
           },
+          "matching_status": {
+            "$ref": "#/components/schemas/MatchingStatus"
+          },
           "issue": {
             "anyOf": [
               {
@@ -6842,6 +9993,7 @@
           "category",
           "thumb_url",
           "address_text",
+          "matching_status",
           "issue"
         ],
         "title": "MyReportItem"
@@ -6876,6 +10028,54 @@
           "offset"
         ],
         "title": "MyReportPage"
+      },
+      "NearPlacesRule": {
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceKind"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Kinds"
+          },
+          "within_m": {
+            "type": "integer",
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Within M"
+          },
+          "raise_by": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Raise By",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kinds",
+          "within_m"
+        ],
+        "title": "NearPlacesRule"
+      },
+      "NewIssueTarget": {
+        "properties": {
+          "new_issue": {
+            "type": "boolean",
+            "const": true,
+            "title": "New Issue"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "new_issue"
+        ],
+        "title": "NewIssueTarget"
       },
       "OtpRequestIn": {
         "properties": {
@@ -6947,6 +10147,17 @@
           "code"
         ],
         "title": "OtpVerifyIn"
+      },
+      "PlaceKind": {
+        "type": "string",
+        "enum": [
+          "school",
+          "hospital",
+          "bus_stop",
+          "market",
+          "other"
+        ],
+        "title": "PlaceKind"
       },
       "PlatformTenant": {
         "properties": {
@@ -7075,6 +10286,291 @@
         ],
         "title": "PointOut"
       },
+      "PriorityBand": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "PriorityBand"
+      },
+      "PriorityBands": {
+        "properties": {
+          "critical": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Critical",
+            "default": 80
+          },
+          "high": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "High",
+            "default": 60
+          },
+          "medium": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Medium",
+            "default": 35
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PriorityBands"
+      },
+      "PriorityConfig": {
+        "properties": {
+          "weights": {
+            "$ref": "#/components/schemas/PriorityWeights"
+          },
+          "severity_points": {
+            "$ref": "#/components/schemas/SeverityPoints"
+          },
+          "reporters_saturation": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Reporters Saturation",
+            "default": 10
+          },
+          "age_saturation_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Age Saturation Days",
+            "default": 30
+          },
+          "recurrence": {
+            "$ref": "#/components/schemas/RecurrenceConfig"
+          },
+          "bands": {
+            "$ref": "#/components/schemas/PriorityBands"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PriorityConfig"
+      },
+      "PriorityDetailOut": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "0-100, from the rules (an override doesn't change it)."
+          },
+          "band": {
+            "$ref": "#/components/schemas/PriorityBand",
+            "description": "The effective band: the override when present."
+          },
+          "computed_band": {
+            "$ref": "#/components/schemas/PriorityBand"
+          },
+          "overridden": {
+            "type": "boolean",
+            "title": "Overridden"
+          },
+          "override_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Reason"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/PriorityFactorOut"
+            },
+            "type": "array",
+            "title": "Factors",
+            "description": "Largest contribution first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "band",
+          "computed_band",
+          "overridden",
+          "override_reason",
+          "factors"
+        ],
+        "title": "PriorityDetailOut"
+      },
+      "PriorityFactorOut": {
+        "properties": {
+          "factor": {
+            "type": "string",
+            "title": "Factor",
+            "examples": [
+              "severity"
+            ]
+          },
+          "value": {
+            "title": "Value",
+            "description": "The raw input: a level, a count, days, or true/false."
+          },
+          "normalized": {
+            "type": "number",
+            "title": "Normalized",
+            "description": "0-1"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points",
+            "description": "normalized x the factor's weight"
+          },
+          "explanation_key": {
+            "type": "string",
+            "title": "Explanation Key",
+            "description": "Localised by the client.",
+            "examples": [
+              "priority.severity"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "factor",
+          "value",
+          "normalized",
+          "points",
+          "explanation_key"
+        ],
+        "title": "PriorityFactorOut"
+      },
+      "PriorityOut": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "0-100, from the rules (an override doesn't change it)."
+          },
+          "band": {
+            "$ref": "#/components/schemas/PriorityBand",
+            "description": "The effective band: the override when present."
+          },
+          "computed_band": {
+            "$ref": "#/components/schemas/PriorityBand"
+          },
+          "overridden": {
+            "type": "boolean",
+            "title": "Overridden"
+          },
+          "override_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "band",
+          "computed_band",
+          "overridden",
+          "override_reason"
+        ],
+        "title": "PriorityOut"
+      },
+      "PriorityOverride": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Internal; never shown to citizens."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "The `version` you last saw (optimistic locking)."
+          },
+          "band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriorityBand"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A band to override with (a reason is required), or null to go back to the computed band."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "band"
+        ],
+        "title": "PriorityOverride"
+      },
+      "PriorityWeights": {
+        "properties": {
+          "severity": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Severity",
+            "default": 40
+          },
+          "reporters": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Reporters",
+            "default": 20
+          },
+          "age": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Age",
+            "default": 15
+          },
+          "recurrence": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Recurrence",
+            "default": 15
+          },
+          "near_places": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Near Places",
+            "default": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PriorityWeights"
+      },
       "PublicTimelineEvent": {
         "properties": {
           "at": {
@@ -7128,6 +10624,42 @@
         "title": "PublicTimelineEvent",
         "description": "What a citizen may see of an issue's history: no notes marked\ninternal, no reasons, no staff identities."
       },
+      "QualityOut": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "title": "From"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "title": "To"
+          },
+          "classifications": {
+            "$ref": "#/components/schemas/ClassificationCounts"
+          },
+          "matching": {
+            "$ref": "#/components/schemas/MatchingCounts"
+          },
+          "reviews": {
+            "$ref": "#/components/schemas/ReviewCounts"
+          },
+          "auto_link_feedback": {
+            "$ref": "#/components/schemas/FeedbackCounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "classifications",
+          "matching",
+          "reviews",
+          "auto_link_feedback"
+        ],
+        "title": "QualityOut"
+      },
       "ReadinessOut": {
         "properties": {
           "status": {
@@ -7157,6 +10689,34 @@
         ],
         "title": "ReadinessOut"
       },
+      "RecurrenceConfig": {
+        "properties": {
+          "radius_m": {
+            "type": "integer",
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Radius M",
+            "default": 50
+          },
+          "lookback_days": {
+            "type": "integer",
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Lookback Days",
+            "default": 180
+          },
+          "saturation": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Saturation",
+            "default": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecurrenceConfig"
+      },
       "RefreshIn": {
         "properties": {
           "refresh_token": {
@@ -7175,6 +10735,57 @@
         "additionalProperties": false,
         "type": "object",
         "title": "RefreshIn"
+      },
+      "RelatedIssueOut": {
+        "properties": {
+          "issue": {
+            "$ref": "#/components/schemas/IssueListItem"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue",
+          "note"
+        ],
+        "title": "RelatedIssueOut"
+      },
+      "RelatedRequest": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "issue_id"
+        ],
+        "title": "RelatedRequest"
       },
       "ReportCreate": {
         "properties": {
@@ -7237,6 +10848,19 @@
               }
             ],
             "title": "Client Created At"
+          },
+          "classification_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification Id",
+            "description": "The classification the category step used, if any. Sets `category_source` (`ai_accepted` / `ai_corrected`)."
           }
         },
         "additionalProperties": false,
@@ -7261,6 +10885,14 @@
           "status": {
             "$ref": "#/components/schemas/IssueStatus"
           },
+          "report_count": {
+            "type": "integer",
+            "title": "Report Count"
+          },
+          "unique_reporter_count": {
+            "type": "integer",
+            "title": "Unique Reporter Count"
+          },
           "timeline": {
             "items": {
               "$ref": "#/components/schemas/PublicTimelineEvent"
@@ -7274,6 +10906,8 @@
           "id",
           "reference",
           "status",
+          "report_count",
+          "unique_reporter_count",
           "timeline"
         ],
         "title": "ReportIssue"
@@ -7350,6 +10984,10 @@
           "status": {
             "$ref": "#/components/schemas/ReportStatus"
           },
+          "matching_status": {
+            "$ref": "#/components/schemas/MatchingStatus",
+            "description": "`pending` while duplicates are checked (no issue yet; show \"Checking for similar reports\"), `review` while a person decides (no issue yet), `linked` or `new_issue` once it has an issue."
+          },
           "view": {
             "type": "string",
             "const": "owner",
@@ -7364,7 +11002,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Null until matching has placed the report."
           }
         },
         "type": "object",
@@ -7380,6 +11019,7 @@
           "ward",
           "media",
           "status",
+          "matching_status",
           "issue"
         ],
         "title": "ReportOwnerView",
@@ -7457,6 +11097,10 @@
           "status": {
             "$ref": "#/components/schemas/ReportStatus"
           },
+          "matching_status": {
+            "$ref": "#/components/schemas/MatchingStatus",
+            "description": "`pending` while duplicates are checked (no issue yet; show \"Checking for similar reports\"), `review` while a person decides (no issue yet), `linked` or `new_issue` once it has an issue."
+          },
           "view": {
             "type": "string",
             "const": "staff",
@@ -7495,6 +11139,28 @@
                 "type": "null"
               }
             ]
+          },
+          "category_source": {
+            "$ref": "#/components/schemas/CategorySource"
+          },
+          "match": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The decision that placed the report (the link made, else the best candidate considered); null when no candidate was found."
+          },
+          "match_decisions": {
+            "items": {
+              "$ref": "#/components/schemas/MatchDecisionOut"
+            },
+            "type": "array",
+            "title": "Match Decisions",
+            "description": "Every candidate considered for this report, best-ranked first; feedback goes to POST /match-decisions/{id}/feedback."
           }
         },
         "type": "object",
@@ -7510,9 +11176,13 @@
           "ward",
           "media",
           "status",
+          "matching_status",
           "reporter",
           "client_created_at",
-          "issue"
+          "issue",
+          "category_source",
+          "match",
+          "match_decisions"
         ],
         "title": "ReportStaffView",
         "description": "What staff with `report:read` see. Contact details only with `user:manage`."
@@ -7550,6 +11220,29 @@
           "display_name"
         ],
         "title": "ReporterOut"
+      },
+      "ReporterRule": {
+        "properties": {
+          "unique_reporters_gte": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Unique Reporters Gte"
+          },
+          "raise_by": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Raise By",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "unique_reporters_gte"
+        ],
+        "title": "ReporterRule"
       },
       "ReporterWithContactOut": {
         "properties": {
@@ -7594,6 +11287,42 @@
         ],
         "title": "ReporterWithContactOut",
         "description": "Only for callers holding `user:manage`."
+      },
+      "ResolveLink": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "link",
+            "title": "Action"
+          },
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action",
+          "issue_id"
+        ],
+        "title": "ResolveLink"
+      },
+      "ResolveNewIssue": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "new_issue",
+            "title": "Action"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "ResolveNewIssue"
       },
       "ReverseGeocodeOut": {
         "properties": {
@@ -7641,6 +11370,215 @@
           "zone"
         ],
         "title": "ReverseGeocodeOut"
+      },
+      "ReviewActor": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ReviewActor"
+      },
+      "ReviewCandidate": {
+        "properties": {
+          "match_decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Match Decision Id"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "signals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Signals"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "issue": {
+            "$ref": "#/components/schemas/IssueListItem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_decision_id",
+          "score",
+          "signals",
+          "decision",
+          "issue"
+        ],
+        "title": "ReviewCandidate"
+      },
+      "ReviewCounts": {
+        "properties": {
+          "linked": {
+            "type": "integer",
+            "title": "Linked"
+          },
+          "new_issue": {
+            "type": "integer",
+            "title": "New Issue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "linked",
+          "new_issue"
+        ],
+        "title": "ReviewCounts"
+      },
+      "ReviewResolution": {
+        "type": "string",
+        "enum": [
+          "linked",
+          "new_issue"
+        ],
+        "title": "ReviewResolution"
+      },
+      "ReviewStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "resolved"
+        ],
+        "title": "ReviewStatus"
+      },
+      "ReviewTaskOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReviewStatus"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewResolution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resolved_issue_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Issue Id"
+          },
+          "resolved_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewActor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "report": {
+            "$ref": "#/components/schemas/ReportStaffView"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewCandidate"
+            },
+            "type": "array",
+            "title": "Candidates",
+            "description": "Best first. Candidates outside the caller's scope are left out."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "status",
+          "resolution",
+          "resolved_issue_id",
+          "resolved_by",
+          "resolved_at",
+          "report",
+          "candidates"
+        ],
+        "title": "ReviewTaskOut"
+      },
+      "ReviewTaskPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewTaskOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ReviewTaskPage"
       },
       "Role": {
         "type": "string",
@@ -7711,6 +11649,233 @@
         ],
         "title": "RolesUpdate"
       },
+      "SeverityLevel": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "SeverityLevel"
+      },
+      "SeverityOut": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/SeverityLevel"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SeveritySource",
+            "description": "`rule`, or `override` when staff set it."
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "How the rules got there, or the override's reason (staff wording)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "source",
+          "reason"
+        ],
+        "title": "SeverityOut"
+      },
+      "SeverityOverride": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Internal; never shown to citizens."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "The `version` you last saw (optimistic locking)."
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeverityLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A level to override with (a reason is required), or null to go back to the rules."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "severity"
+        ],
+        "title": "SeverityOverride"
+      },
+      "SeverityPoints": {
+        "properties": {
+          "low": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Low",
+            "default": 0.1
+          },
+          "medium": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Medium",
+            "default": 0.4
+          },
+          "high": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "High",
+            "default": 0.75
+          },
+          "critical": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Critical",
+            "default": 1.0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SeverityPoints"
+      },
+      "SeverityRules": {
+        "properties": {
+          "base": {
+            "$ref": "#/components/schemas/SeverityLevel",
+            "default": "medium"
+          },
+          "field_rules": {
+            "items": {
+              "$ref": "#/components/schemas/FieldRule"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Field Rules"
+          },
+          "near_places": {
+            "items": {
+              "$ref": "#/components/schemas/NearPlacesRule"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Near Places"
+          },
+          "report_count_raise": {
+            "items": {
+              "$ref": "#/components/schemas/ReporterRule"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Report Count Raise"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SeverityRules"
+      },
+      "SeveritySource": {
+        "type": "string",
+        "enum": [
+          "rule",
+          "override"
+        ],
+        "title": "SeveritySource"
+      },
+      "SplitRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Internal; never shown to citizens."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "The `version` you last saw (optimistic locking)."
+          },
+          "report_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Report Ids"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewIssueTarget"
+              },
+              {
+                "$ref": "#/components/schemas/ExistingIssueTarget"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "report_ids",
+          "target"
+        ],
+        "title": "SplitRequest"
+      },
+      "SplitResult": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/IssueDetail"
+          },
+          "target": {
+            "$ref": "#/components/schemas/IssueDetail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "title": "SplitResult"
+      },
       "StatusChange": {
         "properties": {
           "to_status": {
@@ -7756,6 +11921,32 @@
           "version"
         ],
         "title": "StatusChange"
+      },
+      "Suggestion": {
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Category Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_id",
+          "code",
+          "confidence"
+        ],
+        "title": "Suggestion"
       },
       "TenantCreate": {
         "properties": {
@@ -7902,6 +12093,30 @@
                 "type": "null"
               }
             ]
+          },
+          "related_issue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssueRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The other issue in a merge or split."
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data",
+            "description": "Details for the staff timeline: moved report ids, old and new values."
           }
         },
         "type": "object",
@@ -7914,7 +12129,9 @@
           "reason",
           "public_note",
           "visibility",
-          "actor"
+          "actor",
+          "related_issue",
+          "data"
         ],
         "title": "TimelineEvent",
         "description": "The staff timeline: every event, internal ones included."

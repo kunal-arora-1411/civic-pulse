@@ -61,6 +61,13 @@ class Category(TimestampMixin, Base):
         ),
         CheckConstraint("dedup_radius_m > 0 AND dedup_window_days > 0", name="dedup_positive"),
         CheckConstraint("jsonb_typeof(fields) = 'array'", name="fields_is_array"),
+        CheckConstraint(
+            "ai_prompts IS NULL OR jsonb_typeof(ai_prompts) = 'array'", name="ai_prompts_is_array"
+        ),
+        CheckConstraint(
+            "severity_rules IS NULL OR jsonb_typeof(severity_rules) = 'object'",
+            name="severity_rules_is_object",
+        ),
         Index("ix_categories_tenant_id_sort_order", "tenant_id", "sort_order"),
     )
 
@@ -85,4 +92,10 @@ class Category(TimestampMixin, Base):
     dedup_radius_m: Mapped[int] = mapped_column(Integer, default=30, server_default=text("30"))
     dedup_window_days: Mapped[int] = mapped_column(Integer, default=30, server_default=text("30"))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    # Phase 2: English prompts for the zero-shot classifier, replacing the
+    # built-in ones for this code (null: use the defaults).
+    ai_prompts: Mapped[list[str] | None] = mapped_column(JSONB(none_as_null=True))
+    # Phase 2: how severity is worked out for this category's issues (see
+    # app/domains/priority/rules.py). Null: always the default `medium`.
+    severity_rules: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))

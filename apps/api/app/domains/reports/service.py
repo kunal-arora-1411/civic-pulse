@@ -17,6 +17,8 @@ from app.core.config import get_settings
 from app.core.errors import MfaRequired, NotFound, ValidationFailed
 from app.core.pagination import PageParams, paginate
 from app.core.storage import ObjectStorage
+from app.domains.ai import classifications
+from app.domains.ai.models import Classification
 from app.domains.audit import service as audit
 from app.domains.categories.models import Category
 from app.domains.categories.service import to_ref, validate_details
@@ -29,6 +31,7 @@ from app.domains.issues.models import (
     Visibility,
 )
 from app.domains.issues.references import allocate
+from app.domains.matching import views as match_views
 from app.domains.media.models import MediaAsset, MediaPurpose, MediaStatus
 from app.domains.media.service import thumb_url, to_media_out
 from app.domains.org.models import Jurisdiction
@@ -36,7 +39,13 @@ from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 from app.domains.rbac.scope import accessible_jurisdiction_ids
 from app.domains.reports.errors import EvidenceRequired, InvalidMedia, OutOfJurisdiction
-from app.domains.reports.models import LocationSource, Report, ReportStatus
+from app.domains.reports.models import (
+    CategorySource,
+    LocationSource,
+    MatchingStatus,
+    Report,
+    ReportStatus,
+)
 from app.domains.reports.schemas import (
     IssueRef,
     LocationOut,
@@ -119,10 +128,11 @@ async def _claim_media(
 
 
 async def create_report(db: AsyncSession, principal: Principal, body: ReportCreate) -> uuid.UUID:
-    """Validate and store a report together with its issue, in one transaction.
+    """Validate and store a report in one transaction; returns its id.
 
-    Phase 1 rule: every report creates its own issue (duplicate matching
-    replaces this in Phase 2). Returns the new report's id.
+    The report has no issue yet (`matching_status = pending`): the caller
+    queues duplicate matching once this has committed, and matching links
+    it to an issue, sends it to review or starts a new issue.
     """
     tenant_id = principal.tenant_id
     assert tenant_id is not None
@@ -158,36 +168,22 @@ async def create_report(db: AsyncSession, principal: Principal, body: ReportCrea
             },
         )
 
-    # Everything is valid. References last: their counter rows stay locked
-    # until this transaction commits.
-    issue_reference = await allocate(db, tenant_id, ReferenceKind.ISSUE)
-    report_reference = await allocate(db, tenant_id, ReferenceKind.REPORT)
+    category_source = await _category_source(db, principal, body, category)
 
+    # Everything is valid. The reference last: its counter row stays locked
+    # until this transaction commits.
+    report_reference = await allocate(db, tenant_id, ReferenceKind.REPORT)
     location = WKTElement(f"POINT({body.location.lng} {body.location.lat})", srid=4326)
     ward_id = placement.ward.id if placement.ward else None
-    issue = CivicIssue(
-        id=uuid.uuid4(),
-        tenant_id=tenant_id,
-        reference=issue_reference,
-        category_id=category.id,
-        status=IssueStatus.REPORTED,
-        location=location,
-        address_text=body.address_text,
-        ward_id=ward_id,
-        report_count=1,
-        unique_reporter_count=1,
-        cover_media_id=media[0].id if media else None,
-    )
-    db.add(issue)
-    await db.flush()
-
     report = Report(
         id=uuid.uuid4(),
         tenant_id=tenant_id,
         reference=report_reference,
         reporter_id=principal.user_id,
         category_id=category.id,
-        issue_id=issue.id,
+        # No issue yet: duplicate matching decides after this commits.
+        issue_id=None,
+        matching_status=MatchingStatus.PENDING,
         status=ReportStatus.ACCEPTED,
         description=body.description,
         details=details,
@@ -197,6 +193,8 @@ async def create_report(db: AsyncSession, principal: Principal, body: ReportCrea
         address_text=body.address_text,
         ward_id=ward_id,
         client_created_at=body.client_created_at,
+        classification_id=body.classification_id,
+        category_source=category_source,
     )
     db.add(report)
     await db.flush()
@@ -204,17 +202,6 @@ async def create_report(db: AsyncSession, principal: Principal, body: ReportCrea
     for position, asset in enumerate(media):
         asset.report_id = report.id
         asset.position = position
-    db.add(
-        IssueEvent(
-            tenant_id=tenant_id,
-            issue_id=issue.id,
-            report_id=report.id,
-            type=EventType.CREATED,
-            to_status=IssueStatus.REPORTED,
-            visibility=Visibility.PUBLIC,
-            actor_id=principal.user_id,
-        )
-    )
     await db.flush()
 
     await audit.record(
@@ -226,26 +213,47 @@ async def create_report(db: AsyncSession, principal: Principal, body: ReportCrea
         after={
             "reference": report.reference,
             "category": category.code,
-            "issue_id": str(issue.id),
+            "category_source": category_source.value,
+            "classification_id": str(body.classification_id) if body.classification_id else None,
             "ward_id": str(ward_id) if ward_id else None,
             "location_source": body.location.source.value,
             "media_ids": [str(m.id) for m in media],
-        },
-    )
-    await audit.record(
-        db,
-        action="issue.created",
-        entity_type="issue",
-        entity_id=issue.id,
-        actor=principal,
-        after={
-            "reference": issue.reference,
-            "status": issue.status,
-            "category": category.code,
-            "report_id": str(report.id),
+            "matching_status": report.matching_status,
         },
     )
     return report.id
+
+
+async def _category_source(
+    db: AsyncSession, principal: Principal, body: ReportCreate, category: Category
+) -> CategorySource:
+    """`ai_accepted` when the citizen kept the top suggestion, `ai_corrected`
+    when they chose another category (a label for FR-021), `citizen` when
+    no suggestion was available."""
+    if body.classification_id is None:
+        return CategorySource.CITIZEN
+    classification = await db.scalar(
+        select(Classification).where(Classification.id == body.classification_id)
+    )
+    if classification is None or classification.requested_by != principal.user_id:
+        raise ValidationFailed(
+            "Unknown classification.",
+            details={
+                "errors": [
+                    {
+                        "loc": ["body", "classification_id"],
+                        "msg": "Unknown classification.",
+                        "type": "invalid_value",
+                    }
+                ]
+            },
+        )
+    suggestions = await classifications.suggestions_for(db, classification)
+    if not suggestions:
+        return CategorySource.CITIZEN
+    if suggestions[0].category_id == category.id:
+        return CategorySource.AI_ACCEPTED
+    return CategorySource.AI_CORRECTED
 
 
 # --- views -----------------------------------------------------------------------------
@@ -344,6 +352,7 @@ def base_fields(
         else None,
         "media": [to_media_out(storage, m, staff=staff) for m in media],
         "status": ReportStatus(report.status),
+        "matching_status": MatchingStatus(report.matching_status),
     }
 
 
@@ -355,6 +364,8 @@ async def owner_view(db: AsyncSession, storage: ObjectStorage, row: ReportRow) -
             id=row.issue.id,
             reference=row.issue.reference,
             status=IssueStatus(row.issue.status),
+            report_count=row.issue.report_count,
+            unique_reporter_count=row.issue.unique_reporter_count,
             timeline=await public_timeline(db, row.issue.id),
         )
     return ReportOwnerView(
@@ -377,6 +388,8 @@ async def staff_views(
     if not rows:
         return []
     media = await media_for_reports(db, [row.report.id for row in rows])
+    matches = await match_views.summaries(db, [row.report.id for row in rows])
+    decisions = await match_views.decisions(db, [row.report.id for row in rows])
     reporter_ids = {row.report.reporter_id for row in rows}
     users = {
         u.id: u
@@ -405,6 +418,9 @@ async def staff_views(
                 **base_fields(row, media[row.report.id], storage, staff=True),
                 reporter=reporter,
                 client_created_at=row.report.client_created_at,
+                category_source=CategorySource(row.report.category_source),
+                match=matches.get(row.report.id),
+                match_decisions=decisions.get(row.report.id, []),
                 issue=IssueRef(
                     id=row.issue.id,
                     reference=row.issue.reference,
@@ -489,6 +505,7 @@ async def list_mine(
             category=to_ref(category),
             thumb_url=thumb_url(storage, media_status, thumb_key),
             address_text=report.address_text,
+            matching_status=MatchingStatus(report.matching_status),
             issue=MyReportIssue(reference=issue_ref, status=IssueStatus(issue_status))
             if issue_ref
             else None,

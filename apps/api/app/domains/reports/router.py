@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Header, Query, Response, status
 from fastapi.responses import JSONResponse
 
 from app.core import idempotency
@@ -25,6 +25,7 @@ from app.domains.reports.schemas import (
     ReportView,
 )
 from app.domains.workflow.statuses import IssueStatus
+from app.jobs import JobsDep
 
 router = APIRouter(tags=["reports"])
 
@@ -54,8 +55,12 @@ async def create_report(
     storage: Storage,
     body: ReportCreate,
     idempotency_key: RequiredIdempotencyKey,
+    jobs: JobsDep,
+    background: BackgroundTasks,
 ) -> Any:
-    """Submit a report. Creates its civic issue in the same transaction."""
+    """Submit a report. It is saved with `matching_status: "pending"` and no
+    issue; duplicate matching runs in the background and then links it to
+    an existing issue, sends it to review or starts a new issue."""
     claim = await idempotency.begin(
         db,
         key=idempotency_key,
@@ -71,6 +76,9 @@ async def create_report(
     view = await service.get_owner_view(db, storage, report_id)
     assert view is not None
     await idempotency.complete(db, claim, status.HTTP_201_CREATED, view)
+    # Runs after the transaction commits, so the worker finds the report.
+    assert principal.tenant_id is not None
+    background.add_task(jobs.match_report, report_id, principal.tenant_id)
     return view
 
 

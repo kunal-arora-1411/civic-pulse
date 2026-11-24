@@ -122,6 +122,24 @@ class Settings(BaseSettings):
     # zone. Every Phase 1 deployment is in India.
     local_timezone: str = "Asia/Kolkata"
 
+    # Vision models (Phase 2). `fake` is the deterministic stand-in from
+    # app/ai/fake.py, used by tests and by any process that has no model
+    # weights; `onnx` loads the real models from AI_MODEL_DIR. Domain code
+    # reaches them only through app/ai/registry.py.
+    ai_provider: Literal["fake", "onnx"] = "fake"
+    ai_model_dir: str = "/models"
+    # Blur faces in the display and thumbnail copies. Unset means "on when
+    # the real models are loaded", since the fake detector finds nothing.
+    ai_face_blur: bool | None = None
+    # How long POST /ai/classifications waits for the result before
+    # answering 202, and when a classification still pending counts as
+    # failed because no AI worker picked it up.
+    ai_classification_wait_seconds: float = 4.0
+    ai_classification_timeout_seconds: int = 30
+    # A report whose photos still have no embeddings after this long is
+    # matched without the visual signal (never linked automatically).
+    matching_fallback_after_seconds: int = 120
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -173,6 +191,12 @@ class Settings(BaseSettings):
         if self.cookie_secure is None:
             return self.is_production
         return self.cookie_secure
+
+    @property
+    def face_blur_enabled(self) -> bool:
+        if self.ai_face_blur is None:
+            return self.ai_provider == "onnx"
+        return self.ai_face_blur
 
     @property
     def broker_url(self) -> str:

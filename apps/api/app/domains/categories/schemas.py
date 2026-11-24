@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.core.i18n import I18nDescription, I18nLabel
 from app.core.pagination import Page
 from app.domains.categories.models import CATEGORY_CODE_PATTERN, MAX_PHOTOS_PER_REPORT
+from app.domains.priority.rules import SeverityRules
 
 FIELD_KEY_PATTERN = r"^[a-z][a-z0-9_]{0,39}$"
 OPTION_VALUE_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,39}$"
@@ -16,6 +17,17 @@ MAX_FIELDS = 20
 MAX_OPTIONS = 30
 
 FieldType = Literal["text", "number", "select", "boolean"]
+MAX_AI_PROMPTS = 10
+AiPrompt = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
+AiPrompts = Annotated[
+    list[AiPrompt] | None,
+    Field(
+        min_length=1,
+        max_length=MAX_AI_PROMPTS,
+        description="English prompts for the AI classifier, replacing the built-in ones "
+        "for this code. Null: use the built-in prompts.",
+    ),
+]
 
 
 class FieldOption(BaseModel):
@@ -79,6 +91,13 @@ def _unique_keys(fields: list[CategoryField] | None) -> None:
         raise ValueError("Field keys must be unique.")
 
 
+def unknown_rule_fields(rules: SeverityRules | None, field_keys: set[str]) -> list[str]:
+    """Field rules that name a field the category doesn't have."""
+    if rules is None:
+        return []
+    return sorted({r.field for r in rules.field_rules} - field_keys)
+
+
 class CategoryRef(BaseModel):
     """The short form embedded in reports and issues."""
 
@@ -98,7 +117,11 @@ class CategoryOut(BaseModel):
     evidence: Evidence
     fields: list[CategoryField]
     default_department_id: uuid.UUID | None
-    dedup: Dedup = Field(description="Stored now; duplicate matching uses it from Phase 2.")
+    dedup: Dedup = Field(description="Duplicate matching: search radius and time window.")
+    ai_prompts: list[str] | None
+    severity_rules: SeverityRules | None = Field(
+        description="How severity is worked out for this category's issues. Null: `medium`."
+    )
     sort_order: int
     is_active: bool
 
@@ -119,18 +142,24 @@ class CategoryCreate(BaseModel):
     fields: list[CategoryField] = Field(default_factory=list, max_length=MAX_FIELDS)
     default_department_id: uuid.UUID | None = None
     dedup: Dedup = Field(default_factory=Dedup)
+    ai_prompts: AiPrompts = None
+    severity_rules: SeverityRules | None = None
     sort_order: int = Field(default=0, ge=-10_000, le=10_000)
     is_active: bool = True
 
     @model_validator(mode="after")
     def _check_fields(self) -> Self:
         _unique_keys(self.fields)
+        unknown = unknown_rule_fields(self.severity_rules, {f.key for f in self.fields})
+        if unknown:
+            raise ValueError(f"Severity rules name unknown fields: {', '.join(unknown)}.")
         return self
 
 
 class CategoryUpdate(BaseModel):
-    """Partial update. Send only what changes; `parent_id` and
-    `default_department_id` can be set to null to clear them."""
+    """Partial update. Send only what changes; `parent_id`,
+    `default_department_id`, `ai_prompts` and `severity_rules` can be set to
+    null to clear them."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -143,13 +172,15 @@ class CategoryUpdate(BaseModel):
     fields: list[CategoryField] | None = Field(default=None, max_length=MAX_FIELDS)
     default_department_id: uuid.UUID | None = None
     dedup: Dedup | None = None
+    ai_prompts: AiPrompts = None
+    severity_rules: SeverityRules | None = None
     sort_order: int | None = Field(default=None, ge=-10_000, le=10_000)
     is_active: bool | None = None
 
     @model_validator(mode="after")
     def _check(self) -> Self:
         _unique_keys(self.fields)
-        nullable = {"parent_id", "default_department_id"}
+        nullable = {"parent_id", "default_department_id", "ai_prompts", "severity_rules"}
         for name in self.model_fields_set - nullable:
             if getattr(self, name) is None:
                 raise ValueError(f"{name} can't be null.")

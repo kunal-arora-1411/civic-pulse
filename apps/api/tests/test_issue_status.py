@@ -32,7 +32,13 @@ async def _report(client: httpx.AsyncClient, city: City) -> dict:
         },
     )
     assert response.status_code == 201, response.text
-    return response.json()
+    assert response.json()["matching_status"] == "pending"
+    # Matching ran after the response (inline in tests): read the outcome.
+    matched = await client.get(
+        f"/api/v1/reports/{response.json()['id']}", headers=city.citizen.headers
+    )
+    assert matched.json()["matching_status"] == "new_issue", matched.text
+    return matched.json()
 
 
 async def _move(

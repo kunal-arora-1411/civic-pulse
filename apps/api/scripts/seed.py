@@ -8,6 +8,9 @@ other-city, four departments, the city boundary with two zones and four
 wards for demo-city, one user per role) and, from scripts/seed_phase1.py,
 the Phase 1 additions: five categories, the default workflow for both
 tenants and about 60 synthetic issues with processed placeholder photos.
+scripts/seed_phase2.py then adds severity rules, places of interest, the
+matching and priority configs, duplicate clusters and two open review
+tasks, and computes severity and priority for every issue.
 Running it again converges on the same state: names, geometry, roles and
 categories are reset to these values, and existing issues are left alone.
 
@@ -39,6 +42,7 @@ from app.domains.tenants.models import Tenant
 from app.domains.users.models import User
 from app.domains.workflow.service import install_default_transitions
 from scripts import seed_phase1 as phase1
+from scripts import seed_phase2 as phase2
 
 TENANTS = {"demo-city": "Demo City", "other-city": "Other City"}
 
@@ -128,6 +132,9 @@ USERS = [
     SeedUser("+919000000003", "Demo Supervisor (Roads)", Role.SUPERVISOR, "demo-city", "ROADS"),
     SeedUser("+919000000004", "Demo Field Worker (Roads)", Role.FIELD_WORKER, "demo-city", "ROADS"),
     SeedUser("+919000000005", "Demo Citizen", Role.CITIZEN, "demo-city"),
+    # Phase 2: more reporters, so duplicate clusters have distinct people.
+    SeedUser("+919000000006", "Demo Citizen Two", Role.CITIZEN, "demo-city"),
+    SeedUser("+919000000007", "Demo Citizen Three", Role.CITIZEN, "demo-city"),
     SeedUser("+919100000001", "Other City Admin", Role.MUNICIPAL_ADMIN, "other-city"),
 ]
 
@@ -219,6 +226,13 @@ async def run() -> dict[str, int]:
         citizen_id=user_ids["+919000000005"],
         operator_id=user_ids["+919000000002"],
     )
+    places = await phase2.seed_rules_places_configs(demo, wards)
+    matching = await phase2.seed_matching_examples(
+        tenant_id=demo,
+        categories=categories,
+        wards=wards,
+        reporters=[user_ids[p] for p in ("+919000000005", "+919000000006", "+919000000007")],
+    )
     return {
         "tenants": len(tenant_ids),
         "departments": len(departments),
@@ -226,6 +240,8 @@ async def run() -> dict[str, int]:
         "users": len(USERS),
         "categories": len(categories),
         "issues": issues,
+        "places": places,
+        **{f"extra reports {status}": count for status, count in sorted(matching.items())},
     }
 
 

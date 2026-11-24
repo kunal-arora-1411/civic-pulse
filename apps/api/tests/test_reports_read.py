@@ -3,6 +3,7 @@ and what never leaks (reporter contact details, internal events)."""
 
 from __future__ import annotations
 
+import itertools
 import uuid
 from typing import Any
 
@@ -25,11 +26,17 @@ async def city(client: httpx.AsyncClient, sms: Any, owner_engine: AsyncEngine) -
     return await make_city(client, sms, owner_engine)
 
 
+_spot = itertools.count()
+
+
 async def _submit(client: httpx.AsyncClient, city: City, session: Session, **extra: Any) -> dict:
+    """A report a couple of hundred metres from the previous one, so that
+    duplicate matching gives each its own issue; returns the matched view."""
+    step = next(_spot) % 15
     body = {
         "category_id": str(city.waste),
         "description": "Overflowing bins outside the market",
-        "location": {"lat": 12.99, "lng": 77.61, "source": "gps"},
+        "location": {"lat": 12.975 + 0.002 * step, "lng": 77.61, "source": "gps"},
         "address_text": "Market Road",
         **extra,
     }
@@ -37,7 +44,10 @@ async def _submit(client: httpx.AsyncClient, city: City, session: Session, **ext
         REPORTS, headers={**session.headers, "Idempotency-Key": uuid.uuid4().hex}, json=body
     )
     assert response.status_code == 201, response.text
-    return response.json()
+    assert response.json()["issue"] is None
+    matched = await client.get(f"{REPORTS}/{response.json()['id']}", headers=session.headers)
+    assert matched.json()["matching_status"] == "new_issue", matched.text
+    return matched.json()
 
 
 async def test_my_reports_lists_only_mine_newest_first(
@@ -62,8 +72,10 @@ async def test_my_reports_lists_only_mine_newest_first(
         "category",
         "thumb_url",
         "address_text",
+        "matching_status",
         "issue",
     }
+    assert item["matching_status"] == "new_issue"
     assert item["issue"] == {"reference": first["issue"]["reference"], "status": "reported"}
     assert item["thumb_url"] is None  # still processing
 

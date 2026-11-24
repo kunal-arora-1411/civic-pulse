@@ -29,6 +29,51 @@ class RecordingMediaQueue:
         self.queued.append((asset_id, tenant_id))
 
 
+class InlineJobs:
+    """Stands in for app.jobs.CeleryJobs: runs each job inline, after the
+    request's transaction has committed (FastAPI background tasks), and
+    remembers what ran. A test can set `inline = False` to only record."""
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self.inline = True
+        self.broker_up = True
+        self.calls: list[tuple[str, tuple[Any, ...]]] = []
+        self.outcomes: list[Any] = []
+
+    async def recompute_priorities(
+        self, tenant_id: uuid.UUID, category_id: uuid.UUID | None = None
+    ) -> None:
+        self.calls.append(("recompute_priorities", (tenant_id, category_id)))
+        if self.inline:
+            from app.domains.priority.service import recompute_tenant
+
+            await recompute_tenant(tenant_id, category_id=category_id)
+
+    async def match_report(self, report_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
+        self.calls.append(("match_report", (report_id, tenant_id)))
+        if self.inline:
+            from app.domains.matching.service import process_report
+
+            outcome = await process_report(report_id, tenant_id)
+            self.outcomes.append(outcome)
+
+    async def classify(self, classification_id: uuid.UUID, tenant_id: uuid.UUID) -> bool:
+        self.calls.append(("classify", (classification_id, tenant_id)))
+        if not self.broker_up:
+            return False
+        if self.inline:
+            from app.domains.ai.classifications import run
+
+            await run(classification_id, tenant_id)
+        return True
+
+    def called(self, name: str) -> list[tuple[Any, ...]]:
+        return [args for job, args in self.calls if job == name]
+
+
 @dataclass
 class Session:
     access_token: str

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 from typing import Annotated
 from zoneinfo import ZoneInfo
@@ -12,6 +12,7 @@ from fastapi import Depends, Query
 
 from app.core.config import get_settings
 from app.core.errors import ValidationFailed
+from app.domains.priority.rules import PriorityBand, SeverityLevel
 from app.domains.workflow.statuses import IssueStatus
 
 BBox = tuple[float, float, float, float]
@@ -27,6 +28,8 @@ class IssueFilters:
     created_before: datetime | None  # exclusive
     q: str | None
     bbox: BBox | None = None
+    severities: list[SeverityLevel] = field(default_factory=list)
+    priority_bands: list[PriorityBand] = field(default_factory=list)
 
 
 def _invalid(param: str, msg: str) -> ValidationFailed:
@@ -76,6 +79,13 @@ def _common(
             "descriptions. Words match by prefix; Hindi works too.",
         ),
     ] = None,
+    severity: Annotated[
+        list[SeverityLevel] | None, Query(description="Repeatable; matches any.")
+    ] = None,
+    priority_band: Annotated[
+        list[PriorityBand] | None,
+        Query(description="The effective band (an override counts). Repeatable."),
+    ] = None,
 ) -> IssueFilters:
     if date_from and date_to and date_from > date_to:
         raise _invalid("from", "`from` is after `to`.")
@@ -86,6 +96,8 @@ def _common(
         created_from=_local_midnight(date_from) if date_from else None,
         created_before=_local_midnight(date_to + timedelta(days=1)) if date_to else None,
         q=(q.strip() or None) if q else None,
+        severities=severity or [],
+        priority_bands=priority_band or [],
     )
 
 

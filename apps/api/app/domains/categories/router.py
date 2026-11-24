@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, BackgroundTasks, Query, status
 
 from app.core.db import DbSession
 from app.core.errors import error_responses
@@ -19,6 +19,7 @@ from app.domains.categories.schemas import (
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
+from app.jobs import JobsDep
 
 router = APIRouter(tags=["categories"])
 
@@ -81,7 +82,15 @@ async def admin_create_category(
 async def admin_update_category(
     principal: Annotated[Principal, require(Permission.CONFIG_MANAGE)],
     db: DbSession,
+    jobs: JobsDep,
+    background: BackgroundTasks,
     category_id: uuid.UUID,
     body: CategoryUpdate,
 ) -> CategoryOut:
-    return await service.update(db, principal, category_id, body)
+    """Changing `severity_rules` recomputes the category's issues in the
+    background, after this change has committed."""
+    out = await service.update(db, principal, category_id, body)
+    if "severity_rules" in body.model_fields_set:
+        assert principal.tenant_id is not None
+        background.add_task(jobs.recompute_priorities, principal.tenant_id, category_id)
+    return out

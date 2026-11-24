@@ -241,9 +241,11 @@ async def create_issue(
             text(
                 "INSERT INTO reports (tenant_id, reference, reporter_id, category_id, issue_id, "
                 "status, description, location, location_source, address_text, ward_id, "
-                "created_at) VALUES (:t, :ref, :reporter, :category, :issue, 'accepted', "
+                "created_at, matching_status) VALUES (:t, :ref, :reporter, :category, :issue, "
+                "'accepted', "
                 ":description, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326), 'gps', :address, "
-                ":ward, COALESCE(CAST(:created_at AS timestamptz), now())) RETURNING id"
+                ":ward, COALESCE(CAST(:created_at AS timestamptz), now()), 'new_issue') "
+                "RETURNING id"
             ),
             {**params, "ref": report_ref, "issue": issue_id},
         )
