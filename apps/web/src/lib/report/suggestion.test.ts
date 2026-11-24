@@ -60,10 +60,12 @@ describe("runClassification", () => {
         );
       }),
     );
+    // Short polls but a roomy limit, so a loaded machine can't turn this
+    // into a timeout; the timeout has its own test with a fake clock.
     const outcome = await runClassification(
       ["m1"],
       new AbortController().signal,
-      timing,
+      { pollMs: 10, timeoutMs: 10_000 },
     );
     expect(outcome.status).toBe("done");
     expect(polls).toBe(3);
