@@ -31,11 +31,26 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-export function Logo({ className }: { className?: string }) {
+/**
+ * The mark with the name. `compact` keeps the name for screen readers but
+ * shows only the mark on phones, where headers are short of room.
+ */
+export function Logo({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark />
-      <span className="font-display text-lg font-semibold tracking-tight">
+      <span
+        className={cn(
+          "font-display text-lg font-semibold tracking-tight",
+          compact && "max-sm:sr-only",
+        )}
+      >
         CivicPulse
       </span>
     </span>

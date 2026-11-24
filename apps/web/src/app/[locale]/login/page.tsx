@@ -24,7 +24,7 @@ export default function LoginPage() {
   ];
 
   return (
-    <div className="grid flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <div className="grid flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside className="relative hidden overflow-hidden bg-primary text-primary-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div
           aria-hidden="true"
@@ -56,10 +56,10 @@ export default function LoginPage() {
         <p className="relative text-sm opacity-80">{t("privacy")}</p>
       </aside>
 
-      <div className="bg-survey-grid flex flex-col">
+      <div className="bg-survey-grid flex min-w-0 flex-col">
         <header className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="rounded-lg lg:invisible">
-            <Logo />
+            <Logo compact />
           </Link>
           <div className="flex items-center gap-2">
             <ThemeSwitcher />
