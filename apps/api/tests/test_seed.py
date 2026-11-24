@@ -34,6 +34,23 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "AND m.thumb_key IS NOT NULL",
         "events": "SELECT count(*) FROM issue_events e JOIN civic_issues i ON i.id = e.issue_id "
         "WHERE i.address_text LIKE 'Synthetic Street%'",
+        # Phase 2
+        "places": "SELECT count(*) FROM places_of_interest p JOIN tenants t ON t.id = p.tenant_id "
+        "WHERE t.slug = 'demo-city'",
+        "configs": "SELECT count(*) FROM tenant_configs c JOIN tenants t ON t.id = c.tenant_id "
+        "WHERE t.slug = 'demo-city'",
+        "rules": "SELECT count(*) FROM categories c JOIN tenants t ON t.id = c.tenant_id "
+        "WHERE t.slug = 'demo-city' AND c.severity_rules IS NOT NULL",
+        "linked": "SELECT count(*) FROM reports WHERE address_text LIKE 'Synthetic Street%' "
+        "AND matching_status = 'linked'",
+        "open_reviews": "SELECT count(*) FROM review_tasks r JOIN reports p ON p.id = r.report_id "
+        "WHERE p.address_text LIKE 'Synthetic Street%' AND r.status = 'open'",
+        "prioritised": "SELECT count(*) FROM civic_issues "
+        "WHERE address_text LIKE 'Synthetic Street%' "
+        "AND priority_computed_at IS NOT NULL AND priority_factors IS NOT NULL",
+        "embedded": "SELECT count(DISTINCT e.media_id) FROM media_embeddings e "
+        "JOIN media_assets m ON m.id = e.media_id JOIN reports r ON r.id = m.report_id "
+        "WHERE r.address_text LIKE 'Synthetic Street%'",
     }
     async with engine.connect() as conn:
         return {name: (await conn.execute(text(sql))).scalar_one() for name, sql in queries.items()}
@@ -51,17 +68,42 @@ async def test_seed_is_idempotent_and_usable(
         "departments": 4,
         "zones": 2,
         "wards": 4,
-        "seed_users": 7,
-        "seed_roles": 7,
+        "seed_users": 9,
+        "seed_roles": 9,
         "city": 1,
         "categories": 5,
         "transitions": 14,
         "issues": 60,
-        "reports": 60,
-        "ready_photos": 60,
-        # created x60, plus 12 x1 (under_review), 12 x2 (verified), 6 x1 (rejected)
-        "events": 60 + 12 + 24 + 6,
+        # 60 + 5 in duplicate clusters + 2 waiting for review
+        "reports": 67,
+        "ready_photos": 67,
+        # created x60, plus 12 x1 (under_review), 12 x2 (verified), 6 x1 (rejected),
+        # plus one report_linked per cluster report
+        "events": 60 + 12 + 24 + 6 + 5,
+        "places": 6,
+        "configs": 2,
+        "rules": 5,
+        "linked": 5,
+        "open_reviews": 2,
+        "prioritised": 60,
+        "embedded": 67,
     }
+
+    async with owner_engine.connect() as conn:
+        clusters = sorted(
+            tuple(row)
+            for row in (
+                await conn.execute(
+                    text(
+                        "SELECT report_count, unique_reporter_count FROM civic_issues "
+                        "WHERE address_text LIKE 'Synthetic Street%' AND report_count > 1"
+                    )
+                )
+            ).all()
+        )
+    # Issue 0: two more citizens; issue 11: one; issue 22: the same citizen
+    # again plus one more, so three reports from two people.
+    assert clusters == [(2, 2), (3, 2), (3, 3)]
 
     async with owner_engine.connect() as conn:
         statuses = dict(
