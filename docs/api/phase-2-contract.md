@@ -223,3 +223,52 @@ Citizens whose reports moved see the new issue in their report detail. The publi
 - Recompute severity and priority for the seeded issues.
 - Create a handful of seeded **duplicate clusters**: two or three reports at nearly the same spot with near-identical placeholder images, linked to one issue. Also add two open review tasks, so the review queue has something to show.
 - Mark the model registry with the fake model in development unless the AI worker has registered the real one.
+
+## K. Details settled by the backend implementation
+Everything above is implemented as written, except where this section is more specific. `apps/api/openapi.json` is the exact shape.
+
+**Schema and pipeline**
+- Tenant configs live in a `tenant_configs` table (RLS, one row per tenant and key), not in `tenants.settings`, which has no RLS. A tenant without a row gets the defaults. PUT replaces the whole document: a field left out goes back to its default.
+- `issue_id` on a report is null exactly while `matching_status` is `pending` or `review` (a check constraint). Phase 1 reports became `new_issue`; Phase 1 severity/priority strings that named a level were kept as overrides, anything else was dropped.
+- Category compatibility: same category 1.0; its parent, its children and its siblings 0.5. The matching advisory lock is per (tenant, root of the category's parent chain), so every compatible pair shares one lock. Merge, split, review resolution and category correction take the same locks, family locks first and then rows in id order.
+- `analyze_media` runs as soon as a photo is processed. `match_report` embeds any photo still missing an embedding itself, retries every ~15 s while the model is unavailable, and matches without the visual signal once the report is older than 2 minutes. A Beat watchdog (every minute) re-queues reports pending for over a minute, applies that fallback to reports past the deadline, fails classifications pending past 30 s and computes priorities never computed.
+- Signals JSON `reason`: `null`, `ai_unavailable` (fallback), `no_photos` (the new report has none) or `candidate_no_photos`. In fallback, `thresholds` also has `fallback_review`.
+- Until `app/ai/phash.py`, `faces.py` and `prompts.py` exist, a 64-bit difference hash, a Gaussian blur and a generic "a photo of …" prompt stand in for them (`app/domains/ai/vision.py`).
+
+**Classification (C)**
+- The response also has `error` and `created_at`. `needs_manual` is also true while pending or failed. A classification still pending after 30 s reads as `failed` / `ai_unavailable`.
+- A `classification_id` that isn't the caller's is `422 validation_error` at `["body", "classification_id"]`. The staff report view has `category_source`.
+
+**Reports and review (D.4)**
+- Every report view and `/users/me/reports` item has `matching_status`; `issue` is null while pending or in review. The owner's `issue` adds `report_count` and `unique_reporter_count`.
+- The staff report view adds `match` (the deciding decision: the link made, else the best-ranked candidate) and `match_decisions` (every candidate, best-ranked first), each `{ id, report_id, candidate_issue_id, candidate_issue: { id, reference }, rank, score, signals, decision, model_id, decided_by, decided_at, feedback, feedback_note, feedback_at }`. The issue detail shows them on each report.
+- Review task items: `{ id, created_at, status, resolution, resolved_issue_id, resolved_by, resolved_at, report, candidates: [{ match_decision_id, score, signals, decision, issue }] }`, in the standard page envelope; open tasks oldest first, resolved ones most recently resolved first. Candidates outside the caller's scope are left out. `link` must name one of the task's candidates (`422` otherwise); if that issue was merged since, the report goes to the survivor. Resolve returns the task. Feedback returns the decision and replaces earlier feedback.
+
+**Timeline**
+- New event types: `report_linked`, `merged`, `merged_into`, `split`, `category_changed`, `severity_changed`, `priority_changed`. Only `merged` is public (on the survivor, rendered as "Combined with another report of the same problem"); the rest are internal. Staff timeline events add `related_issue: { id, reference } | null` and `data` (moved report ids, old and new values).
+
+**Merge, split, related (D.5)**
+- Merge, split, severity, priority and category changes return the updated issue detail (split: `{ source, target }`). A blank reason is `422 reason_required`; a stale version `409 version_conflict`.
+- Merging an issue whose own merged issues exist re-points those to the survivor, so `merged_into` is always one hop. A merged issue has no allowed transitions and scores 0.
+- A split's new issue takes its location, address and ward from the **oldest** moved report. Reports not on the issue: `422 validation_error` with `details.report_ids`.
+- Acting on a merged issue (split source or target, overrides, category, related) is `422 issue_merged`.
+- `POST /issues/{id}/related` returns `201 { issue, note }`; an existing pair is `409 conflict`.
+
+**Severity and priority (E, F)**
+- Within `near_places`, and within `report_count_raise`, rules are tiers: only the largest matching raise counts; the two groups add up, capped at `critical`. `severity` is `{ level, source, reason }` on lists and detail. Categories accept and return `ai_prompts` and `severity_rules` (rules may only name the category's fields).
+- `priority` is null only until an issue is first computed (within a minute of a migration). Recomputing never changes `version` or `updated_at`; overrides do. `resolved` issues still score; only rejected, closed and merged issues score 0.
+- `sort=-priority` orders by the effective band, then the score, uncomputed last. GeoJSON feature properties add `severity` and `priority_band` (effective); both filters work on the map too. Changing the priority config, or a category's severity rules, recomputes the affected issues in the background.
+
+**Governance (G)**
+- `GET /admin/ai/models`: `{ items: [{ model_id, task, name, version, source, license, deployed_at, intended_use, metrics, active }] }`, newest first; `active` is the most recently deployed model of its task.
+- `GET /admin/ai/quality?from&to` (whole days in Asia/Kolkata, default the last 30): `{ from, to, classifications: { done, failed, accepted_by_category: { code: n }, corrected_by_category: { code: n } }, matching: { auto_linked, sent_to_review, new_issue }, reviews: { linked, new_issue }, auto_link_feedback: { correct, incorrect } }`.
+
+**New error codes**
+| Code | Status | When |
+|---|---|---|
+| `invalid_merge` | 422 | Merging into itself or into a merged issue, or merging an already merged one (`details.reason`) |
+| `cannot_empty_issue` | 422 | A split would move every report |
+| `issue_merged` | 422 | Changing a merged issue |
+| `reason_required` | 422 | Also for merge, split, overrides and category correction |
+
+**Seed (J)**: two more synthetic citizens, `+919000000006` and `+919000000007`, so the duplicate clusters have distinct reporters. Five cluster reports are linked by the real matcher (one cluster has the same citizen twice), two wait in review.
