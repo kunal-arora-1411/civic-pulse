@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { apiRequest } from "../client";
 import { type Paginated, paginated } from "../schemas";
 import type { PriorityBand, SeverityLevel } from "../schemas-ai";
@@ -11,6 +12,8 @@ import {
   issueListItemSchema,
   type JurisdictionWithGeometry,
   jurisdictionWithGeometrySchema,
+  type MergedIssue,
+  mergedIssueSchema,
 } from "../schemas-phase1";
 import { type SplitResult, splitResultSchema } from "../schemas-phase2";
 
@@ -68,13 +71,27 @@ export function getIssuesGeoJson(
   });
 }
 
+// A merged issue is recognised first: it may carry only enough to
+// redirect. A full detail with merged_into null falls through to it.
+const issueOrMergedSchema = z.union([mergedIssueSchema, issueDetailSchema]);
+
+export function isMergedIssue(
+  issue: IssueDetail | MergedIssue,
+): issue is MergedIssue {
+  return "merged_into" in issue && Boolean(issue.merged_into);
+}
+
+/**
+ * The issue detail, or a pointer to the surviving issue when this one
+ * was merged away (the API answers 200 with `merged_into`).
+ */
 export function getIssue(
   id: string,
   signal?: AbortSignal,
-): Promise<IssueDetail> {
+): Promise<IssueDetail | MergedIssue> {
   return apiRequest({
     path: `/issues/${encodeURIComponent(id)}`,
-    schema: issueDetailSchema,
+    schema: issueOrMergedSchema,
     signal,
   });
 }

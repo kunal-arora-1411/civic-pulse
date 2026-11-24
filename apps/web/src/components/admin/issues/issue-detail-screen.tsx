@@ -10,8 +10,9 @@ import {
   Tags,
   UserRound,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useDetailLabels } from "@/components/citizen/report-detail";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { StatusBadge } from "@/components/issues/status-badge";
@@ -23,11 +24,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useLocalized } from "@/hooks/use-reference-data";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   getIssue,
   type IssueDetail,
   isApiError,
+  isMergedIssue,
+  type MergedIssue,
   type StaffReport,
 } from "@/lib/api";
 import { hasPermission } from "@/lib/auth/access";
@@ -316,14 +319,17 @@ export function IssueDetailScreen({
   const { id } = use(params);
   const t = useTranslations("admin.issueDetail");
   const errorMessage = useErrorMessage();
+  const mergedFrom = useSearchParams().get("merged_from");
   const query = useQuery({
     queryKey: ["issues", "detail", id],
     queryFn: ({ signal }) => getIssue(id, signal),
     refetchInterval: ({ state }) =>
-      processingRefetchInterval(
-        state.data?.reports.flatMap((report) => report.media),
-        state.dataUpdateCount,
-      ),
+      state.data && !isMergedIssue(state.data)
+        ? processingRefetchInterval(
+            state.data.reports.flatMap((report) => report.media),
+            state.dataUpdateCount,
+          )
+        : false,
   });
 
   return (
@@ -355,9 +361,51 @@ export function IssueDetailScreen({
             </Button>
           </Alert>
         )
+      ) : isMergedIssue(query.data) ? (
+        <MergedRedirect issue={query.data} />
       ) : (
-        <Body issue={query.data} onReload={() => query.refetch()} />
+        <>
+          {mergedFrom ? (
+            <Alert variant="info" live="polite">
+              {t("mergedHere", { reference: mergedFrom })}
+            </Alert>
+          ) : null}
+          <Body issue={query.data} onReload={() => query.refetch()} />
+        </>
       )}
     </div>
+  );
+}
+
+/**
+ * A merged issue keeps its reference, so old links and bookmarks still
+ * arrive here; send them on to the issue that survived, replacing this
+ * history entry so Back doesn't bounce straight back. The survivor says
+ * where the user came from.
+ */
+function MergedRedirect({ issue }: { issue: MergedIssue }) {
+  const t = useTranslations("admin.issueDetail");
+  const router = useRouter();
+  const target = `/admin/issues/${issue.merged_into.id}?merged_from=${encodeURIComponent(issue.reference)}`;
+  useEffect(() => {
+    router.replace(target);
+  }, [router, target]);
+  return (
+    <Alert
+      variant="info"
+      live="polite"
+      title={t("mergedTitle", {
+        reference: issue.reference,
+        target: issue.merged_into.reference,
+      })}
+    >
+      <p>{t("mergedRedirecting")}</p>
+      <Link
+        href={target}
+        className="mt-2 inline-block font-semibold underline underline-offset-4"
+      >
+        {t("mergedOpen", { reference: issue.merged_into.reference })}
+      </Link>
+    </Alert>
   );
 }
