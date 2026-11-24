@@ -9652,6 +9652,785 @@
           }
         }
       }
+    },
+    "/api/v1/issues/{issue_id}/support": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Get Support",
+        "description": "The support count and whether the caller supports the issue.",
+        "operationId": "issues_support_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Add Support",
+        "description": "Say \"I face this too\": one per citizen per issue (repeating is harmless),\nand it follows the issue. Rejected or closed issues: `422\ninvalid_transition`; a merged one: `422 issue_merged`. Support from\ncitizens who did not report the issue adds a small, capped bonus to its\npriority (factor `community`).",
+        "operationId": "issues_support_add",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Remove Support",
+        "description": "Withdraw support and stop following. Idempotent.",
+        "operationId": "issues_support_remove",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/{tenant}/issues": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "List Issues",
+        "description": "Issues with generalised locations, newest first by default.",
+        "operationId": "public_issues_list",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 63,
+              "description": "Tenant slug, e.g. `demo-city`.",
+              "title": "Tenant"
+            },
+            "description": "Tenant slug, e.g. `demo-city`."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "name": "ward_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ward Id"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "One of `-created_at`, `created_at`, `-updated_at`, `-support_count`, `-report_count`.",
+              "default": "-created_at",
+              "title": "Sort"
+            },
+            "description": "One of `-created_at`, `created_at`, `-updated_at`, `-support_count`, `-report_count`."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Page size (1-100).",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Page size (1-100)."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of items to skip.",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of items to skip."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIssuePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/{tenant}/issues/geojson": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Issues Geojson",
+        "description": "Generalised points for the map, `[lng, lat]`, at most 2000.",
+        "operationId": "public_issues_geojson",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 63,
+              "description": "Tenant slug, e.g. `demo-city`.",
+              "title": "Tenant"
+            },
+            "description": "Tenant slug, e.g. `demo-city`."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "name": "ward_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ward Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFeatureCollection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/{tenant}/issues/{issue_id}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Get Issue",
+        "description": "The public timeline and face-blurred before/after photos.",
+        "operationId": "public_issues_get",
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          },
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 63,
+              "description": "Tenant slug, e.g. `demo-city`.",
+              "title": "Tenant"
+            },
+            "description": "Tenant slug, e.g. `demo-city`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIssueDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/{tenant}/scorecard": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Scorecard",
+        "description": "Per ward: open issues, resolved issues and the median days to resolve.",
+        "operationId": "public_scorecard",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 63,
+              "description": "Tenant slug, e.g. `demo-city`.",
+              "title": "Tenant"
+            },
+            "description": "Tenant slug, e.g. `demo-city`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scorecard"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10887,6 +11666,50 @@
         "title": "CategoryUpdate",
         "description": "Partial update. Send only what changes; `parent_id`,\n`default_department_id`, `ai_prompts` and `severity_rules` can be set to\nnull to clear them."
       },
+      "CitizenClosure": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved"
+            ],
+            "title": "State"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Requested At"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "after_photos": {
+            "items": {
+              "$ref": "#/components/schemas/MediaOut"
+            },
+            "type": "array",
+            "title": "After Photos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "requested_at",
+          "reason_code",
+          "after_photos"
+        ],
+        "title": "CitizenClosure",
+        "description": "The closure round a reporter is asked about: the after photos (public,\nface-blurred copies only) and the closure's reason code, if any."
+      },
       "ClassificationCounts": {
         "properties": {
           "done": {
@@ -11971,6 +12794,30 @@
         ],
         "title": "FieldWorkOrderPage"
       },
+      "GeneralisedPoint": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "precision_m": {
+            "type": "integer",
+            "title": "Precision M",
+            "description": "Roughly how far the real spot may be from this point."
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "precision_m"
+        ],
+        "title": "GeneralisedPoint"
+      },
       "HealthOut": {
         "properties": {
           "status": {
@@ -12034,6 +12881,11 @@
           "unique_reporter_count": {
             "type": "integer",
             "title": "Unique Reporter Count"
+          },
+          "support_count": {
+            "type": "integer",
+            "title": "Support Count",
+            "description": "Citizens who said \"I face this too\"."
           },
           "severity": {
             "$ref": "#/components/schemas/SeverityOut"
@@ -12133,6 +12985,7 @@
           "ward",
           "report_count",
           "unique_reporter_count",
+          "support_count",
           "severity",
           "priority",
           "thumb_url",
@@ -12305,6 +13158,11 @@
             "type": "integer",
             "title": "Unique Reporter Count"
           },
+          "support_count": {
+            "type": "integer",
+            "title": "Support Count",
+            "description": "Citizens who said \"I face this too\"."
+          },
           "severity": {
             "$ref": "#/components/schemas/SeverityOut"
           },
@@ -12356,6 +13214,7 @@
           "ward",
           "report_count",
           "unique_reporter_count",
+          "support_count",
           "severity",
           "priority",
           "thumb_url",
@@ -14272,6 +15131,379 @@
         ],
         "title": "ProgressUpdateOut"
       },
+      "PublicFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/PointGeometry",
+            "description": "Generalised; coordinates are [lng, lat]."
+          },
+          "properties": {
+            "$ref": "#/components/schemas/PublicFeatureProperties"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "geometry",
+          "properties"
+        ],
+        "title": "PublicFeature"
+      },
+      "PublicFeatureCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/PublicFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "features",
+          "truncated"
+        ],
+        "title": "PublicFeatureCollection"
+      },
+      "PublicFeatureProperties": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "category_code": {
+            "type": "string",
+            "title": "Category Code"
+          },
+          "report_count": {
+            "type": "integer",
+            "title": "Report Count"
+          },
+          "support_count": {
+            "type": "integer",
+            "title": "Support Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "category_code",
+          "report_count",
+          "support_count"
+        ],
+        "title": "PublicFeatureProperties"
+      },
+      "PublicIssueDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryRef"
+          },
+          "ward": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/app__domains__reports__schemas__WardRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeneralisedPoint",
+            "description": "The centre of the issue's H3 cell."
+          },
+          "report_count": {
+            "type": "integer",
+            "title": "Report Count"
+          },
+          "support_count": {
+            "type": "integer",
+            "title": "Support Count"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb Url",
+            "description": "A face-blurred thumbnail."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "age_days": {
+            "type": "number",
+            "title": "Age Days"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTimelineEvent"
+            },
+            "type": "array",
+            "title": "Timeline",
+            "description": "Public events, oldest first."
+          },
+          "before_photos": {
+            "items": {
+              "$ref": "#/components/schemas/PublicPhoto"
+            },
+            "type": "array",
+            "title": "Before Photos"
+          },
+          "after_photos": {
+            "items": {
+              "$ref": "#/components/schemas/PublicPhoto"
+            },
+            "type": "array",
+            "title": "After Photos"
+          },
+          "merged_into": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into",
+            "description": "The reference this issue was merged into."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "category",
+          "ward",
+          "location",
+          "report_count",
+          "support_count",
+          "thumb_url",
+          "created_at",
+          "updated_at",
+          "resolved_at",
+          "age_days",
+          "timeline",
+          "before_photos",
+          "after_photos",
+          "merged_into"
+        ],
+        "title": "PublicIssueDetail"
+      },
+      "PublicIssueItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IssueStatus"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryRef"
+          },
+          "ward": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/app__domains__reports__schemas__WardRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeneralisedPoint",
+            "description": "The centre of the issue's H3 cell."
+          },
+          "report_count": {
+            "type": "integer",
+            "title": "Report Count"
+          },
+          "support_count": {
+            "type": "integer",
+            "title": "Support Count"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb Url",
+            "description": "A face-blurred thumbnail."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "age_days": {
+            "type": "number",
+            "title": "Age Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "category",
+          "ward",
+          "location",
+          "report_count",
+          "support_count",
+          "thumb_url",
+          "created_at",
+          "updated_at",
+          "resolved_at",
+          "age_days"
+        ],
+        "title": "PublicIssueItem"
+      },
+      "PublicIssuePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicIssueItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "PublicIssuePage"
+      },
+      "PublicPhoto": {
+        "properties": {
+          "thumb_url": {
+            "type": "string",
+            "title": "Thumb Url"
+          },
+          "display_url": {
+            "type": "string",
+            "title": "Display Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thumb_url",
+          "display_url"
+        ],
+        "title": "PublicPhoto"
+      },
       "PublicTimelineEvent": {
         "properties": {
           "at": {
@@ -14633,12 +15865,56 @@
             "type": "integer",
             "title": "Unique Reporter Count"
           },
+          "support_count": {
+            "type": "integer",
+            "title": "Support Count",
+            "description": "Citizens who said \"I face this too\"."
+          },
           "timeline": {
             "items": {
               "$ref": "#/components/schemas/PublicTimelineEvent"
             },
             "type": "array",
             "title": "Timeline"
+          },
+          "closure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CitizenClosure"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set while the issue is `pending_verification`, `resolved` or `closed`."
+          },
+          "my_verification": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "resolved",
+                  "unresolved"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Verification",
+            "description": "The caller's answer for the current closure round."
+          },
+          "can_verify": {
+            "type": "boolean",
+            "title": "Can Verify",
+            "description": "Whether POST /issues/{id}/verification would be accepted.",
+            "default": false
+          },
+          "can_reopen": {
+            "type": "boolean",
+            "title": "Can Reopen",
+            "description": "Whether POST /issues/{id}/reopen would be accepted.",
+            "default": false
           }
         },
         "type": "object",
@@ -14648,6 +15924,7 @@
           "status",
           "report_count",
           "unique_reporter_count",
+          "support_count",
           "timeline"
         ],
         "title": "ReportIssue"
@@ -15448,6 +16725,23 @@
         ],
         "title": "ScheduleDay"
       },
+      "Scorecard": {
+        "properties": {
+          "wards": {
+            "items": {
+              "$ref": "#/components/schemas/WardScore"
+            },
+            "type": "array",
+            "title": "Wards",
+            "description": "Every ward, by name."
+          }
+        },
+        "type": "object",
+        "required": [
+          "wards"
+        ],
+        "title": "Scorecard"
+      },
       "SeverityLevel": {
         "type": "string",
         "enum": [
@@ -15746,6 +17040,32 @@
           "confidence"
         ],
         "title": "Suggestion"
+      },
+      "SupportState": {
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Issue Id"
+          },
+          "support_count": {
+            "type": "integer",
+            "title": "Support Count",
+            "description": "Citizens who said \"I face this too\"."
+          },
+          "supported": {
+            "type": "boolean",
+            "title": "Supported",
+            "description": "Whether the caller supports (and follows) the issue."
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue_id",
+          "support_count",
+          "supported"
+        ],
+        "title": "SupportState"
       },
       "TeamCreate": {
         "properties": {
@@ -16729,6 +18049,42 @@
           "internal"
         ],
         "title": "Visibility"
+      },
+      "WardScore": {
+        "properties": {
+          "ward": {
+            "$ref": "#/components/schemas/app__domains__reports__schemas__WardRef"
+          },
+          "open_count": {
+            "type": "integer",
+            "title": "Open Count"
+          },
+          "resolved_count": {
+            "type": "integer",
+            "title": "Resolved Count",
+            "description": "Resolved or closed."
+          },
+          "median_resolution_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Resolution Days",
+            "description": "Median days from report to resolution; null when nothing is resolved."
+          }
+        },
+        "type": "object",
+        "required": [
+          "ward",
+          "open_count",
+          "resolved_count",
+          "median_resolution_days"
+        ],
+        "title": "WardScore"
       },
       "WorkOrderRef": {
         "properties": {

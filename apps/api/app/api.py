@@ -9,6 +9,7 @@ from app.domains.ai.router import router as ai_router
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
 from app.domains.categories.router import router as categories_router
+from app.domains.community.router import router as community_router
 from app.domains.config.router import router as config_router
 from app.domains.geo.router import router as geo_router
 from app.domains.issues.router import router as issues_router
@@ -17,6 +18,7 @@ from app.domains.media.router import router as media_router
 from app.domains.operations.field_router import router as field_router
 from app.domains.operations.router import router as operations_router
 from app.domains.org.router import router as org_router
+from app.domains.public.router import router as public_router
 from app.domains.reports.router import router as reports_router
 from app.domains.tenants.router import platform_router
 from app.domains.tenants.router import router as tenants_router
@@ -44,3 +46,5 @@ api_router.include_router(ai_admin_router)
 api_router.include_router(matching_router)
 api_router.include_router(operations_router)
 api_router.include_router(field_router)
+api_router.include_router(community_router)
+api_router.include_router(public_router)
