@@ -33,3 +33,7 @@ Thumbs.db
 infra/data/
 .claude/worktrees/
 .playwright-mcp/
+
+# model weights and the evaluation image cache (apps/api/scripts/eval)
+apps/api/.models/
+apps/api/.eval-cache/
