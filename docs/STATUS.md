@@ -41,9 +41,9 @@
 
 ## TODO: finish Phase 2 (milestone M1)
 
-- [ ] **Type checking:** pyright green with and without the `ai` extra; CI type-checks with the extra installed. (A `pyproject.toml` change for this was in progress, uncommitted, when we paused.)
+- [x] **Type checking:** pyright green with and without the `ai` extra; CI type-checks with the extra installed (`08b8330`).
 - [ ] **CI cost:** decide how e2e runs in CI without rebuilding the ~1.4 GB AI worker every time (layer cache / compose profile / separate real-model job). The real model must still run somewhere in CI.
-- [ ] **End-to-end walkthrough** with real photos on the stack running the real `ai-worker` (curl + browser).
+- [ ] **End-to-end walkthrough** (the real `ai-worker` stack was up and being seeded when the work paused) with real photos on the stack running the real `ai-worker` (curl + browser).
 - [ ] **Update the e2e suite** for Phase 2 behaviour: wait for the matching outcome on the confirmation and report pages; the default queue sort is `-priority`; new Priority column; new nav entries (Review queue, Matching, Priority rules, AI models).
 - [ ] **New e2e tests against the real model:**
   - AC-02: real pothole photo gets a suggestion (openly licensed fixture with attribution)
