@@ -17,6 +17,7 @@ import {
   TILE_URL,
   toLeaflet,
 } from "./map-config";
+import { useFreshContainerKey } from "./use-fresh-container";
 
 /*
  * Two points on one small map: a new report and the issue it may
@@ -81,8 +82,10 @@ export function ComparisonMap({
     [reportLabel, issueLabel],
   );
 
+  const containerKey = useFreshContainerKey();
   return (
     <MapContainer
+      key={containerKey}
       center={toLeaflet(issue)}
       zoom={17}
       scrollWheelZoom={false}

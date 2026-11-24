@@ -18,6 +18,7 @@ import {
   TILE_URL,
   toLeaflet,
 } from "./map-config";
+import { useFreshContainerKey } from "./use-fresh-container";
 
 /*
  * Leaflet touches `window` on import, so this module is only ever loaded
@@ -120,8 +121,10 @@ export function PinMap({
     [onPinChange],
   );
 
+  const containerKey = useFreshContainerKey();
   return (
     <MapContainer
+      key={containerKey}
       center={initialCenter}
       zoom={zoom}
       scrollWheelZoom={!isStatic}

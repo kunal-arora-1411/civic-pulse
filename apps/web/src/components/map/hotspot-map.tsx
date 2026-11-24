@@ -17,6 +17,7 @@ import {
   TILE_URL,
   toLeaflet,
 } from "./map-config";
+import { useFreshContainerKey } from "./use-fresh-container";
 
 /*
  * Issue density as H3 hexagons: one cell per hotspot, more opaque where
@@ -76,8 +77,10 @@ export function HotspotMap({ cells, center, zoom, label }: HotspotMapProps) {
       shapes.length ? L.latLngBounds(shapes.flatMap((s) => s.positions)) : null,
     [shapes],
   );
+  const containerKey = useFreshContainerKey();
   return (
     <MapContainer
+      key={containerKey}
       center={toLeaflet(center)}
       zoom={zoom}
       scrollWheelZoom={false}

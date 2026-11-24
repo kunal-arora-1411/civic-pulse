@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import L from "./leaflet-global";
 import "leaflet.markercluster";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   GeoJSON,
   MapContainer,
@@ -22,6 +22,7 @@ import {
   toLeaflet,
 } from "./map-config";
 import { priorityShapeSvg } from "./priority-shapes";
+import { useFreshContainerKey } from "./use-fresh-container";
 
 /*
  * The staff map: clustered issue markers and ward outlines. Loaded only
@@ -203,19 +204,11 @@ export function IssuesMap({ wards, initialView, ...props }: IssuesMapProps) {
     [wards],
   );
 
-  // Routes stay mounted inside <Activity>: hiding a page runs this
-  // component's effect cleanups (Leaflet removes the map) and showing it
-  // again re-runs the effects on the same DOM. A new key per showing gives
-  // Leaflet a fresh container instead of "Map container is being reused".
-  const [showing, setShowing] = useState(0);
-  useEffect(() => {
-    setShowing((n) => n + 1);
-  }, []);
-  if (showing === 0) return null;
+  const containerKey = useFreshContainerKey();
 
   return (
     <MapContainer
-      key={showing}
+      key={containerKey}
       center={toLeaflet(initialView.center)}
       zoom={initialView.zoom}
       className="size-full rounded-xl"
