@@ -32,17 +32,18 @@ export type ReviewAction =
 /**
  * Settle a review task. A task someone else has already resolved comes
  * back as 409 `conflict`; the caller shows that rather than retrying.
- * The body of a success isn't needed: the queue and the issue are
- * refetched afterwards.
+ * The resolved task comes back with its report placed, so
+ * `report.issue` is the issue it joined or the new one it started.
  */
 export function resolveReviewTask(
   id: string,
   body: ReviewAction,
-): Promise<void> {
+): Promise<ReviewTask> {
   return apiRequest({
     method: "POST",
     path: `/review-tasks/${encodeURIComponent(id)}/resolve`,
     body,
+    schema: reviewTaskSchema,
   });
 }
 

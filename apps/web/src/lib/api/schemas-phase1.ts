@@ -229,6 +229,14 @@ export type Report = z.infer<typeof reportSchema>;
 /** A report inside an issue detail or a review task (staff view). */
 export const staffReportSchema = reportCoreSchema.extend({
   reporter: reporterSchema,
+  /** The issue matching (or a reviewer) placed it on; null until then. */
+  issue: z
+    .object({
+      id: z.string(),
+      reference: z.string(),
+      status: issueStatusSchema,
+    })
+    .nullish(),
   match: reportMatchSchema.nullish(),
   /** Issue detail only: every candidate considered for this report. */
   match_decisions: z.array(matchDecisionSchema).default([]),

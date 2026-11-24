@@ -79,9 +79,31 @@ beforeEach(() => {
       `${API}/review-tasks/:id/resolve`,
       async ({ params, request }) => {
         const id = String(params.id);
-        resolved.push({ id, body: await request.json() });
+        const body = (await request.json()) as {
+          action: string;
+          issue_id?: string;
+        };
+        resolved.push({ id, body });
+        const done = tasks.find((item) => item.id === id) as ReviewTask;
         tasks = tasks.filter((item) => item.id !== id);
-        return HttpResponse.json({ id, status: "resolved" });
+        // As the API answers: the task resolved, its report placed.
+        const issue =
+          body.action === "link"
+            ? done.candidates.find((c) => c.issue.id === body.issue_id)?.issue
+            : { id: `new-${id}`, reference: "CP-26-000777" };
+        return HttpResponse.json({
+          ...done,
+          status: "resolved",
+          report: {
+            ...done.report,
+            matching_status: body.action === "link" ? "linked" : "new_issue",
+            issue: {
+              id: issue?.id,
+              reference: issue?.reference,
+              status: "reported",
+            },
+          },
+        });
       },
     ),
   );
@@ -163,7 +185,7 @@ describe("ReviewScreen", () => {
       expect(resolved).toEqual([{ id: "rt-2", body: { action: "new_issue" } }]),
     );
     expect(
-      await screen.findByText("R-26-000202 is now an issue of its own"),
+      await screen.findByText("R-26-000202 is now issue CP-26-000777"),
     ).toBeInTheDocument();
   });
 

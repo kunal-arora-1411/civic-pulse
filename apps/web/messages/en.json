@@ -494,6 +494,7 @@
       "newIssue": "Different problem: new issue",
       "linked": "{report} added to {issue}",
       "created": "{report} is now an issue of its own",
+      "createdAs": "{report} is now issue {issue}",
       "conflictTitle": "Someone else already dealt with this report",
       "conflictBody": "It was resolved while you were looking at it, so nothing was changed.",
       "conflictNext": "Show the next report",

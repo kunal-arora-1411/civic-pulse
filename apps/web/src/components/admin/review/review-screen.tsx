@@ -522,19 +522,24 @@ export function ReviewScreen() {
       task: ReviewTask;
       action: ReviewAction;
     }) => resolveReviewTask(task.id, action),
-    onSuccess: (_, { task, action }) => {
-      const issue =
+    onSuccess: (result, { task, action }) => {
+      // The report's issue as placed: the new issue, or the one it joined
+      // (the survivor, if the chosen candidate was merged meanwhile).
+      const placed = result.report.issue?.reference;
+      const chosen =
         action.action === "link"
           ? task.candidates.find((c) => c.issue.id === action.issue_id)?.issue
-          : null;
+              .reference
+          : undefined;
+      const report = task.report.reference;
       toast({
         variant: "success",
-        title: issue
-          ? t("linked", {
-              report: task.report.reference,
-              issue: issue.reference,
-            })
-          : t("created", { report: task.report.reference }),
+        title:
+          action.action === "link"
+            ? t("linked", { report, issue: placed ?? chosen ?? "" })
+            : placed
+              ? t("createdAs", { report, issue: placed })
+              : t("created", { report }),
       });
       const next = nextAfter(task);
       queryClient.setQueryData(
