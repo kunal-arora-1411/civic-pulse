@@ -43,14 +43,11 @@ export type CategoryInput = {
   is_active: boolean;
 };
 
-export function createCategory(body: CategoryInput): Promise<Category> {
-  // Contract mismatch, kept as is: the dialog sends `icon: null` when no
-  // icon is picked, but the spec (CategoryCreate) and the Phase 1 contract
-  // require a string, so the API answers 422. The cast keeps today's
-  // request; the fix belongs in the dialog (require an icon) or the API.
-  return call(categorySchema, (o) =>
-    adminCreateCategory(body as CategoryInput & { icon: string }, o),
-  );
+/** Creating needs an icon (CategoryCreate); only an update may clear it. */
+export type CreateCategoryInput = CategoryInput & { icon: string };
+
+export function createCategory(body: CreateCategoryInput): Promise<Category> {
+  return call(categorySchema, (o) => adminCreateCategory(body, o));
 }
 
 export function updateCategory(

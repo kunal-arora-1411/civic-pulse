@@ -9,6 +9,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "biome check .",
     "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.mts",
     "test:watch": "vitest"
   },
   "dependencies": {

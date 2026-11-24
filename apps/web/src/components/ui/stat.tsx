@@ -28,7 +28,8 @@ export function Stat({
     >
       <p className="eyebrow">{label}</p>
       <div className="grid gap-1">
-        <p
+        {/* A div, not a p: while loading, the value is a Skeleton div. */}
+        <div
           className={cn(
             "font-display text-4xl font-semibold tracking-tight tabular-nums",
             tone === "primary" && "text-primary",
@@ -37,7 +38,7 @@ export function Stat({
           )}
         >
           {value}
-        </p>
+        </div>
         {hint ? (
           <p className="font-mono text-xs text-muted-foreground">{hint}</p>
         ) : null}
