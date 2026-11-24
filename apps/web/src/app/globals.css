@@ -8,8 +8,13 @@
  * slightly warm, like the paper of a public notice. Every text/background
  * pairing below meets WCAG 2.2 AA (4.5:1 for text, 3:1 for UI boundaries
  * such as input borders and focus rings) in both themes.
+ *
+ * The landing page (.landing) is designed for light only, so it
+ * re-declares the light values for the shared components it embeds
+ * (language switcher, account menu) even when the OS is in dark mode.
  */
-:root {
+:root,
+.landing {
   color-scheme: light;
 
   --background: oklch(0.982 0.006 95);
@@ -141,6 +146,26 @@
   --font-display:
     var(--font-display-face), var(--font-body), ui-sans-serif, sans-serif;
   --font-mono: var(--font-code), ui-monospace, monospace;
+
+  /* Landing page only (see components/landing). Geist has no Devanagari,
+     so Hindi falls through to Anek Devanagari glyph by glyph. */
+  --font-lp:
+    var(--font-geist), var(--font-anek), ui-sans-serif, system-ui, sans-serif;
+  --font-lp-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-lp-ink: #0a0f12;
+  --color-lp-ink-2: #3d4850;
+  --color-lp-mute: #8a949b;
+  --color-lp-mute-2: #646e75;
+  --color-lp-hair: #e9eae7;
+  --color-lp-wash: #f6f7f5;
+  --color-lp-teal: #0f5d57;
+  --color-lp-teal-vivid: #16a08e;
+  --color-lp-teal-text: #0d7a6c;
+  --color-lp-mint: #a6e8d8;
+  --color-lp-marigold: #f2b632;
+  --color-lp-marigold-soft: #fdf1d6;
+  --color-lp-teal-soft: #ddf0ec;
+  --color-lp-red: #c23b26;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
