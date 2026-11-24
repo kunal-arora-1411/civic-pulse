@@ -96,13 +96,15 @@ def test_a_label_chooses_the_classification() -> None:
     assert png[0].code == "not_civic"
 
 
-def test_without_a_label_every_code_scores_the_same() -> None:
-    scores = FakeZeroShotClassifier().classify(_embed(make_scene(5)), PROMPTS)
+def test_without_a_label_the_answer_is_unknown() -> None:
+    unknown, *scores = FakeZeroShotClassifier().classify(_embed(make_scene(5)), PROMPTS)
+    assert (unknown.code, unknown.confidence) == ("unknown", pytest.approx(0.75))
     assert [s.confidence for s in scores] == pytest.approx([0.25] * 4)
     unknown_label = FakeZeroShotClassifier().classify(
         _embed(make_scene(5, label="selfie")), PROMPTS
     )
-    assert [s.confidence for s in unknown_label] == pytest.approx([0.25] * 4)
+    assert unknown_label[0].code == "unknown"
+    assert [s.confidence for s in unknown_label[1:]] == pytest.approx([0.25] * 4)
 
 
 def test_several_photos_are_classified_together() -> None:

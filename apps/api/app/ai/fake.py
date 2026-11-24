@@ -16,8 +16,9 @@ end to end, without model weights, and so that a test can decide what the
   as `pothole` or `pothole:0.62`. The label is written into a reserved part
   of the embedding, where `FakeZeroShotClassifier` reads it back: the
   labelled code gets that confidence (0.9 by default) and the rest is
-  shared equally. Without a label every code scores the same, so the
-  suggestion falls below any sensible threshold and asks for manual choice.
+  shared equally. Without a label the result is the reserved `unknown`
+  code followed by every code scoring the same, which asks the citizen
+  to choose.
 * **Faces.** `CP_TEST_FACES=x,y,w,h;x,y,w,h` lists the boxes
   `FakeFaceDetector` will "find".
 
@@ -173,8 +174,11 @@ class FakeZeroShotClassifier:
                 winner = best
                 confidence = min(1.0, max(0.0, float(mean[_CONFIDENCE_DIM]) / strength))
         if winner is None:
+            # Like the real classifier below its threshold: the reserved
+            # `unknown` code first, with confidence 1 - top score.
             share = 1.0 / len(codes)
-            return [CategoryScore(code=code, confidence=share) for code in codes]
+            uniform = [CategoryScore(code=code, confidence=share) for code in codes]
+            return [CategoryScore(code="unknown", confidence=1.0 - share), *uniform]
         rest = (1.0 - confidence) / (len(codes) - 1) if len(codes) > 1 else 0.0
         scores = [
             CategoryScore(code=code, confidence=confidence if code == winner else rest)

@@ -31,7 +31,19 @@ celery_app = Celery(
         "app.domains.media.tasks",
         "app.domains.housekeeping.tasks",
         "app.domains.priority.tasks",
+        "app.domains.ai.tasks",
+        "app.domains.matching.tasks",
     ],
+)
+
+# Work that needs the vision models goes to the `ai` queue, consumed by the
+# AI worker (which has the model weights); everything else stays on
+# `default`. Matching runs on `ai` because it may have to embed photos
+# that haven't been analysed yet.
+AI_TASKS = (
+    "civicpulse.ai.analyze_media",
+    "civicpulse.ai.classify",
+    "civicpulse.matching.match_report",
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -46,12 +58,21 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     result_expires=3600,
     broker_connection_retry_on_startup=True,
+    task_default_queue="default",
+    task_routes={name: {"queue": "ai"} for name in AI_TASKS},
     # Run by the `beat` service in compose. Hourly keeps the short-lived
     # tables small; the job is idempotent, so a missed or doubled run is fine.
     beat_schedule={
         "housekeeping-cleanup": {
             "task": "civicpulse.housekeeping.cleanup",
             "schedule": crontab(minute=17),
+        },
+        # Re-queues reports stuck in matching, applies the AI-unavailable
+        # fallback after two minutes, fails abandoned classifications and
+        # computes priorities that were never computed.
+        "matching-watchdog": {
+            "task": "civicpulse.matching.watchdog",
+            "schedule": 60.0,
         },
         # 02:40 IST: issues age by a day, so every open issue's score moves.
         "priority-nightly": {

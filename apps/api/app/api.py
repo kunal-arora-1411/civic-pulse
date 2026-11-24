@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.domains.ai.router import router as ai_router
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
 from app.domains.categories.router import router as categories_router
@@ -34,3 +35,4 @@ api_router.include_router(geo_router)
 api_router.include_router(reports_router)
 api_router.include_router(issues_router)
 api_router.include_router(config_router)
+api_router.include_router(ai_router)

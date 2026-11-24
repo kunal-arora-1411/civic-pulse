@@ -3569,7 +3569,7 @@
           "reports"
         ],
         "summary": "Create Report",
-        "description": "Submit a report. Creates its civic issue in the same transaction.",
+        "description": "Submit a report. It is saved with `matching_status: \"pending\"` and no\nissue; duplicate matching runs in the background and then links it to\nan existing issue, sends it to review or starts a new issue.",
         "operationId": "reports_create",
         "security": [
           {
@@ -5115,6 +5115,212 @@
           }
         }
       }
+    },
+    "/api/v1/ai/classifications": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Create Classification",
+        "description": "Suggest categories for the caller's uploaded photos (completed\nuploads only). Waits up to 4 s: `200` with the result if it is ready\n(`done`, or `failed` with `error: \"ai_unavailable\"`), otherwise `202`\nwith `status: \"pending\"`; poll GET every 1-2 s, for about 15 s.",
+        "operationId": "ai_create_classification",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassificationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Still running: poll GET.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/classifications/{classification_id}": {
+      "get": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Get Classification",
+        "description": "The caller's own classification; anyone else's is 404.",
+        "operationId": "ai_get_classification",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "classification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Classification Id"
+            }
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5523,6 +5729,25 @@
         ],
         "title": "AuditEventPage"
       },
+      "CandidateIssueRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reference"
+        ],
+        "title": "CandidateIssueRef"
+      },
       "CategoryCreate": {
         "properties": {
           "code": {
@@ -5901,6 +6126,17 @@
         "title": "CategoryRef",
         "description": "The short form embedded in reports and issues."
       },
+      "CategorySource": {
+        "type": "string",
+        "enum": [
+          "citizen",
+          "ai_accepted",
+          "ai_corrected",
+          "operator"
+        ],
+        "title": "CategorySource",
+        "description": "Who chose the report's category (FR-021: AI corrections are labels)."
+      },
       "CategoryUpdate": {
         "properties": {
           "code": {
@@ -6079,6 +6315,145 @@
         "type": "object",
         "title": "CategoryUpdate",
         "description": "Partial update. Send only what changes; `parent_id`,\n`default_department_id`, `ai_prompts` and `severity_rules` can be set to\nnull to clear them."
+      },
+      "ClassificationCreate": {
+        "properties": {
+          "media_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Media Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "media_ids"
+        ],
+        "title": "ClassificationCreate"
+      },
+      "ClassificationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ClassificationStatus"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id",
+            "examples": [
+              "clip-vit-b32@onnx-1"
+            ]
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/Suggestion"
+            },
+            "type": "array",
+            "title": "Suggestions",
+            "description": "Active categories only, best first, at most 3."
+          },
+          "not_civic": {
+            "type": "boolean",
+            "title": "Not Civic",
+            "description": "The photos look like something other than a civic problem. A soft warning only; the citizen can still report."
+          },
+          "needs_manual": {
+            "type": "boolean",
+            "title": "Needs Manual",
+            "description": "Too unsure to pre-select: ask the citizen to choose (also true while pending and when failed)."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "`ai_unavailable` when the AI couldn't run; the client just asks for manual selection."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "model_id",
+          "suggestions",
+          "not_civic",
+          "needs_manual",
+          "error",
+          "created_at"
+        ],
+        "title": "ClassificationOut"
+      },
+      "ClassificationStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "done",
+          "failed"
+        ],
+        "title": "ClassificationStatus"
+      },
+      "Decision": {
+        "type": "string",
+        "enum": [
+          "auto_linked",
+          "sent_to_review",
+          "rejected_candidate",
+          "chosen_by_reviewer",
+          "not_chosen"
+        ],
+        "title": "Decision"
+      },
+      "DecisionActor": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "DecisionActor"
       },
       "Dedup": {
         "properties": {
@@ -6305,6 +6680,14 @@
         "type": "object",
         "title": "Evidence"
       },
+      "Feedback": {
+        "type": "string",
+        "enum": [
+          "correct",
+          "incorrect"
+        ],
+        "title": "Feedback"
+      },
       "FieldOption": {
         "properties": {
           "value": {
@@ -6499,6 +6882,14 @@
             "type": "array",
             "title": "Allowed Transitions",
             "description": "What the caller may move this issue to right now."
+          },
+          "match_decisions": {
+            "items": {
+              "$ref": "#/components/schemas/MatchDecisionOut"
+            },
+            "type": "array",
+            "title": "Match Decisions",
+            "description": "Every candidate considered for each of the issue's reports (group by `report_id`), best-ranked first; feedback goes to POST /match-decisions/{id}/feedback."
           }
         },
         "type": "object",
@@ -6520,7 +6911,8 @@
           "version",
           "reports",
           "timeline",
-          "allowed_transitions"
+          "allowed_transitions",
+          "match_decisions"
         ],
         "title": "IssueDetail"
       },
@@ -7060,6 +7452,154 @@
         "title": "MapConfig",
         "description": "Initial map view. Coordinates are `[lng, lat]`, in GeoJSON order."
       },
+      "MatchDecisionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Report Id"
+          },
+          "candidate_issue": {
+            "$ref": "#/components/schemas/CandidateIssueRef"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "signals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Signals"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionActor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the platform decided."
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Feedback"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feedback_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Note"
+          },
+          "feedback_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "report_id",
+          "candidate_issue",
+          "rank",
+          "score",
+          "signals",
+          "decision",
+          "model_id",
+          "decided_by",
+          "decided_at",
+          "feedback",
+          "feedback_note",
+          "feedback_at"
+        ],
+        "title": "MatchDecisionOut"
+      },
+      "MatchSummary": {
+        "properties": {
+          "match_decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Match Decision Id"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "signals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Signals",
+            "description": "See the Phase 2 contract, D.3."
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_decision_id",
+          "decision",
+          "score",
+          "signals"
+        ],
+        "title": "MatchSummary",
+        "description": "How matching placed a report (staff only)."
+      },
       "MatchingConfig": {
         "properties": {
           "auto_link_enabled": {
@@ -7093,6 +7633,17 @@
         "additionalProperties": false,
         "type": "object",
         "title": "MatchingConfig"
+      },
+      "MatchingStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "review",
+          "linked",
+          "new_issue"
+        ],
+        "title": "MatchingStatus",
+        "description": "Where duplicate matching stands for a report (Phase 2)."
       },
       "MatchingThresholds": {
         "properties": {
@@ -7503,6 +8054,9 @@
             ],
             "title": "Address Text"
           },
+          "matching_status": {
+            "$ref": "#/components/schemas/MatchingStatus"
+          },
           "issue": {
             "anyOf": [
               {
@@ -7522,6 +8076,7 @@
           "category",
           "thumb_url",
           "address_text",
+          "matching_status",
           "issue"
         ],
         "title": "MyReportItem"
@@ -8233,6 +8788,19 @@
               }
             ],
             "title": "Client Created At"
+          },
+          "classification_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification Id",
+            "description": "The classification the category step used, if any. Sets `category_source` (`ai_accepted` / `ai_corrected`)."
           }
         },
         "additionalProperties": false,
@@ -8346,6 +8914,10 @@
           "status": {
             "$ref": "#/components/schemas/ReportStatus"
           },
+          "matching_status": {
+            "$ref": "#/components/schemas/MatchingStatus",
+            "description": "`pending` while duplicates are checked (no issue yet; show \"Checking for similar reports\"), `review` while a person decides (no issue yet), `linked` or `new_issue` once it has an issue."
+          },
           "view": {
             "type": "string",
             "const": "owner",
@@ -8360,7 +8932,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Null until matching has placed the report."
           }
         },
         "type": "object",
@@ -8376,6 +8949,7 @@
           "ward",
           "media",
           "status",
+          "matching_status",
           "issue"
         ],
         "title": "ReportOwnerView",
@@ -8453,6 +9027,10 @@
           "status": {
             "$ref": "#/components/schemas/ReportStatus"
           },
+          "matching_status": {
+            "$ref": "#/components/schemas/MatchingStatus",
+            "description": "`pending` while duplicates are checked (no issue yet; show \"Checking for similar reports\"), `review` while a person decides (no issue yet), `linked` or `new_issue` once it has an issue."
+          },
           "view": {
             "type": "string",
             "const": "staff",
@@ -8491,6 +9069,20 @@
                 "type": "null"
               }
             ]
+          },
+          "category_source": {
+            "$ref": "#/components/schemas/CategorySource"
+          },
+          "match": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The decision that placed the report (the link made, else the best candidate considered); null when no candidate was found."
           }
         },
         "type": "object",
@@ -8506,9 +9098,12 @@
           "ward",
           "media",
           "status",
+          "matching_status",
           "reporter",
           "client_created_at",
-          "issue"
+          "issue",
+          "category_source",
+          "match"
         ],
         "title": "ReportStaffView",
         "description": "What staff with `report:read` see. Contact details only with `user:manage`."
@@ -8893,6 +9488,32 @@
           "version"
         ],
         "title": "StatusChange"
+      },
+      "Suggestion": {
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Category Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_id",
+          "code",
+          "confidence"
+        ],
+        "title": "Suggestion"
       },
       "TenantCreate": {
         "properties": {

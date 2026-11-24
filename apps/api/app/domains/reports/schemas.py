@@ -10,8 +10,15 @@ from app.core.pagination import Page
 from app.domains.categories.models import MAX_PHOTOS_PER_REPORT
 from app.domains.categories.schemas import CategoryRef
 from app.domains.issues.models import EventType
+from app.domains.matching.schemas import MatchSummary
 from app.domains.media.schemas import MediaOut
-from app.domains.reports.models import MAX_DESCRIPTION_LENGTH, LocationSource, ReportStatus
+from app.domains.reports.models import (
+    MAX_DESCRIPTION_LENGTH,
+    CategorySource,
+    LocationSource,
+    MatchingStatus,
+    ReportStatus,
+)
 from app.domains.workflow.statuses import IssueStatus
 
 # --- input -------------------------------------------------------------------------------
@@ -40,6 +47,11 @@ class ReportCreate(BaseModel):
     )
     media_ids: list[uuid.UUID] = Field(default_factory=list, max_length=MAX_PHOTOS_PER_REPORT)
     client_created_at: AwareDatetime | None = None
+    classification_id: uuid.UUID | None = Field(
+        default=None,
+        description="The classification the category step used, if any. Sets "
+        "`category_source` (`ai_accepted` / `ai_corrected`).",
+    )
 
     @field_validator("description", "address_text")
     @classmethod
@@ -116,13 +128,18 @@ class _ReportBase(BaseModel):
     ward: WardRef | None
     media: list[MediaOut]
     status: ReportStatus
+    matching_status: MatchingStatus = Field(
+        description="`pending` while duplicates are checked (no issue yet; show "
+        '"Checking for similar reports"), `review` while a person decides (no issue '
+        "yet), `linked` or `new_issue` once it has an issue."
+    )
 
 
 class ReportOwnerView(_ReportBase):
     """The reporter's own view."""
 
     view: Literal["owner"] = "owner"
-    issue: ReportIssue | None
+    issue: ReportIssue | None = Field(description="Null until matching has placed the report.")
 
 
 class ReportStaffView(_ReportBase):
@@ -132,6 +149,11 @@ class ReportStaffView(_ReportBase):
     reporter: ReporterWithContactOut | ReporterOut
     client_created_at: datetime | None
     issue: IssueRef | None
+    category_source: CategorySource
+    match: MatchSummary | None = Field(
+        description="The decision that placed the report (the link made, else the best "
+        "candidate considered); null when no candidate was found."
+    )
 
 
 ReportView = Annotated[ReportOwnerView | ReportStaffView, Field(discriminator="view")]
@@ -149,6 +171,7 @@ class MyReportItem(BaseModel):
     category: CategoryRef
     thumb_url: str | None
     address_text: str | None
+    matching_status: MatchingStatus
     issue: MyReportIssue | None
 
 

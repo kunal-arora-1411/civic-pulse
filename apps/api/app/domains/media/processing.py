@@ -40,8 +40,8 @@ class Variant:
     height: int
 
 
-def render_variants(data: bytes, *, max_pixels: int) -> dict[str, Variant]:
-    """Decode `data` in full and encode each variant. Raises InvalidImage."""
+def decode_upright(data: bytes, *, max_pixels: int) -> Image.Image:
+    """Decode `data` in full with EXIF orientation applied. Raises InvalidImage."""
     image = open_image(data, max_pixels=max_pixels)
     try:
         image = ImageOps.exif_transpose(image)
@@ -50,7 +50,17 @@ def render_variants(data: bytes, *, max_pixels: int) -> dict[str, Variant]:
         raise
     except Exception:
         raise InvalidImage("decode_failed") from None
+    return image
 
+
+def render_variants(data: bytes, *, max_pixels: int) -> dict[str, Variant]:
+    """Decode `data` in full and encode each variant. Raises InvalidImage."""
+    return render_image_variants(decode_upright(data, max_pixels=max_pixels))
+
+
+def render_image_variants(image: Image.Image) -> dict[str, Variant]:
+    """Encode each variant from an upright, decoded image (face blurring
+    re-renders the variants from a blurred copy this way)."""
     has_alpha = image.mode in ("RGBA", "LA", "PA") or "transparency" in image.info
     mode = "RGBA" if has_alpha else "RGB"
     base = image.convert(mode)

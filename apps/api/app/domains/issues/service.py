@@ -42,6 +42,7 @@ from app.domains.issues.schemas import (
     StatusChange,
     TimelineEvent,
 )
+from app.domains.matching import views as match_views
 from app.domains.media.models import MediaAsset
 from app.domains.media.service import thumb_url
 from app.domains.org.models import Jurisdiction
@@ -298,23 +299,43 @@ async def issues_geojson(
 
 
 async def get_in_scope(
-    db: AsyncSession, principal: Principal, issue_id: uuid.UUID, *, for_update: bool = False
+    db: AsyncSession,
+    principal: Principal,
+    issue_id: uuid.UUID,
+    *,
+    for_update: bool = False,
+    permission: Permission = Permission.ISSUE_READ,
 ) -> CivicIssue:
-    """The issue, if it exists in this tenant and the caller's scope; else 404.
+    """The issue, if it exists in this tenant and the scope where the caller
+    holds `permission`; else 404.
 
     Out of scope is deliberately the same 404 as missing, so nothing about
     the issue's existence leaks.
     """
     stmt = select(CivicIssue).where(CivicIssue.id == issue_id)
     if for_update:
-        stmt = stmt.with_for_update()
+        stmt = stmt.with_for_update().execution_options(populate_existing=True)
     issue = await db.scalar(stmt)
     if issue is None:
         raise NotFound()
-    scope = await issue_scope(db, principal)
+    scope = await accessible_jurisdiction_ids(db, principal, permission)
     if not reports.in_scope(scope, issue.ward_id):
         raise NotFound()
     return issue
+
+
+async def list_items(
+    db: AsyncSession, storage: ObjectStorage, principal: Principal, issue_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, IssueListItem]:
+    """List items for these issues, leaving out any outside the caller's
+    scope. Merged issues are included: callers asked for them by id."""
+    if not issue_ids:
+        return {}
+    scope = await issue_scope(db, principal)
+    rows = await db.execute(
+        _list_select().where(CivicIssue.id.in_(issue_ids), scope_filter(CivicIssue.ward_id, scope))
+    )
+    return {row[0].id: _list_item(storage, row) for row in rows}
 
 
 async def roles_for_ward(
@@ -453,4 +474,11 @@ async def get_detail(
         ),
         timeline=await _timeline(db, issue.id),
         allowed_transitions=await allowed_transitions(db, principal, issue),
+        match_decisions=[
+            decision
+            for report_decisions in (
+                await match_views.decisions(db, [r.report.id for r in report_rows])
+            ).values()
+            for decision in report_decisions
+        ],
     )

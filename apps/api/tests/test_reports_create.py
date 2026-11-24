@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from tests import images
 from tests.factories import create_category
-from tests.helpers import Session
+from tests.helpers import InlineJobs, Session
 from tests.phase1 import NE, OUTSIDE, City, login_new, make_city, upload, uploaded_media_id
 
 REPORTS = "/api/v1/reports"
@@ -69,8 +69,8 @@ async def _count(engine: AsyncEngine, sql: str, **params: Any) -> int:
         return (await conn.execute(text(sql), params)).scalar_one()
 
 
-async def test_report_creates_its_issue_in_one_go(
-    client: httpx.AsyncClient, owner_engine: AsyncEngine, city: City
+async def test_report_is_saved_pending_then_matched_to_a_new_issue(
+    client: httpx.AsyncClient, owner_engine: AsyncEngine, city: City, jobs: InlineJobs
 ) -> None:
     media_id = await uploaded_media_id(client, city.citizen, images.jpeg())
     response = await submit(client, city.citizen, pothole_body(city, [media_id]))
@@ -91,8 +91,16 @@ async def test_report_creates_its_issue_in_one_go(
     assert report["details"] == {"road_name": "MG Road", "size": "large"}
     assert [m["id"] for m in report["media"]] == [media_id]
     assert report["media"][0]["original_url"] is None  # never for the citizen
+    # The report is saved first; matching decides afterwards.
+    assert report["matching_status"] == "pending"
+    assert report["issue"] is None
+    assert jobs.called("match_report") == [(uuid.UUID(report["id"]), city.tenant.id)]
 
-    issue = report["issue"]
+    # Matching ran once the request had committed: nothing nearby, so the
+    # report started an issue of its own.
+    matched = (await client.get(f"{REPORTS}/{report['id']}", headers=city.citizen.headers)).json()
+    assert matched["matching_status"] == "new_issue"
+    issue = matched["issue"]
     assert re.fullmatch(rf"CP-{YY}-\d{{6}}", issue["reference"])
     assert issue["status"] == "reported"
     assert issue["timeline"] == [
@@ -110,8 +118,9 @@ async def test_report_creates_its_issue_in_one_go(
             await conn.execute(
                 text(
                     "SELECT i.report_count, i.unique_reporter_count, i.cover_media_id, i.ward_id, "
-                    "i.version, m.report_id, m.position FROM civic_issues i "
-                    "JOIN media_assets m ON m.id = i.cover_media_id WHERE i.id = :id"
+                    "i.version, m.report_id, m.position, r.category_source FROM civic_issues i "
+                    "JOIN media_assets m ON m.id = i.cover_media_id "
+                    "JOIN reports r ON r.id = m.report_id WHERE i.id = :id"
                 ),
                 {"id": issue["id"]},
             )
@@ -133,7 +142,8 @@ async def test_report_creates_its_issue_in_one_go(
     assert row.version == 1
     assert str(row.report_id) == report["id"]
     assert row.position == 0
-    assert actions == ["report.created", "issue.created"]
+    assert row.category_source == "citizen"
+    assert actions == ["report.created", "issue.created", "report.matched"]
 
 
 async def test_replaying_a_submission_returns_the_same_report(
@@ -146,7 +156,10 @@ async def test_replaying_a_submission_returns_the_same_report(
     assert replay.status_code == 201
     assert replay.headers["Idempotent-Replayed"] == "true"
     assert replay.json()["id"] == first.json()["id"]
-    assert replay.json()["issue"]["reference"] == first.json()["issue"]["reference"]
+    # Re-rendered, so the replay shows where matching has placed it since.
+    assert first.json()["matching_status"] == "pending"
+    assert replay.json()["matching_status"] == "new_issue"
+    assert replay.json()["issue"] is not None
 
     reused = await submit(client, city.citizen, {**body, "description": "Different text now"}, key)
     _error(reused, 422, "idempotency_key_reused")
@@ -179,12 +192,20 @@ async def test_idempotency_key_is_required(client: httpx.AsyncClient, city: City
 async def test_concurrent_submissions_get_unique_references(
     client: httpx.AsyncClient, owner_engine: AsyncEngine, city: City
 ) -> None:
-    responses = await asyncio.gather(
-        *(submit(client, city.citizen, waste_body(city)) for _ in range(12))
-    )
+    # Each report a few hundred metres from the next, so each starts its own
+    # issue and issue references are allocated concurrently too.
+    bodies = [
+        {**waste_body(city), "location": {"lat": 12.972 + 0.003 * n, "lng": 77.61, "source": "pin"}}
+        for n in range(12)
+    ]
+    responses = await asyncio.gather(*(submit(client, city.citizen, body) for body in bodies))
     assert [r.status_code for r in responses] == [201] * 12, [r.text for r in responses]
     report_refs = [r.json()["reference"] for r in responses]
-    issue_refs = [r.json()["issue"]["reference"] for r in responses]
+    views = [
+        (await client.get(f"{REPORTS}/{r.json()['id']}", headers=city.citizen.headers)).json()
+        for r in responses
+    ]
+    issue_refs = [v["issue"]["reference"] for v in views]
     assert len(set(report_refs)) == 12
     assert len(set(issue_refs)) == 12
     # One counter per tenant: the twelve numbers are exactly 1..12.

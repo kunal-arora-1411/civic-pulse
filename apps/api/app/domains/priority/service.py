@@ -73,6 +73,7 @@ async def recompute(db: AsyncSession, issue_id: uuid.UUID, *, now: datetime | No
     from the state they saw and the next trigger corrects it.
     """
     now = now or datetime.now(UTC)
+    await db.flush()  # the caller's changes count (reports moved, status...)
     row = (
         await db.execute(
             select(CivicIssue, func.ST_Y(CivicIssue.location))
@@ -167,8 +168,10 @@ async def recompute(db: AsyncSession, issue_id: uuid.UUID, *, now: datetime | No
         update(CivicIssue)
         .where(CivicIssue.id == issue.id)
         .values(**values)
-        .execution_options(synchronize_session="fetch")
+        .execution_options(synchronize_session=False)
     )
+    # Bring the in-session copy up to date for whoever renders it next.
+    await db.refresh(issue)
 
 
 async def _recompute_in_own_transaction(issue_id: uuid.UUID, tenant_id: uuid.UUID) -> bool:
