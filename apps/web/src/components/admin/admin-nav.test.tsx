@@ -50,9 +50,10 @@ describe("visibleNavItems", () => {
     ]);
   });
 
-  it("shows only the overview without admin permissions", () => {
+  it("shows the review queue, and no admin sections, to a triage-only operator", () => {
     expect(visibleNavItems(operator).map((item) => item.key)).toEqual([
       "overview",
+      "review",
     ]);
   });
 

@@ -1,4 +1,5 @@
 import {
+  GitCompareArrows,
   Inbox,
   LayoutDashboard,
   type LucideIcon,
@@ -13,6 +14,7 @@ import { hasPermission } from "@/lib/auth/access";
 export type AdminNavKey =
   | "overview"
   | "issues"
+  | "review"
   | "map"
   | "categories"
   | "users"
@@ -23,6 +25,7 @@ export type AdminNavItem = {
   href:
     | "/admin"
     | "/admin/issues"
+    | "/admin/review"
     | "/admin/map"
     | "/admin/categories"
     | "/admin/users"
@@ -30,6 +33,8 @@ export type AdminNavItem = {
   icon: LucideIcon;
   /** Hidden unless the user has this permission. No value: any staff. */
   permission?: string;
+  /** Shows a count next to the label, e.g. open review tasks. */
+  badge?: "openReviews";
 };
 
 export const ADMIN_NAV: readonly AdminNavItem[] = [
@@ -39,6 +44,13 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     href: "/admin/issues",
     icon: Inbox,
     permission: "issue:read",
+  },
+  {
+    key: "review",
+    href: "/admin/review",
+    icon: GitCompareArrows,
+    permission: "issue:triage",
+    badge: "openReviews",
   },
   { key: "map", href: "/admin/map", icon: MapIcon, permission: "issue:read" },
   {

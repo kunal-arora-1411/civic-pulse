@@ -31,6 +31,11 @@ export const PinMap = dynamic(
   { ssr: false, loading: () => <MapSkeleton /> },
 );
 
+export const ComparisonMap = dynamic(
+  () => import("./comparison-map").then((mod) => mod.ComparisonMap),
+  { ssr: false, loading: () => <MapSkeleton /> },
+);
+
 export const IssuesMap = dynamic(
   () => import("./issues-map").then((mod) => mod.IssuesMap),
   { ssr: false, loading: () => <MapSkeleton /> },

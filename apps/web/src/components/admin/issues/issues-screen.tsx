@@ -12,6 +12,7 @@ import { useFormatter, useNow, useTranslations } from "next-intl";
 import { useId } from "react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Pagination } from "@/components/admin/pagination";
+import { useOpenReviewCount } from "@/components/admin/review/use-open-review-count";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { PriorityBadge } from "@/components/issues/priority-badge";
 import { StatusBadge } from "@/components/issues/status-badge";
@@ -97,6 +98,9 @@ export function IssuesScreen() {
   const errorMessage = useErrorMessage();
   const router = useRouter();
   const { filters, setFilters } = useIssueFilters();
+  // Reports waiting for a duplicate decision have no issue yet, so they
+  // aren't in this list; say how many there are and where to find them.
+  const openReviews = useOpenReviewCount();
   const sortId = useId();
   const params = toListParams(filters, PAGE_SIZE);
 
@@ -131,6 +135,20 @@ export function IssuesScreen() {
           </Link>
         }
       />
+
+      {openReviews > 0 ? (
+        <Alert variant="info" className="mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p>{t("waitingForReview", { count: openReviews })}</p>
+            <Link
+              href="/admin/review"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              {t("openReview")}
+            </Link>
+          </div>
+        </Alert>
+      ) : null}
 
       <IssueFiltersBar
         filters={filters}

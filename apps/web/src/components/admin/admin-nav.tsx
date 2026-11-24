@@ -5,6 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import type { CurrentUser } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { isActive, visibleNavItems } from "./nav-items";
+import { useOpenReviewCount } from "./review/use-open-review-count";
 
 export function AdminNav({
   user,
@@ -18,6 +19,7 @@ export function AdminNav({
   const t = useTranslations("admin.nav");
   const pathname = usePathname();
   const items = visibleNavItems(user);
+  const openReviews = useOpenReviewCount();
 
   return (
     <nav aria-label={t("label")} className={className}>
@@ -45,6 +47,14 @@ export function AdminNav({
                 ) : null}
                 <Icon aria-hidden="true" className="size-[1.125rem]" />
                 {t(item.key)}
+                {item.badge === "openReviews" && openReviews > 0 ? (
+                  <span className="ms-auto rounded-full bg-accent px-2 text-xs leading-5 font-semibold text-accent-foreground tabular-nums">
+                    <span aria-hidden="true">{openReviews}</span>
+                    <span className="sr-only">
+                      {t("openReviews", { count: openReviews })}
+                    </span>
+                  </span>
+                ) : null}
               </Link>
             </li>
           );
