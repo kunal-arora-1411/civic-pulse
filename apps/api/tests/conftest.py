@@ -53,6 +53,10 @@ os.environ.update(
         "REFRESH_REUSE_GRACE_SECONDS": "0",
         # Every test request comes from 127.0.0.1.
         "OTP_MAX_PER_IP_PER_HOUR": "100000",
+        # Many tests file reports in bulk; tests/test_report_rate_limit.py
+        # lowers these to exercise the limit itself.
+        "REPORT_MAX_PER_HOUR": "100000",
+        "REPORT_MAX_PER_DAY": "100000",
         # Real MinIO from compose, in a bucket of its own (emptied per run).
         # The root credentials are fine here: the suite creates that bucket.
         "S3_ENDPOINT": os.environ.get("TEST_S3_ENDPOINT", "http://localhost:9000"),

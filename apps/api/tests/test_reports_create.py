@@ -381,3 +381,48 @@ async def test_report_permissions(client: httpx.AsyncClient, city: City) -> None
         await client.post(REPORTS, json=body, headers={"Idempotency-Key": "k"})
     ).status_code == 401
     _error(await submit(client, city.operator, body), 403, "forbidden")
+
+
+async def test_submissions_are_rate_limited_per_user(
+    client: httpx.AsyncClient,
+    sms: Any,
+    owner_engine: AsyncEngine,
+    city: City,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "report_max_per_hour", 2)
+    key = uuid.uuid4().hex
+    assert (await submit(client, city.citizen, waste_body(city), key)).status_code == 201
+    assert (await submit(client, city.citizen, waste_body(city))).status_code == 201
+
+    refused = await submit(client, city.citizen, waste_body(city))
+    body = _error(refused, 429, "rate_limited")
+    assert 0 < int(refused.headers["Retry-After"]) <= 3600
+    assert body["details"]["retry_after"] == int(refused.headers["Retry-After"])
+
+    # A retry of an accepted submission still replays, and the refused one
+    # created nothing.
+    assert (await submit(client, city.citizen, waste_body(city), key)).status_code == 201
+    async with owner_engine.connect() as conn:
+        count = await conn.scalar(
+            text("SELECT count(*) FROM reports WHERE tenant_id = :t"), {"t": city.tenant.id}
+        )
+    assert count == 2
+
+    # The limit is per user.
+    other = await login_new(client, sms, owner_engine, city, "citizen")
+    assert (await submit(client, other, waste_body(city))).status_code == 201
+
+
+async def test_daily_report_limit(
+    client: httpx.AsyncClient, city: City, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "report_max_per_day", 1)
+    assert (await submit(client, city.citizen, waste_body(city))).status_code == 201
+    refused = await submit(client, city.citizen, waste_body(city))
+    assert refused.status_code == 429
+    assert int(refused.headers["Retry-After"]) > 3600

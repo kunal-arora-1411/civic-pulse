@@ -87,6 +87,11 @@ class Settings(BaseSettings):
 
     idempotency_ttl_seconds: int = 24 * 3600
 
+    # Report submissions per citizen (PRD 12.3): a burst limit an hour and
+    # a ceiling a day. Idempotent replays don't count.
+    report_max_per_hour: int = 10
+    report_max_per_day: int = 30
+
     # Object storage (S3 API; MinIO in development). The API talks to
     # S3_ENDPOINT, which may be an internal hostname. Pre-signed URLs are
     # handed to browsers, and a SigV4 signature covers the Host header, so
