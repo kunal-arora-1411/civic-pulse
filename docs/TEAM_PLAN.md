@@ -16,6 +16,8 @@
 | P5 Analytics | ⬜ Not started |
 | P6 Hardening and pilot | ⬜ Not started |
 
+**Individual plans:** each person's tasks, in build order, with dependencies, are in [`docs/team/`](team/README.md).
+
 **Remaining:** about 13 weeks to pilot go-live with 4 people, starting **Mon 30 Nov 2026**, with go-live in the week of **22 Feb 2027**. The schedule allows for the holidays in late December.
 
 ---
