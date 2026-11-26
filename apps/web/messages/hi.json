@@ -1062,6 +1062,16 @@
         "feedback": "{count} समीक्षित में से",
         "metric": "माप",
         "value": "दर"
+      },
+      "export": {
+        "label": "CSV डाउनलोड करें",
+        "busy": "फ़ाइल तैयार हो रही है…",
+        "fallbackFilename": "issues.csv",
+        "doneTitle": "{rows, plural, one {# समस्या डाउनलोड हुई} other {# समस्याएँ डाउनलोड हुईं}}",
+        "truncatedTitle": "अधूरी फ़ाइल: पहली {rows, plural, one {# समस्या} other {# समस्याएँ}}",
+        "truncatedDescription": "निर्यात 20,000 समस्याओं पर रुक गया। बाकी के लिए अवधि या फ़िल्टर सीमित करें।",
+        "failedTitle": "फ़ाइल डाउनलोड नहीं हो सकी",
+        "rangeInvalid": "पहले कस्टम अवधि ठीक करें।"
       }
     }
   },
