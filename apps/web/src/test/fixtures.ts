@@ -4,6 +4,7 @@ import type {
   Tenant,
   TokenResponse,
 } from "@/lib/api/schemas";
+import type { Team, WorkOrder } from "@/lib/api/schemas-operations";
 import type {
   Category,
   IssueDetail,
@@ -209,6 +210,53 @@ export function makeIssueDetail(
     related: [],
     breached_at: null,
     escalation_level: 0,
+    ...overrides,
+  };
+}
+
+/** A field work order (Phase 3 field view): no reporter data at all. */
+export function makeWorkOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
+  return {
+    id: "wo-1",
+    state: "pending_acceptance",
+    version: 1,
+    created_at: "2026-11-21T09:00:00+05:30",
+    updated_at: "2026-11-21T09:00:00+05:30",
+    issue: {
+      id: "iss-1",
+      reference: "CP-26-000123",
+      status: "assigned",
+      category: categorySummary,
+      location: { lat: 12.9716, lng: 77.5946 },
+      address_text: "MG Road, Shivajinagar",
+      ward: { id: "ward-3", name: "Ward 3 (synthetic)" },
+      priority_band: "high",
+      descriptions: ["Deep pothole near the bus stop"],
+      photos: [],
+    },
+    evidence: [],
+    updates: [],
+    ...overrides,
+  };
+}
+
+export function makeTeam(overrides: Partial<Team> = {}): Team {
+  return {
+    id: "team-1",
+    department: { id: "dept-roads", code: "ROADS", name: "Roads" },
+    name: "Roads North",
+    is_active: true,
+    members: [
+      {
+        user: { id: "user-4", display_name: "Farah Field" },
+        team_role: "lead",
+      },
+    ],
+    jurisdiction_ids: ["zone-north"],
+    category_ids: ["cat-pothole"],
+    schedule: null,
+    created_at: "2026-11-01T09:00:00+05:30",
+    updated_at: "2026-11-01T09:00:00+05:30",
     ...overrides,
   };
 }

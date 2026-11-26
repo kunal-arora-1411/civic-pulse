@@ -44,11 +44,128 @@
   "field": {
     "badge": "Field",
     "title": "My work orders",
-    "subtitle": "Jobs assigned to you will appear here.",
+    "subtitle": "Jobs assigned to you. New ones are at the top.",
     "emptyTitle": "No work orders yet",
     "emptyBody": "When a supervisor assigns you a job, you'll see the location, details and photos here.",
     "offlineTitle": "Working without signal",
-    "offlineBody": "Offline updates will be supported in a later release. For now, keep this page open on a connection."
+    "offlineBody": "Offline updates will be supported in a later release. For now, keep this page open on a connection.",
+    "list": {
+      "tabsLabel": "Show work orders",
+      "tabs": {
+        "active": "Active",
+        "done": "Done"
+      },
+      "loading": "Loading your work orders…",
+      "error": "Couldn't load your work orders",
+      "retry": "Try again",
+      "noneDone": "No finished jobs yet",
+      "noAddress": "No address; use the map pin",
+      "assignedAt": "Assigned {when}"
+    },
+    "detail": {
+      "metaTitle": "Work order",
+      "back": "My work orders",
+      "loadError": "Couldn't load this work order",
+      "retry": "Try again",
+      "notFoundTitle": "Work order not found",
+      "notFoundBody": "It may have been reassigned to someone else.",
+      "accept": "Accept job",
+      "decline": "Decline",
+      "start": "Start work",
+      "addUpdate": "Add update",
+      "requestClosure": "Mark as fixed",
+      "accepted": "Job accepted",
+      "started": "Work started",
+      "ended": {
+        "completion_requested": {
+          "title": "Waiting for approval",
+          "body": "You've marked this as fixed. A supervisor or the citizens who reported it will confirm."
+        },
+        "done": {
+          "title": "Job closed",
+          "body": "The fix was approved. Nothing more to do here."
+        },
+        "declined": {
+          "title": "You declined this job",
+          "body": "A supervisor will assign it to someone else."
+        },
+        "cancelled": {
+          "title": "Job reassigned",
+          "body": "This job was given to someone else. You don't need to do anything."
+        }
+      },
+      "conflictTitle": "This job changed while you had it open",
+      "conflictBody": "It's now “{state}”. Check the details below before you carry on.",
+      "location": "Location",
+      "mapLabel": "Map showing where {reference} is",
+      "noAddress": "No address; use the map pin",
+      "directions": "Get directions",
+      "opensInNewTab": "(opens your maps app)",
+      "whatWasReported": "What was reported",
+      "noDescription": "The reporters didn't add a description.",
+      "photosOf": "Reported photos of {reference}",
+      "evidence": "Your photos",
+      "noEvidence": "No photos yet. Add before and after photos with an update.",
+      "before": "Before",
+      "after": "After",
+      "beforeOf": "Before photos of {reference}",
+      "afterOf": "After photos of {reference}",
+      "updates": "Updates",
+      "noUpdates": "No updates yet.",
+      "withLocation": "with location",
+      "photosOnly": "Photos added"
+    },
+    "decline": {
+      "title": "Decline {reference}",
+      "description": "The job goes back to your supervisor to reassign.",
+      "close": "Close",
+      "cancel": "Keep the job",
+      "submit": "Decline job",
+      "done": "Job declined",
+      "reason": "Why are you declining?",
+      "reasonHelp": "Your supervisor sees this.",
+      "reasonRequired": "Tell your supervisor why."
+    },
+    "progress": {
+      "title": "Update on {reference}",
+      "description": "Add a note, photos or both. Your supervisor sees updates; citizens don't.",
+      "close": "Close",
+      "cancel": "Cancel",
+      "submit": "Post update",
+      "waitingForPhotos": "Uploading photos…",
+      "done": "Update posted",
+      "note": "Note",
+      "noteHelp": "What you found or did.",
+      "phaseLegend": "These photos are from",
+      "phase": {
+        "before": "Before the work",
+        "after": "After the work"
+      },
+      "photosHint": "Optional. Up to {max} photos.",
+      "shareLocation": "Attach my current location",
+      "locationFailed": "Couldn't get your location. The update was sent without it.",
+      "empty": "Add a note or at least one photo."
+    },
+    "closure": {
+      "title": "Mark {reference} as fixed",
+      "description": "Add a photo of the finished work. A supervisor or the reporters confirm before it's resolved.",
+      "close": "Close",
+      "cancel": "Cancel",
+      "submit": "Send for approval",
+      "waitingForPhotos": "Uploading photos…",
+      "done": "Sent for approval",
+      "hasAfter": "You've already added an after photo, so another one is optional.",
+      "photosHint": "After photos. Up to {max}.",
+      "photoRequired": "Add at least one photo of the finished work.",
+      "reasonLegend": "No photo? Choose a reason",
+      "reasonHelp": "This category can be closed without a photo for these reasons only.",
+      "note": "Note",
+      "noteHelp": "Optional. What was done.",
+      "reasonCodes": {
+        "no_issue_found": "No problem found on site",
+        "handled_by_other_agency": "Handled by another agency"
+      }
+    }
   },
   "notFound": {
     "title": "We couldn't find that page",
@@ -1154,7 +1271,14 @@
     "invalid_transition": "That status change isn't allowed from the current status.",
     "reason_required": "This change needs a reason.",
     "invalid_merge": "These issues can't be merged. One of them may already have been merged.",
-    "cannot_empty_issue": "At least one report has to stay on the issue."
+    "cannot_empty_issue": "At least one report has to stay on the issue.",
+    "invalid_work_order_action": "That step doesn't fit where this job is now. The page shows its current state.",
+    "not_assignable": "This issue can't be assigned in its current status.",
+    "team_not_eligible": "That team can't take this issue: it's inactive, doesn't handle the category, or doesn't cover the ward.",
+    "assignee_not_in_team": "That person isn't a member of the chosen team.",
+    "not_eligible": "Only people who reported this issue can do that.",
+    "already_verified": "You've already answered for this fix.",
+    "team_has_open_work": "This team still has open work orders. Reassign them before deactivating it."
   },
   "priorityFactors": {
     "severity": "Severity is {level}",
@@ -1836,5 +1960,14 @@
     "overdue": "Overdue",
     "dueSoon": "Due soon",
     "dueAt": "SLA due {date}"
+  },
+  "workOrderState": {
+    "pending_acceptance": "New",
+    "accepted": "Accepted",
+    "in_progress": "In progress",
+    "completion_requested": "Awaiting approval",
+    "done": "Done",
+    "declined": "Declined",
+    "cancelled": "Cancelled"
   }
 }

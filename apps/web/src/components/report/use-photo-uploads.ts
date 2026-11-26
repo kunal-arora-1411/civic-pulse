@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { UploadPurpose } from "@/lib/api";
 import { type DraftPhoto, randomId } from "@/lib/report/draft";
 import type { PhotoStatus } from "@/lib/report/validation";
 import {
@@ -75,6 +76,8 @@ function fromDraft(photo: DraftPhoto): LivePhoto {
 export function usePhotoUploads(
   initial: readonly DraftPhoto[],
   onChange: (photos: DraftPhoto[]) => void,
+  /** What the photos are for; report photos unless given. */
+  purpose?: UploadPurpose,
 ) {
   const [photos, setPhotos] = useState<LivePhoto[]>(() =>
     initial.map(fromDraft),
@@ -82,6 +85,8 @@ export function usePhotoUploads(
   const internals = useRef(new Map<string, Internal>());
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const purposeRef = useRef(purpose);
+  purposeRef.current = purpose;
 
   const patch = useCallback((id: string, changes: Partial<LivePhoto>) => {
     setPhotos((current) =>
@@ -134,6 +139,7 @@ export function usePhotoUploads(
         if (!prepared) return;
         const asset = await uploadImage(prepared, {
           signal,
+          purpose: purposeRef.current,
           onStage: (stage) => patch(id, { status: stage }),
           onProgress: (progress) => patch(id, { progress }),
         });
