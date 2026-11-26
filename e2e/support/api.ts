@@ -250,10 +250,24 @@ export class Api {
     };
   }
 
+  /** A JSON call that must succeed, for arranging staff-side steps. */
+  async send<T>(
+    session: Session,
+    method: "GET" | "POST" | "PATCH",
+    path: string,
+    data?: unknown,
+  ): Promise<T> {
+    const response = await expectOk(
+      await this.raw(session, method, path, data),
+      `${method} ${path}`,
+    );
+    return (await response.json()) as T;
+  }
+
   /** A raw call, for asserting on refusals. */
   raw(
     session: Session,
-    method: "GET" | "PATCH",
+    method: "GET" | "POST" | "PATCH",
     path: string,
     data?: unknown,
   ): Promise<APIResponse> {
