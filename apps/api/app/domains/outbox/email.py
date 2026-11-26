@@ -11,8 +11,14 @@ Copy lives here in both launch languages and is chosen by the recipient's
 can resolve a key against its catalogue.
 
 Every reason for not sending is a `skipped` delivery carrying the reason —
-nobody named, no address, no relay — so the log separates "we chose not to"
-from "the relay refused", which is a `failed` and gets retried.
+nobody named, no address, no relay, switched off in their preferences — so
+the log separates "we chose not to" from "the relay refused", which is a
+`failed` and gets retried.
+
+Other notifications (`notification.created`) are emailed with the shared,
+lock-screen-safe copy in `app/domains/notifications/render.py`, when the
+recipient keeps that kind on for email. The assignment notification is the
+exception: `issue.assigned` above already mails it with more to act on.
 """
 
 from __future__ import annotations
@@ -26,6 +32,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 from app.core.config import get_settings
 from app.core.mail import Email, Mailer
 from app.core.tenancy import system_session
+from app.domains.notifications import preferences
+from app.domains.notifications.models import NotificationKind
+from app.domains.notifications.render import email_text
+from app.domains.outbox import notify
 from app.domains.outbox.channels import Delivery
 from app.domains.outbox.models import OutboxEvent
 from app.domains.priority.rules import PriorityBand
@@ -34,7 +44,7 @@ CHANNEL = "email"
 
 # Only events that ask a person to do something justify an email. A status
 # change the citizen can see in the app does not.
-EMAIL_EVENTS = frozenset({"issue.assigned"})
+EMAIL_EVENTS = frozenset({"issue.assigned", notify.NOTIFICATION_EVENT})
 
 # Where a field user acts on their work.
 LINK_PATH = "/field"
@@ -81,7 +91,10 @@ class EmailChannel:
             return Delivery.skipped(CHANNEL, "no SMTP relay is configured")
 
         async with system_session(reason="outbox: email channel") as db:
-            composed = await compose(db, event)
+            if event.event_type == notify.NOTIFICATION_EVENT:
+                composed = await compose_notification(db, event)
+            else:
+                composed = await compose(db, event)
 
         if composed.email is None:
             return Delivery.skipped(CHANNEL, composed.skip or "nothing to send")
@@ -101,12 +114,37 @@ async def compose(db: AsyncConnection | AsyncSession, event: OutboxEvent) -> Com
         return Composed(skip="the assignment names nobody to email")
     if not person.email:
         return Composed(skip="the assignee has no email address")
+    if not await preferences.enabled(db, person.id, NotificationKind.ASSIGNMENT, CHANNEL):
+        return Composed(skip="the assignee turned assignment emails off")
     issue = await _issue_facts(db, event)
     if issue is None:
         return Composed(skip="the issue is gone")
 
     web_url = get_settings().web_url
     return Composed(email=render_assignment(person, issue, web_url))
+
+
+async def compose_notification(db: AsyncSession, event: OutboxEvent) -> Composed:
+    """An email for one in-app notification, or why there is none."""
+    if event.payload.get("kind") == NotificationKind.ASSIGNMENT:
+        return Composed(skip="assignments are emailed with issue.assigned")
+    loaded = await notify.load(db, event, CHANNEL)
+    if loaded.facts is None:
+        return Composed(skip=loaded.skip)
+    facts = loaded.facts
+    if not facts.email:
+        return Composed(skip="the recipient has no email address")
+    web_url = get_settings().web_url
+    rendered = facts.rendered()
+    return Composed(
+        email=Email(
+            to=facts.email,
+            subject=rendered.title,
+            text=email_text(
+                rendered, name=facts.display_name, locale=facts.locale, web_url=web_url
+            ),
+        )
+    )
 
 
 async def _assignee(db: AsyncConnection | AsyncSession, event: OutboxEvent) -> Assignee | None:

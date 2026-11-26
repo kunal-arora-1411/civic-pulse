@@ -94,6 +94,33 @@ class Settings(BaseSettings):
     # Links in email go to the web app, not to the API.
     web_url: str = "http://localhost:3000"
 
+    # Web Push (VAPID, RFC 8292). Both keys empty switches the push channel
+    # off: the subscribe endpoints answer 503 and the dispatcher never tries.
+    # The private key is the base64url raw P-256 scalar or a PEM; the public
+    # key is the base64url uncompressed point browsers are given. Generate
+    # a pair with `python scripts/vapid_keys.py`.
+    vapid_public_key: str = ""
+    vapid_private_key: SecretStr | None = None
+    # The contact push services use if our pushes misbehave (mailto: or https:).
+    vapid_subject: str = "mailto:ops@civicpulse.local"
+    # A subscription's endpoint is a URL the dispatcher will POST to, so it
+    # must belong to a real browser push service: anything else is refused at
+    # subscribe time (it would let a user aim our servers at internal hosts).
+    # Matched as the host or a dot-suffix of it.
+    push_endpoint_hosts: list[str] = [
+        "fcm.googleapis.com",
+        "updates.push.services.mozilla.com",
+        "push.apple.com",
+        "notify.windows.com",
+    ]
+
+    # Repeated notifications (PRD 15.2): the same person is told about the
+    # same issue on the same external channel at most once per window, and
+    # gets at most this many notification texts a day (the in-app inbox
+    # still has every one). One-time passwords are limited separately.
+    notification_dedup_minutes: int = 10
+    notification_sms_per_day: int = 10
+
     # MFA
     totp_encryption_key: SecretStr
     totp_issuer: str = "CivicPulse"
@@ -213,6 +240,12 @@ class Settings(BaseSettings):
     def mail_enabled(self) -> bool:
         """Whether email can be attempted at all: a relay, or nothing."""
         return bool(self.smtp_host.strip())
+
+    @property
+    def push_enabled(self) -> bool:
+        """Whether Web Push can be attempted: both halves of the VAPID pair."""
+        private = self.vapid_private_key.get_secret_value() if self.vapid_private_key else ""
+        return bool(self.vapid_public_key.strip() and private.strip())
 
     @property
     def staff_mfa_required(self) -> bool:
