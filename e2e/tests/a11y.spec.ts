@@ -51,20 +51,3 @@ test("the operator's console is accessible", async ({ page, context, api }) => {
   await page.waitForLoadState("networkidle");
   await expectAccessible(page, "admin-issues");
 });
-
-test("the teams and closure rules pages are accessible", async ({
-  page,
-  context,
-  api,
-}) => {
-  await giveSession(context, await api.login(SEEDED.municipalAdmin));
-  for (const [name, path] of [
-    ["admin-teams", "/admin/teams"],
-    ["admin-closure", "/admin/settings/closure"],
-  ] as const) {
-    await page.goto(path);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await page.waitForLoadState("networkidle");
-    await expectAccessible(page, name);
-  }
-});

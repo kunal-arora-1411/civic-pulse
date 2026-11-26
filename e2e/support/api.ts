@@ -71,9 +71,13 @@ export class Api {
       data: { phone },
     });
     // The per-phone resend cooldown (30 s) can still be running when a
-    // seeded account signs in again straight after a previous run. Wait
-    // exactly as long as the API says, once.
-    if (challenge.status() === 429) {
+    // seeded account signed in moments ago, here or in a parallel test.
+    // Wait exactly as long as the API says, a few times at most.
+    for (
+      let attempt = 0;
+      attempt < 3 && challenge.status() === 429;
+      attempt++
+    ) {
       const body = (await challenge.json()) as ApiErrorBody;
       const wait = Number(body.error.details.retry_after ?? 0);
       if (body.error.code !== "rate_limited" || wait > 35) {

@@ -11,17 +11,16 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 /** Fail on serious or critical axe violations; attach the rest. */
 export async function expectAccessible(page: Page, name: string) {
   // Measure the settled page: an entrance fade-in caught half way reads as
-  // low contrast. Endless animations (skeletons, spinners) are ignored.
+  // low contrast. Finite animations jump to their end state; endless ones
+  // (skeletons, spinners) are left alone.
   await page.waitForLoadState("networkidle");
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every(
-        (animation) =>
-          animation.playState !== "running" ||
-          animation.effect?.getComputedTiming().iterations === Infinity,
-      ),
-  );
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      if (animation.effect?.getComputedTiming().iterations !== Infinity) {
+        animation.finish();
+      }
+    }
+  });
   // Leaflet's tiles and controls are third-party markup we can't change.
   const results = await new AxeBuilder({ page })
     .withTags(TAGS)
