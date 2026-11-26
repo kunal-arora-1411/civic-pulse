@@ -38,6 +38,7 @@ import {
 } from "./charts";
 import { ExportButton } from "./export-button";
 import { KpiTiles } from "./kpi-tiles";
+import { SavedViews } from "./saved-views";
 import { useAnalyticsFilters } from "./use-analytics-filters";
 
 const WARD_LIMIT = 10;
@@ -221,6 +222,7 @@ export function AnalyticsScreen() {
         description={t("description")}
         actions={<ExportButton filters={filters} />}
       />
+      <SavedViews filters={filters} onApply={setFilters} />
       <AnalyticsFiltersBar filters={filters} onChange={setFilters} />
 
       <div className="grid gap-4">

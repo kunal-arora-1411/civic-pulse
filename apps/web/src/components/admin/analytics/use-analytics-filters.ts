@@ -21,15 +21,27 @@ export function useAnalyticsFilters() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: the query string identifies the params
   const filters = useMemo(() => parseFilters(searchParams), [query]);
 
-  const setFilters = useCallback((changes: Partial<AnalyticsFilters>) => {
-    const current = parseFilters(new URLSearchParams(window.location.search));
-    const search = serializeFilters({ ...current, ...changes }).toString();
-    window.history.pushState(
-      null,
-      "",
-      `${window.location.pathname}${search ? `?${search}` : ""}`,
-    );
-  }, []);
+  const setFilters = useCallback(
+    (
+      changes: Partial<AnalyticsFilters>,
+      options: { replace?: boolean } = {},
+    ) => {
+      const current = parseFilters(new URLSearchParams(window.location.search));
+      const search = serializeFilters({ ...current, ...changes }).toString();
+      // Replace when opening on a default view, so Back leaves the page
+      // instead of returning to the unfiltered URL.
+      const update = options.replace
+        ? window.history.replaceState
+        : window.history.pushState;
+      update.call(
+        window.history,
+        null,
+        "",
+        `${window.location.pathname}${search ? `?${search}` : ""}`,
+      );
+    },
+    [],
+  );
 
   return { filters, setFilters };
 }
