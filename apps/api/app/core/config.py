@@ -75,6 +75,14 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_max_per_hour: int = 5
     otp_max_per_ip_per_hour: int = 30
+    # Per client address on the other unauthenticated auth endpoints. Each
+    # challenge already allows only a few wrong codes; these stop one
+    # address from spraying guesses across many challenges or tokens.
+    otp_verify_max_per_ip_per_hour: int = 120
+    mfa_verify_max_per_ip_per_hour: int = 60
+    refresh_max_per_ip_per_hour: int = 600
+    # GET /tenants/current resolves any slug without a login.
+    tenant_lookup_max_per_ip_per_minute: int = 300
     dev_fixed_otp: bool = False
     dev_fixed_otp_code: str = "000000"
     sms_provider: str = "console"
