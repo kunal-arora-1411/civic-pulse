@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     refresh_max_per_ip_per_hour: int = 600
     # GET /tenants/current resolves any slug without a login.
     tenant_lookup_max_per_ip_per_minute: int = 300
+    # The public tracker (/public/{tenant}/...), per client address. Raise
+    # it for load tests run from a single machine (infra/load).
+    public_max_per_ip_per_minute: int = 300
     dev_fixed_otp: bool = False
     dev_fixed_otp_code: str = "000000"
     sms_provider: str = "console"
