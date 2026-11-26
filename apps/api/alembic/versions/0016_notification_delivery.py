@@ -15,7 +15,7 @@ nullable on the outbox tables. Such rows match no tenant policy and are only
 reachable through the explicit RLS bypass, like the audit log's platform rows.
 
 Revision ID: 0016
-Revises: 0015
+Revises: 0013
 Create Date: 2026-11-26
 """
 
@@ -29,7 +29,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0016"
-down_revision: str | None = "0015"
+down_revision: str | None = "0013"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
