@@ -1381,6 +1381,18 @@
       "view": "View your report",
       "another": "Report another issue",
       "home": "Back to home"
+    },
+    "voice": {
+      "start": "Speak instead",
+      "stop": "Stop",
+      "listening": "Listening…",
+      "privacy": "Your browser turns speech into text, which you can edit before sending. CivicPulse doesn't keep any audio.",
+      "error": {
+        "not-allowed": "Microphone access was blocked. Allow it in your browser settings, or type instead.",
+        "no-speech": "We didn't hear anything. Try again closer to the microphone.",
+        "network": "Speech needs a connection. Type instead while you're offline.",
+        "other": "Speech input stopped. You can type instead."
+      }
     }
   },
   "gallery": {
