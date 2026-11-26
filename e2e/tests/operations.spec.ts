@@ -2,22 +2,21 @@ import { fileURLToPath } from "node:url";
 import { expectAccessible } from "../support/a11y";
 import type { Api, Session } from "../support/api";
 import { freshCitizenPhone } from "../support/api";
-import { INSIDE, PHOTO_PATH, SEEDED } from "../support/env";
+import { INSIDE, PHOTO_PATH } from "../support/env";
 import { expect, giveSession, PHONE, test } from "../support/fixtures";
+import { staffPhone } from "../support/staff";
 import { signInThroughUi } from "../support/ui";
 
 /*
  * Phase 3, the operational loop (AC-10 to AC-12): a supervisor assigns a
- * verified pothole to the seeded "Roads North" team and its field worker;
- * the worker accepts, starts, posts an update and marks it fixed with an
- * after photo in the field app; the supervisor approves on the issue
- * page; the citizen who reported it says it's still broken, which
- * reopens it.
+ * verified pothole to a field team and its field worker; the worker
+ * accepts, starts, posts an update and marks it fixed with an after photo
+ * in the field app; the supervisor approves on the issue page; the citizen
+ * who reported it says it's still broken, which reopens it.
  *
- * The supervisor signs in through the API (map.spec.ts uses that number
- * through the UI; `api.login` waits out the OTP cooldown if they race)
- * and the session is handed to a browser context, so no second OTP is
- * needed for the UI steps.
+ * Every account is made fresh for the run by global setup (staff.ts), and
+ * the test makes its own team for the field worker, so nothing here
+ * competes with another test for a seeded number's OTP cooldown.
  */
 
 type IssueDetail = {
@@ -40,6 +39,42 @@ function wardTwoPoint() {
     lat: INSIDE.latitude + 0.01 + Math.random() * 0.02,
     lng: INSIDE.longitude + 0.005 + Math.random() * 0.02,
   };
+}
+
+/** A team of this run's field worker covering Zone North, for potholes. */
+async function makeTeam(api: Api, workerPhone: string): Promise<string> {
+  const admin = await api.login(staffPhone("opsAdmin"));
+  // Found through the admin's user list: signing the worker in here would
+  // start an OTP cooldown just before the field app sign-in.
+  const users = await api.send<{ items: { id: string; phone: string }[] }>(
+    admin,
+    "GET",
+    `/admin/users?q=${encodeURIComponent(workerPhone)}&limit=5`,
+  );
+  const worker = users.items.find((user) => user.phone === workerPhone);
+  expect(worker, "the run's field worker").toBeTruthy();
+  const departments = await api.send<{ items: { id: string; code: string }[] }>(
+    admin,
+    "GET",
+    "/admin/departments?limit=100",
+  );
+  const zones = await api.send<{ items: { id: string; name: string }[] }>(
+    admin,
+    "GET",
+    "/admin/jurisdictions?limit=100&kind=zone",
+  );
+  const roads = departments.items.find((d) => d.code === "ROADS");
+  const north = zones.items.find((z) => z.name === "Synthetic Zone North");
+  expect(roads && north, "the seeded department and zone").toBeTruthy();
+  const name = `Roads e2e ${Date.now()}`;
+  await api.send(admin, "POST", "/admin/teams", {
+    department_id: roads?.id,
+    name,
+    members: [{ user_id: worker?.id, team_role: "lead" }],
+    jurisdiction_ids: [north?.id],
+    category_ids: [await api.categoryId("pothole")],
+  });
+  return name;
 }
 
 /** Walk the issue to `verified` through whatever transitions it offers. */
@@ -86,8 +121,10 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
   const issueId = report.issue.id;
   const issueRef = report.issue.reference;
 
-  // AC-10: the supervisor verifies it and assigns it to Roads North.
-  const supervisor = await api.login(SEEDED.supervisor);
+  // AC-10: the supervisor verifies it and assigns it to this run's team.
+  const workerPhone = staffPhone("opsFieldWorker");
+  const teamName = await makeTeam(api, workerPhone);
+  const supervisor = await api.login(staffPhone("opsSupervisor"));
   const verified = await verify(api, supervisor, issueId);
   const eligible = await api.send<
     {
@@ -95,10 +132,10 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
       members: { user: { id: string; display_name: string | null } }[];
     }[]
   >(supervisor, "GET", `/issues/${issueId}/eligible-teams`);
-  const roads = eligible.find((item) => item.team.name === "Roads North");
+  const roads = eligible.find((item) => item.team.name === teamName);
   expect(
     roads,
-    "Roads North is eligible for a Zone North pothole",
+    "the run's team is eligible for a Zone North pothole",
   ).toBeTruthy();
   const worker = roads?.members[0]?.user;
   expect(worker).toBeTruthy();
@@ -123,7 +160,7 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
   const field = await browser.newContext({ ...PHONE });
   const fieldPage = await field.newPage();
   await fieldPage.goto("/field");
-  await signInThroughUi(fieldPage, SEEDED.fieldWorker);
+  await signInThroughUi(fieldPage, workerPhone);
   await expect(fieldPage).toHaveURL(/\/field/);
   const queue = fieldPage.getByRole("list", { name: "Active" });
   await expect(queue).toBeVisible();
@@ -181,10 +218,10 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
     .fill("Filled and levelled.");
   await dialog.getByRole("button", { name: "Approve fix" }).click();
   await expect(staffPage.getByText("Resolved").first()).toBeVisible();
-  // The workload view counts the job against Roads North.
+  // The workload view counts the job against the team.
   await staffPage.goto("/admin/workload");
   await expect(
-    staffPage.getByRole("heading", { level: 2, name: "Roads North" }),
+    staffPage.getByRole("heading", { level: 2, name: teamName }),
   ).toBeVisible();
   await expectAccessible(staffPage, "admin-workload");
   await staffPage.goto("/admin/moderation");
@@ -219,7 +256,7 @@ test("a field worker can't open someone else's work order", async ({
   api,
 }) => {
   const field = await browser.newContext({ ...PHONE });
-  const worker = await api.login(SEEDED.fieldWorker);
+  const worker = await api.login(staffPhone("opsOtherWorker"));
   await giveSession(field, worker);
   const page = await field.newPage();
   await page.goto("/field/work-orders/00000000-0000-4000-8000-000000000000");

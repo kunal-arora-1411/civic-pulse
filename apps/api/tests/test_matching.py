@@ -487,26 +487,32 @@ async def test_embeddings_are_computed_once_per_photo(
     assert registered == "embedding"
 
 
-@pytest.mark.parametrize("attempt", range(3))
+@pytest.mark.parametrize(
+    ("size", "attempt"),
+    [(10, 0), (10, 1), (10, 2), (50, 3)],
+    ids=["10-a", "10-b", "10-c", "50"],
+)
 async def test_simultaneous_identical_reports_make_exactly_one_issue(
     client: httpx.AsyncClient,
     sms: Any,
     owner_engine: AsyncEngine,
     city: City,
     jobs: InlineJobs,
+    size: int,
     attempt: int,
 ) -> None:
     jobs.inline = False
     citizens = [city.citizen] + [
-        await login_new(client, sms, owner_engine, city, "citizen") for _ in range(9)
+        await login_new(client, sms, owner_engine, city, "citizen") for _ in range(size - 1)
     ]
+    # Within a few metres of each other, and near-identical photos.
     reports = [
         await report(
             client,
             city,
             citizen,
-            point=north_of(SW, n * 0.5),
-            media_ids=[await scene_photo(client, citizen, 100 + attempt, variant=n)],
+            point=north_of(SW, (n % 10) * 0.5),
+            media_ids=[await scene_photo(client, citizen, 100 + attempt, variant=n % 10)],
         )
         for n, citizen in enumerate(citizens)
     ]
@@ -515,7 +521,7 @@ async def test_simultaneous_identical_reports_make_exactly_one_issue(
     outcomes = await asyncio.gather(
         *(process_report(uuid.UUID(r["id"]), city.tenant.id) for r in reports)
     )
-    assert sorted(o.status for o in outcomes) == ["auto_link"] * 9 + ["new_issue"]
+    assert sorted(o.status for o in outcomes) == ["auto_link"] * (size - 1) + ["new_issue"]
 
     async with owner_engine.connect() as conn:
         issues = (
@@ -543,6 +549,6 @@ async def test_simultaneous_identical_reports_make_exactly_one_issue(
             {"i": issues[0].id},
         )
     assert len(issues) == 1
-    assert (issues[0].report_count, issues[0].unique_reporter_count) == (10, 10)
-    assert dict(statuses) == {"new_issue": 1, "linked": 9}
-    assert linked_events == 9
+    assert (issues[0].report_count, issues[0].unique_reporter_count) == (size, size)
+    assert dict(statuses) == {"new_issue": 1, "linked": size - 1}
+    assert linked_events == size - 1

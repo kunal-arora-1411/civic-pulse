@@ -1,6 +1,6 @@
 import { expectAccessible } from "../support/a11y";
-import { SEEDED } from "../support/env";
 import { expect, giveSession, test } from "../support/fixtures";
+import { staffPhone } from "../support/staff";
 
 /*
  * Every admin screen loads real data from the API without an error state.
@@ -22,7 +22,7 @@ test("each admin screen loads for a municipal admin", async ({
   context,
   api,
 }) => {
-  await giveSession(context, await api.login(SEEDED.municipalAdmin));
+  await giveSession(context, await api.login(staffPhone("consoleAdmin")));
   await page.goto("/admin");
   await expect(
     page.getByRole("heading", { level: 1, name: /^Welcome back/ }),
