@@ -76,13 +76,15 @@ async def _notify(
         await conn.execute(
             text(
                 "INSERT INTO notifications (tenant_id, user_id, kind, title_key, body_key, "
-                "params, link) VALUES (:t, :u, :k, :k || '.title', :k || '.body', "
+                "params, link) VALUES (:t, :u, :k, :title, :body, "
                 "CAST(:p AS jsonb), :l) RETURNING id"
             ),
             {
                 "t": tenant_id,
                 "u": user_id,
                 "k": kind,
+                "title": f"{kind}.title",
+                "body": f"{kind}.body",
                 "p": json.dumps(params or {"issue": "CP-1", "status": "in_progress"}),
                 "l": link,
             },

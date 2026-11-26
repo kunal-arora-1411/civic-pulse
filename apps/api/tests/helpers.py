@@ -80,12 +80,13 @@ class InlineJobs:
 
     async def deliver_event(self, event_id: uuid.UUID) -> None:
         self.calls.append(("deliver_event", (event_id,)))
-        if self.inline:
-            from app.domains.outbox.service import dispatch_event
-            from app.domains.outbox.sms import SmsChannel
+        # Always inline, even with `inline = False`: that switch holds back
+        # matching and recomputes, and a test still has to be able to sign in.
+        from app.domains.outbox.service import dispatch_event
+        from app.domains.outbox.sms import SmsChannel
 
-            assert self.sms is not None
-            await dispatch_event(event_id, channels=(SmsChannel(self.sms),))
+        assert self.sms is not None
+        await dispatch_event(event_id, channels=(SmsChannel(self.sms),))
 
     def called(self, name: str) -> list[tuple[Any, ...]]:
         return [args for job, args in self.calls if job == name]
