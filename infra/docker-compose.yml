@@ -77,6 +77,9 @@ x-api-env: &api-env
   # http://localhost:8025 and sends nothing outside the machine. Leaving
   # SMTP_HOST empty switches the outbox's email channel off entirely.
   SMTP_HOST: ${SMTP_HOST:-mailpit}
+  # Both empty switches Web Push off (scripts/vapid_keys.py makes a pair).
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
   SMTP_PORT: ${SMTP_PORT:-1025}
   SMTP_FROM: ${SMTP_FROM:-CivicPulse <no-reply@civicpulse.local>}
   WEB_URL: ${WEB_URL:-http://localhost:3000}

@@ -14,6 +14,7 @@ import type {
   AdminGetAiQualityParams,
   AdminListAuditEventsParams,
   AdminListCategoriesParams,
+  AdminListDeadLettersParams,
   AdminListDepartmentsParams,
   AdminListJurisdictionsParams,
   AdminListTeamsParams,
@@ -60,6 +61,8 @@ import type {
   CommentCreate,
   CommentList,
   CommentOut,
+  DeadLetter,
+  DeadLetterPage,
   DeclineBody,
   DepartmentCreate,
   DepartmentOut,
@@ -96,7 +99,9 @@ import type {
   NoteCreate,
   NotificationOut,
   NotificationPage,
+  NotificationPreferences,
   NotificationsListParams,
+  NotificationsUnsubscribePushParams,
   OtpRequestIn,
   OtpRequestOut,
   OtpVerifyIn,
@@ -105,6 +110,7 @@ import type {
   PlatformListTenantsParams,
   PlatformTenant,
   PlatformTenantPage,
+  PreferencesUpdate,
   PriorityConfig,
   PriorityOverride,
   ProgressBody,
@@ -115,6 +121,8 @@ import type {
   PublicIssuePage,
   PublicIssuesGeojsonParams,
   PublicIssuesListParams,
+  PushSubscriptionIn,
+  PushSubscriptionOut,
   QualityOut,
   ReadAllResult,
   ReadinessOut,
@@ -1481,6 +1489,95 @@ export const notificationsRead = (
     }
 
 /**
+ * Which kinds go out by email, SMS and Web Push. The in-app inbox
+ * always gets every notification.
+ * @summary Get Preferences
+ */
+export const notificationsGetPreferences = (
+
+ options?: SecondParameter<typeof customInstance<NotificationPreferences>>,) => {
+      return customInstance<NotificationPreferences>(
+      {url: `/api/v1/notifications/preferences`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Change the listed choices only. A kind the caller cannot receive, or a
+ * channel the kind is never sent on, is a 422.
+ * @summary Update Preferences
+ */
+export const notificationsUpdatePreferences = (
+    preferencesUpdate: PreferencesUpdate,
+ options?: SecondParameter<typeof customInstance<NotificationPreferences>>,) => {
+      return customInstance<NotificationPreferences>(
+      {url: `/api/v1/notifications/preferences`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: preferencesUpdate
+    },
+      options);
+    }
+
+/**
+ * Register this browser for Web Push. Re-subscribing the same endpoint
+ * updates it (and moves it to the caller). 503 when push is not configured.
+ * @summary Subscribe Push
+ */
+export const notificationsSubscribePush = (
+    pushSubscriptionIn: PushSubscriptionIn,
+ options?: SecondParameter<typeof customInstance<PushSubscriptionOut>>,) => {
+      return customInstance<PushSubscriptionOut>(
+      {url: `/api/v1/notifications/push-subscriptions`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: pushSubscriptionIn
+    },
+      options);
+    }
+
+/**
+ * Stop pushing to this browser. Idempotent.
+ * @summary Unsubscribe Push
+ */
+export const notificationsUnsubscribePush = (
+    params: NotificationsUnsubscribePushParams,
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/notifications/push-subscriptions`, method: 'DELETE',
+        params
+    },
+      options);
+    }
+
+/**
+ * Events the dispatcher stopped retrying, newest first, with every
+ * delivery attempt. Payloads are never shown.
+ * @summary List Dead Letters
+ */
+export const adminListDeadLetters = (
+    params?: AdminListDeadLettersParams,
+ options?: SecondParameter<typeof customInstance<DeadLetterPage>>,) => {
+      return customInstance<DeadLetterPage>(
+      {url: `/api/v1/admin/outbox/dead-letters`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Queue it again with a fresh set of attempts; channels that already
+ * delivered it are not asked twice. Audited.
+ * @summary Retry Dead Letter
+ */
+export const adminRetryDeadLetter = (
+    eventId: string,
+ options?: SecondParameter<typeof customInstance<DeadLetter>>,) => {
+      return customInstance<DeadLetter>(
+      {url: `/api/v1/admin/outbox/dead-letters/${encodeURIComponent(String(eventId))}/retry`, method: 'POST'
+    },
+      options);
+    }
+
+/**
  * Headline KPIs for the period, the same figures for the period just
  * before it, and a sparkline (daily up to 45 days, else weekly).
  * @summary Overview
@@ -2045,6 +2142,12 @@ export type NotificationsListResult = NonNullable<Awaited<ReturnType<typeof noti
 export type NotificationsUnreadCountResult = NonNullable<Awaited<ReturnType<typeof notificationsUnreadCount>>>
 export type NotificationsReadAllResult = NonNullable<Awaited<ReturnType<typeof notificationsReadAll>>>
 export type NotificationsReadResult = NonNullable<Awaited<ReturnType<typeof notificationsRead>>>
+export type NotificationsGetPreferencesResult = NonNullable<Awaited<ReturnType<typeof notificationsGetPreferences>>>
+export type NotificationsUpdatePreferencesResult = NonNullable<Awaited<ReturnType<typeof notificationsUpdatePreferences>>>
+export type NotificationsSubscribePushResult = NonNullable<Awaited<ReturnType<typeof notificationsSubscribePush>>>
+export type NotificationsUnsubscribePushResult = NonNullable<Awaited<ReturnType<typeof notificationsUnsubscribePush>>>
+export type AdminListDeadLettersResult = NonNullable<Awaited<ReturnType<typeof adminListDeadLetters>>>
+export type AdminRetryDeadLetterResult = NonNullable<Awaited<ReturnType<typeof adminRetryDeadLetter>>>
 export type AnalyticsOverviewResult = NonNullable<Awaited<ReturnType<typeof analyticsOverview>>>
 export type AnalyticsTrendResult = NonNullable<Awaited<ReturnType<typeof analyticsTrend>>>
 export type AnalyticsByStatusResult = NonNullable<Awaited<ReturnType<typeof analyticsByStatus>>>

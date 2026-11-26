@@ -22,6 +22,7 @@ from app.domains.notifications.router import router as notifications_router
 from app.domains.operations.field_router import router as field_router
 from app.domains.operations.router import router as operations_router
 from app.domains.org.router import router as org_router
+from app.domains.outbox.router import router as outbox_router
 from app.domains.public.router import router as public_router
 from app.domains.reports.router import router as reports_router
 from app.domains.sla.router import router as sla_router
@@ -53,6 +54,7 @@ api_router.include_router(matching_router)
 api_router.include_router(operations_router)
 api_router.include_router(field_router)
 api_router.include_router(notifications_router)
+api_router.include_router(outbox_router)
 api_router.include_router(analytics_router)
 api_router.include_router(analytics_views_router)
 api_router.include_router(announcements_router)

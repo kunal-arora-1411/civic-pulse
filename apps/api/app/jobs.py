@@ -29,6 +29,7 @@ RECOMPUTE_TENANT = "civicpulse.priority.recompute_tenant"
 MATCH_REPORT = "civicpulse.matching.match_report"
 CLASSIFY = "civicpulse.ai.classify"
 ANALYZE_MEDIA = "civicpulse.ai.analyze_media"
+DELIVER_EVENT = "civicpulse.outbox.deliver_event"
 
 # Give up on the broker quickly: a request must not hang on it.
 _RETRY_POLICY = {"max_retries": 2, "interval_start": 0, "interval_step": 0.2, "interval_max": 0.5}
@@ -43,6 +44,10 @@ class Jobs(Protocol):
 
     async def classify(self, classification_id: uuid.UUID, tenant_id: uuid.UUID) -> bool:
         """Queue a classification; False if it couldn't be queued at all."""
+        ...
+
+    async def deliver_event(self, event_id: uuid.UUID) -> None:
+        """Send one outbox event now rather than on the next dispatcher tick."""
         ...
 
 
@@ -71,6 +76,9 @@ class CeleryJobs:
 
     async def classify(self, classification_id: uuid.UUID, tenant_id: uuid.UUID) -> bool:
         return await self._send(CLASSIFY, str(classification_id), str(tenant_id))
+
+    async def deliver_event(self, event_id: uuid.UUID) -> None:
+        await self._send(DELIVER_EVENT, str(event_id))
 
 
 def get_jobs() -> Jobs:

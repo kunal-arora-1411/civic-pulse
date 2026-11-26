@@ -14,6 +14,8 @@
  *   which holds the access token; see src/lib/offline/report-queue.ts.
  * - Background Sync: when the browser says the network is back, it asks
  *   every open page to flush the report queue.
+ * - Web Push: shows the server's notification and opens its link on click.
+ *   The payload is lock-screen safe (references and a status only).
  *
  * Bump VERSION to drop old caches on the next activation.
  */
@@ -133,3 +135,39 @@ self.addEventListener("message", (event) => {
  * Reserved for the notifications work (push + notificationclick). Add the
  * handlers below this line; nothing above depends on them.
  */
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || "CivicPulse";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      tag: data.tag,
+      data: { url: data.url || "/notifications" },
+      icon: "/icons/icon-192.png",
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL(
+    event.notification.data?.url || "/",
+    self.location.origin,
+  ).href;
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windows) => {
+        for (const client of windows) {
+          if (client.url === target && "focus" in client) return client.focus();
+        }
+        return self.clients.openWindow(target);
+      }),
+  );
+});

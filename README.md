@@ -249,6 +249,7 @@ CAPTURE=1 pnpm --filter @civicpulse/e2e exec playwright test tests/screenshots.s
   [Phase 3](docs/api/phase-3-contract.md) (operations),
   [SLA and escalation](docs/api/sla-escalation.md),
   [analytics and notifications](docs/api/analytics-notifications.md),
+  [notification delivery](docs/api/notification-delivery.md),
   [community and public tracking](docs/api/community-public.md)
 - ADRs: [stack and modular monolith](docs/adr/0001-stack-and-modular-monolith.md),
   [multi-tenancy with row-level security](docs/adr/0002-multi-tenancy-with-row-level-security.md),

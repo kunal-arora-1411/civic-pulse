@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Cookie, Depends, Response, status
+from fastapi import APIRouter, BackgroundTasks, Body, Cookie, Depends, Response, status
 from redis.asyncio import Redis
 
 from app.core.db import DbSession
@@ -28,9 +28,9 @@ from app.domains.auth.schemas import (
     RefreshIn,
     TokenResponse,
 )
-from app.domains.auth.sms import SmsProvider, get_sms_provider
 from app.domains.tenants.dependencies import OptionalHeaderTenant
 from app.domains.users.service import to_me
+from app.jobs import JobsDep
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -58,9 +58,14 @@ async def request_otp(
     db: DbSession,
     tenant: OptionalHeaderTenant,
     redis: Annotated[Redis, Depends(get_redis)],
-    sms: Annotated[SmsProvider, Depends(get_sms_provider)],
+    jobs: JobsDep,
+    background: BackgroundTasks,
 ) -> OtpRequestOut:
-    issued = await service.request_otp(db, redis, sms, tenant=tenant, phone=body.phone)
+    issued = await service.request_otp(db, redis, tenant=tenant, phone=body.phone)
+    if issued.delivery_event_id is not None:
+        # After the commit, so the worker finds the row; if the broker is
+        # down, the dispatcher's next tick sends it instead.
+        background.add_task(jobs.deliver_event, issued.delivery_event_id)
     return OtpRequestOut(
         challenge_id=issued.challenge_id,
         expires_in=issued.expires_in,

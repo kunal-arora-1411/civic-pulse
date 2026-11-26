@@ -416,12 +416,12 @@ async def test_an_event_no_channel_handles_is_still_accounted_for(
 
 
 def test_no_relay_configured_registers_no_channel(monkeypatch: pytest.MonkeyPatch) -> None:
-    """With SMTP_HOST unset the registry is empty, so behaviour is unchanged."""
+    """With SMTP_HOST unset there is no email channel, so assignments go nowhere."""
     from app.core import mail
 
     monkeypatch.setattr(mail, "_configured", lambda: None)
 
-    assert default_channels() == ()
+    assert "email" not in [c.name for c in default_channels()]
     assert channels_for("issue.assigned", None) == []
 
 
@@ -430,7 +430,7 @@ def test_a_configured_relay_registers_the_email_channel(monkeypatch: pytest.Monk
 
     monkeypatch.setattr(mail, "_configured", lambda: RecordingMailer())
 
-    assert [c.name for c in default_channels()] == ["email"]
+    assert "email" in [c.name for c in default_channels()]
     assert [c.name for c in channels_for("issue.assigned")] == ["email"]
     # An event it does not handle falls through to the "no channel" record.
     assert channels_for("issue.closed") == []

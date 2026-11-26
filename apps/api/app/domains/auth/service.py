@@ -51,7 +51,7 @@ from app.domains.auth.errors import (
     TooManyAttempts,
 )
 from app.domains.auth.models import AuthSession, OtpChallenge
-from app.domains.auth.sms import SmsProvider
+from app.domains.outbox.sms import otp_event
 from app.domains.rbac.models import UserRole
 from app.domains.rbac.principal import Principal, RoleGrant
 from app.domains.rbac.roles import Role
@@ -79,6 +79,8 @@ class OtpIssued:
     challenge_id: uuid.UUID
     expires_in: int
     resend_after: int
+    # The outbox event that will text the code; None when nothing is sent.
+    delivery_event_id: uuid.UUID | None = None
 
 
 def _truncate(value: str | None, length: int) -> str | None:
@@ -125,8 +127,14 @@ async def _find_user(db: AsyncSession, tenant_id: uuid.UUID | None, phone: str) 
 
 
 async def request_otp(
-    db: AsyncSession, redis: Redis, sms: SmsProvider, *, tenant: Tenant | None, phone: str
+    db: AsyncSession, redis: Redis, *, tenant: Tenant | None, phone: str
 ) -> OtpIssued:
+    """Create a challenge and queue its code for SMS in the same transaction.
+
+    The text itself is sent from the outbox after the request commits (the
+    caller queues `deliver_event`), so a slow or failing SMS provider never
+    holds up the response; the dispatcher retries what failed.
+    """
     settings = get_settings()
     client = get_client()
 
@@ -149,6 +157,7 @@ async def request_otp(
     challenge.code_hash = _hash_code(challenge.id, code)
 
     deliver = True
+    event_id: uuid.UUID | None = None
     async with acting_as(db, challenge.tenant_id, reason="platform admin OTP request"):
         if tenant is None:
             # Without X-Tenant only platform administrators can sign in. Create
@@ -157,10 +166,19 @@ async def request_otp(
             deliver = await _find_user(db, None, phone) is not None
         db.add(challenge)
         await db.flush()
+        if deliver:
+            event = otp_event(
+                tenant_id=challenge.tenant_id,
+                challenge_id=challenge.id,
+                phone=phone,
+                code=code,
+                expires_at=challenge.expires_at,
+            )
+            db.add(event)
+            await db.flush()
+            event_id = event.id
 
-    if deliver:
-        await sms.send_otp(phone, code, ttl_seconds=settings.otp_ttl_seconds)
-    else:
+    if not deliver:
         logger.info(
             "OTP requested without tenant for a non-admin number",
             extra=log_fields(phone=mask_phone(phone)),
@@ -169,6 +187,7 @@ async def request_otp(
         challenge_id=challenge.id,
         expires_in=settings.otp_ttl_seconds,
         resend_after=settings.otp_resend_seconds,
+        delivery_event_id=event_id,
     )
 
 

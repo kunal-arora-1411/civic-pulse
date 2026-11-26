@@ -1560,6 +1560,39 @@
       "cancel": "Keep my account",
       "confirm": "Delete my data",
       "deleting": "Deleting…"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Your notification inbox always shows everything. Choose what also reaches you by email, text message or browser notification.",
+      "loading": "Loading notification settings",
+      "tableCaption": "Which updates reach you on which channel",
+      "kindColumn": "Update",
+      "channels": {
+        "email": "Email",
+        "sms": "SMS",
+        "push": "Browser"
+      },
+      "kinds": {
+        "report_new_issue": "Your report started a new issue",
+        "report_linked": "Your report joined an existing issue",
+        "issue_status": "An issue you reported changed status",
+        "review_task": "A report needs a duplicate decision",
+        "assignment": "Work assigned to you",
+        "sla_breach": "An issue went past its SLA"
+      },
+      "toggleLabel": "{kind}: {channel}",
+      "notOffered": "Not sent on this channel",
+      "emailUnavailable": "Email can't reach you yet: add an email address above. Messages never include addresses or photos, only reference numbers and status.",
+      "saved": "Notification settings saved",
+      "pushTitle": "Browser notifications on this device",
+      "pushChecking": "Checking this browser…",
+      "pushAsk": "Get updates here even when CivicPulse isn't open.",
+      "pushOn": "This browser receives notifications.",
+      "pushOff": "Browser notifications aren't available from this municipality yet.",
+      "pushUnsupported": "This browser doesn't support notifications. Your inbox still has every update.",
+      "pushDenied": "Notifications are blocked for this site. Allow them in your browser's site settings to turn them on.",
+      "pushEnable": "Turn on browser notifications",
+      "pushDisable": "Turn off on this browser"
     }
   },
   "pagination": {
