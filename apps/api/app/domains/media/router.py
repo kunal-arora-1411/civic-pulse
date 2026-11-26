@@ -39,7 +39,7 @@ async def create_upload(
     "/uploads/{upload_id}/complete",
     operation_id="media_complete_upload",
     response_model=MediaAssetOut,
-    responses=error_responses(401, 403, 404, 422),
+    responses=error_responses(401, 403, 404, 422, 503),
 )
 async def complete_upload(
     principal: Uploader,
@@ -49,7 +49,8 @@ async def complete_upload(
     background: BackgroundTasks,
     upload_id: uuid.UUID,
 ) -> MediaAssetOut:
-    """Step 3: verify the uploaded bytes (size, checksum, real image type).
+    """Step 3: verify the uploaded bytes (size, checksum, real image type),
+    and scan them for malware when a scanner is configured.
 
     On failure the object is deleted and the upload can't be retried; start
     a new one. On success the asset is `processing` until the worker has

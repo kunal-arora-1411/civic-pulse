@@ -33,7 +33,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from geoalchemy2 import WKTElement
 from PIL import Image
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.ai.registry import get_vision_model
@@ -157,7 +157,7 @@ def _moved(lng: float, lat: float, north_m: float, east_m: float = 0.0) -> tuple
 
 
 def near_identical(data: bytes, n: int) -> bytes:
-    """Another shot of the same placeholder: slightly brighter, a little noise."""
+    """Another shot of the same scene: slightly brighter, a little noise."""
     image = np.asarray(Image.open(io.BytesIO(data)).convert("RGB"), dtype=np.float64)
     rng = np.random.default_rng(n)
     image = image * (1.0 + 0.015 * (n % 3 + 1)) + rng.normal(0, 2.0, image.shape)
@@ -239,60 +239,77 @@ async def _ensure_extra(
     report_id = phase1.seed_id(f"report/{extra.key}", 0)
     media_id = phase1.seed_id(f"media/{extra.key}", 0)
     issue = planned[extra.issue]
+    created_at = issue.created_at + timedelta(hours=extra.hours_later)
+    base = phase1.photo_bytes(issue.index, issue.category.code)
+    data = near_identical(base, int(hashlib.sha256(extra.key.encode()).hexdigest(), 16) % 97 + 1)
+    checksum = hashlib.sha256(data).hexdigest()
+    key = object_key(tenant_id, media_id, "original.jpg")
     async with system_session(reason="development seed: matching examples") as db:
-        if await db.scalar(select(Report.id).where(Report.id == report_id)) is not None:
+        existing = await db.get(MediaAsset, media_id)
+        if (
+            existing is not None
+            and existing.checksum_sha256 == checksum
+            and existing.status == MediaStatus.READY
+        ):
             return report_id
-        created_at = issue.created_at + timedelta(hours=extra.hours_later)
-        base = phase1.placeholder_photo(issue.index, issue.category)
-        data = near_identical(
-            base, int(hashlib.sha256(extra.key.encode()).hexdigest(), 16) % 97 + 1
-        )
-        key = object_key(tenant_id, media_id, "original.jpg")
         await get_storage().write(key, data, content_type="image/jpeg")
-        lng, lat = _moved(issue.lng, issue.lat, extra.north_m)
-        location = WKTElement(f"POINT({lng} {lat})", srid=4326)
-        db.add(
-            MediaAsset(
-                id=media_id,
-                tenant_id=tenant_id,
-                owner_id=reporters[extra.reporter],
-                purpose=MediaPurpose.REPORT_EVIDENCE,
-                status=MediaStatus.PROCESSING,
-                content_type="image/jpeg",
-                declared_size_bytes=len(data),
-                size_bytes=len(data),
-                checksum_sha256=hashlib.sha256(data).hexdigest(),
-                storage_key=key,
-                width=1200,
-                height=900,
-                upload_expires_at=created_at,
-                verified_at=created_at,
-                created_at=created_at,
+        values = {
+            "status": MediaStatus.PROCESSING,
+            "content_type": "image/jpeg",
+            "declared_size_bytes": len(data),
+            "size_bytes": len(data),
+            "checksum_sha256": checksum,
+            "storage_key": key,
+            "width": 1200,
+            "height": 900,
+            "upload_expires_at": created_at,
+            "verified_at": created_at,
+            # Stale copies from the previous bytes; cleared so they are remade.
+            "processed_at": None,
+            "faces_checked_at": None,
+            "thumb_key": None,
+            "display_key": None,
+        }
+        if existing is not None:
+            # The photo set changed underneath us: same asset, new bytes.
+            await db.execute(update(MediaAsset).where(MediaAsset.id == media_id).values(**values))
+        else:
+            db.add(
+                MediaAsset(
+                    id=media_id,
+                    tenant_id=tenant_id,
+                    owner_id=reporters[extra.reporter],
+                    purpose=MediaPurpose.REPORT_EVIDENCE,
+                    created_at=created_at,
+                    **values,
+                )
             )
-        )
-        await db.flush()
-        db.add(
-            Report(
-                id=report_id,
-                tenant_id=tenant_id,
-                reference=await allocate(db, tenant_id, ReferenceKind.REPORT),
-                reporter_id=reporters[extra.reporter],
-                category_id=categories[issue.category.code],
-                issue_id=None,
-                matching_status=MatchingStatus.PENDING,
-                status=ReportStatus.ACCEPTED,
-                description=f"{issue.description} (another report)",
-                details={},
-                location=location,
-                location_accuracy_m=8.0,
-                location_source="gps",
-                address_text=issue.address,
-                ward_id=ward_ids[issue.index % len(ward_ids)],
-                created_at=created_at,
-                updated_at=created_at,
+            await db.flush()
+        if await db.scalar(select(Report.id).where(Report.id == report_id)) is None:
+            lng, lat = _moved(issue.lng, issue.lat, extra.north_m)
+            location = WKTElement(f"POINT({lng} {lat})", srid=4326)
+            db.add(
+                Report(
+                    id=report_id,
+                    tenant_id=tenant_id,
+                    reference=await allocate(db, tenant_id, ReferenceKind.REPORT),
+                    reporter_id=reporters[extra.reporter],
+                    category_id=categories[issue.category.code],
+                    issue_id=None,
+                    matching_status=MatchingStatus.PENDING,
+                    status=ReportStatus.ACCEPTED,
+                    description=f"{issue.description} (another report)",
+                    details={},
+                    location=location,
+                    location_accuracy_m=8.0,
+                    location_source="gps",
+                    address_text=issue.address,
+                    ward_id=ward_ids[issue.index % len(ward_ids)],
+                    created_at=created_at,
+                    updated_at=created_at,
+                )
             )
-        )
-        await db.flush()
+            await db.flush()
         media = await db.get(MediaAsset, media_id)
         assert media is not None
         media.report_id = report_id

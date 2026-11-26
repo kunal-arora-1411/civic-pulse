@@ -25,7 +25,9 @@ import {
   type FieldIssue,
 } from "@/lib/report/validation";
 import { cn } from "@/lib/utils";
+import { appendTranscript } from "@/lib/voice/use-speech-input";
 import type { SuggestionState } from "./use-category-suggestion";
+import { VoiceInput } from "./voice-input";
 
 function CategoryTile({
   category,
@@ -438,6 +440,11 @@ export function DetailsStep({
               <span className="sr-only">{t("descriptionCountLabel")} </span>
               {t("descriptionCount", { count: length, max: DESCRIPTION_MAX })}
             </p>
+            <VoiceInput
+              onText={(spoken) =>
+                onDescription(appendTranscript(draft.description, spoken))
+              }
+            />
           </div>
         )}
       </Field>

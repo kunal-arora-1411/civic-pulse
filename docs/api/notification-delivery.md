@@ -9,7 +9,7 @@ and covers PRD §15 and P4-03, P4-04 and P4-06.
 
 1. A database trigger writes the in-app notification (migration 0008, plus
    the SLA scanner). The inbox always gets every notification.
-2. In the same transaction, a second trigger (migration 0012) writes an
+2. In the same transaction, a second trigger (migration 0016) writes an
    outbox event `notification.created` with payload
    `{notification_id, user_id, kind, issue_id}`. A change that rolls back
    sends nothing.

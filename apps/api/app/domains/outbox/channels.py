@@ -20,7 +20,7 @@ The **in-app inbox needs no adapter**: notifications are written by database
 triggers in the same transaction as the change they describe (migration 0008,
 plus the SLA scanner), so that channel is already delivered by the time an
 event reaches the outbox. Each one then also becomes a `notification.created`
-event for the external channels (migration 0012).
+event for the external channels (migration 0016).
 """
 
 from __future__ import annotations

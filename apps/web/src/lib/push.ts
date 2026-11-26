@@ -36,16 +36,16 @@ export function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+// The PWA provider normally registers the worker already (scope "/").
 async function registration(): Promise<ServiceWorkerRegistration> {
   return (
-    (await navigator.serviceWorker.getRegistration(SERVICE_WORKER_URL)) ??
-    navigator.serviceWorker.register(SERVICE_WORKER_URL)
+    (await navigator.serviceWorker.getRegistration("/")) ??
+    navigator.serviceWorker.register(SERVICE_WORKER_URL, { scope: "/" })
   );
 }
 
 async function currentSubscription(): Promise<PushSubscription | null> {
-  const existing =
-    await navigator.serviceWorker.getRegistration(SERVICE_WORKER_URL);
+  const existing = await navigator.serviceWorker.getRegistration("/");
   return existing ? existing.pushManager.getSubscription() : null;
 }
 

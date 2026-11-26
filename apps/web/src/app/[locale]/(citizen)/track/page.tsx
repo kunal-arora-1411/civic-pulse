@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
+import { PublicAnnouncements } from "@/components/track/announcements";
 import {
   ScorecardLink,
   TrackScreen,
@@ -28,6 +29,7 @@ export default function TrackPage() {
         </div>
         <ScorecardLink />
       </div>
+      <PublicAnnouncements />
       <Suspense fallback={<TrackSkeleton />}>
         <TrackScreen />
       </Suspense>

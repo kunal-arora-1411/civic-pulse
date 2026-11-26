@@ -1,7 +1,7 @@
 """What every external channel does before it sends a notification.
 
 Each in-app notification also becomes a `notification.created` outbox event
-(trigger in migration 0012). For each channel the dispatcher asks: is the
+(trigger in migration 0016). For each channel the dispatcher asks: is the
 person still there and reachable, do they want this kind here, and have they
 just been told the same thing on this channel? Every "no" is a `skipped`
 delivery with the reason, so the log shows why a message did not go out
