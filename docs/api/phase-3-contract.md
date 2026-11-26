@@ -203,7 +203,7 @@ Both return the issue detail. No pending closure request: `422 invalid_transitio
 
 | Method | Path | Permission | Body |
 |---|---|---|---|
-| GET/PUT | `/api/v1/admin/config/closure` | `config:read` / `config:manage` | `{ "resolution_window_hours": 168, "confirmations_required": 2 }` (window 1–2160 h, confirmations 1–10) |
+| GET/PUT | `/api/v1/admin/closure-config` | `config:read` / `config:manage` | `{ "resolution_window_hours": 168, "confirmations_required": 2 }` (window 1–2160 h, confirmations 1–10) |
 
 **Reopen:** `POST /api/v1/issues/{id}/reopen` `{ "reason": "required" }` from `resolved` or `closed` → `reopened`. Callers: an eligible citizen (`issue:verify`) or staff with `issue:update` in scope. Reopened issues go back to the assignment queue (assign from `reopened`).
 
