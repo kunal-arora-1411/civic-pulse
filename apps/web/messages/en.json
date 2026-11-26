@@ -238,7 +238,10 @@
       "matching": "Matching",
       "priority": "Priority rules",
       "ai": "AI models",
-      "sla": "SLA targets"
+      "sla": "SLA targets",
+      "workload": "Workload",
+      "teams": "Teams",
+      "closure": "Closure rules"
     },
     "overview": {
       "title": "Welcome back",
@@ -449,7 +452,8 @@
         "pointsIncreasing": "Must be at least as high as the level below.",
         "bandsDescending": "Must be lower than the band above.",
         "hoursRange": "Enter whole hours from 1 to {max}.",
-        "escalateRequired": "Enter when to escalate: this category has a target."
+        "escalateRequired": "Enter when to escalate: this category has a target.",
+        "confirmationsRange": "Enter a whole number from 1 to {max}."
       },
       "matching": {
         "title": "Matching",
@@ -547,6 +551,17 @@
         "escalationTitle": "Escalation",
         "escalationStep1": "When an issue passes its target, the supervisors of the category's department (and supervisors without a department) are notified and the breach is recorded on the issue.",
         "escalationStep2": "If it is still open after the Escalate after hours, the municipal admins are notified."
+      },
+      "closure": {
+        "title": "Closure rules",
+        "description": "What happens after a fix is approved or confirmed.",
+        "saved": "Closure rules saved",
+        "sectionTitle": "Resolution and confirmation",
+        "window": "Resolution window",
+        "windowHelp": "A resolved issue closes on its own after this long. Until then, reporters can say it's still broken and reopen it.",
+        "hours": "hours",
+        "confirmations": "Confirmations needed",
+        "confirmationsHelp": "For categories that don't need a supervisor's approval: how many different reporters must confirm the fix before the issue is resolved."
       }
     },
     "ai": {
@@ -1309,6 +1324,63 @@
         "truncatedDescription": "The export stops at 20,000 issues. Narrow the period or the filters to get the rest.",
         "failedTitle": "Couldn't download the file",
         "rangeInvalid": "Fix the custom range first."
+      }
+    },
+    "workload": {
+      "title": "Workload",
+      "description": "Open work orders per team and person, so you can see who has room before assigning.",
+      "loadError": "Couldn't load the workload",
+      "retry": "Try again",
+      "empty": "No teams in your area yet.",
+      "summary": "{open} open · {pending} waiting to be accepted · {inProgress} in progress",
+      "overdue": "{count} overdue",
+      "membersOf": "Members of {team}",
+      "member": "Person",
+      "open": "Open",
+      "inProgress": "In progress",
+      "noMembers": "This team has no members.",
+      "unnamed": "Unnamed member"
+    },
+    "teams": {
+      "title": "Teams",
+      "description": "The crews issues are assigned to: who's in them, the area they cover and the categories they handle.",
+      "new": "New team",
+      "loadError": "Couldn't load the teams",
+      "empty": "No teams yet.",
+      "name": "Name",
+      "department": "Department",
+      "members": "Members",
+      "status": "Status",
+      "actions": "Actions",
+      "active": "Active",
+      "inactive": "Inactive",
+      "leadShort": "lead",
+      "edit": "Edit {name}",
+      "dialog": {
+        "createTitle": "New team",
+        "editTitle": "Edit {name}",
+        "description": "A team only receives issues in categories it handles and wards its area covers.",
+        "close": "Close",
+        "cancel": "Cancel",
+        "create": "Create team",
+        "save": "Save team",
+        "created": "Team {name} created",
+        "updated": "Team {name} saved",
+        "name": "Name",
+        "nameRequired": "Give the team a name.",
+        "department": "Department",
+        "chooseDepartment": "Choose a department",
+        "departmentRequired": "Choose a department.",
+        "members": "Members",
+        "noMembers": "No members",
+        "selected": "{count} selected",
+        "lead": "Team lead",
+        "noLead": "No lead",
+        "area": "Service area",
+        "noArea": "No area: covers nothing",
+        "categories": "Categories handled",
+        "noCategories": "No categories",
+        "active": "Active: can be assigned new work"
       }
     }
   },

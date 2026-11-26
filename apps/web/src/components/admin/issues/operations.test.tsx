@@ -15,7 +15,9 @@ import {
 } from "./operations-dialogs";
 
 vi.mock("@/components/media/photo-gallery", () => ({
-  PhotoGallery: ({ label }: { label: string }) => <div aria-label={label} />,
+  PhotoGallery: ({ label }: { label: string }) => (
+    <section aria-label={label} />
+  ),
 }));
 
 const ASSIGNMENT = {

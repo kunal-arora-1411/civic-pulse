@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   ChartLine,
   Cpu,
   Gauge,
@@ -11,7 +12,9 @@ import {
   SlidersHorizontal,
   Tags,
   Timer,
+  Users,
   UsersRound,
+  Workflow,
 } from "lucide-react";
 import type { CurrentUser } from "@/lib/api";
 import { hasPermission } from "@/lib/auth/access";
@@ -21,6 +24,9 @@ export type AdminNavKey =
   | "issues"
   | "review"
   | "map"
+  | "workload"
+  | "teams"
+  | "closure"
   | "analytics"
   | "categories"
   | "matching"
@@ -41,6 +47,9 @@ export type AdminNavItem = {
     | "/admin/issues"
     | "/admin/review"
     | "/admin/map"
+    | "/admin/workload"
+    | "/admin/teams"
+    | "/admin/settings/closure"
     | "/admin/analytics"
     | "/admin/categories"
     | "/admin/settings/matching"
@@ -86,6 +95,13 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     permission: "issue:read",
   },
   {
+    key: "workload",
+    group: "operations",
+    href: "/admin/workload",
+    icon: Workflow,
+    permission: "issue:assign",
+  },
+  {
     key: "analytics",
     group: "operations",
     href: "/admin/analytics",
@@ -118,6 +134,20 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     group: "configuration",
     href: "/admin/settings/sla",
     icon: Timer,
+    permission: "config:read",
+  },
+  {
+    key: "closure",
+    group: "configuration",
+    href: "/admin/settings/closure",
+    icon: BadgeCheck,
+    permission: "config:read",
+  },
+  {
+    key: "teams",
+    group: "configuration",
+    href: "/admin/teams",
+    icon: Users,
     permission: "config:read",
   },
   {
