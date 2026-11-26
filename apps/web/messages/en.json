@@ -21,6 +21,8 @@
     "dark": "Dark"
   },
   "citizen": {
+    "reportCta": "Report an issue",
+    "myReports": "My reports",
     "footer": "CivicPulse never shows your name or phone number publicly."
   },
   "account": {
@@ -130,7 +132,18 @@
       "auditBody": "See who changed what, and when, with before and after values.",
       "issuesBody": "Every reported issue in your area, with filters you can share as a link.",
       "mapBody": "Issues on a map with ward boundaries, in sync with a list.",
-      "categoriesBody": "The kinds of problems citizens can report, their photo rules and extra questions."
+      "categoriesBody": "The kinds of problems citizens can report, their photo rules and extra questions.",
+      "kpi": {
+        "heading": "Right now",
+        "openLabel": "Open issues",
+        "openHint": "everything not yet resolved",
+        "untriagedLabel": "Waiting for triage",
+        "untriagedHint": "reported or under review",
+        "inProgressLabel": "With crews",
+        "inProgressHint": "assigned or in progress",
+        "resolvedLabel": "Resolved",
+        "resolvedHint": "resolved or closed"
+      }
     },
     "users": {
       "title": "Users",
@@ -918,6 +931,11 @@
           "option_label_required": "Enter an English label."
         }
       }
+    },
+    "groups": {
+      "operations": "Operations",
+      "configuration": "Configuration",
+      "governance": "People & audit"
     },
     "analytics": {
       "title": "Analytics",

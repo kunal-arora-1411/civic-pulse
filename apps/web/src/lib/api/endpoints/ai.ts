@@ -1,4 +1,14 @@
-import { apiRequest } from "../client";
+import {
+  adminGetAiQuality,
+  adminGetMatchingConfig,
+  adminGetPriorityConfig,
+  adminListAiModels,
+  adminUpdateMatchingConfig,
+  adminUpdatePriorityConfig,
+  aiCreateClassification,
+  aiGetClassification,
+} from "@civicpulse/api-client";
+import { call } from "../generated-client";
 import {
   type AiQuality,
   aiQualitySchema,
@@ -23,22 +33,18 @@ export function requestClassification(
   mediaIds: readonly string[],
   signal?: AbortSignal,
 ): Promise<Classification> {
-  return apiRequest({
-    method: "POST",
-    path: "/ai/classifications",
-    body: { media_ids: mediaIds },
-    schema: classificationSchema,
-    signal,
-  });
+  return call(
+    classificationSchema,
+    (o) => aiCreateClassification({ media_ids: [...mediaIds] }, o),
+    { signal },
+  );
 }
 
 export function getClassification(
   id: string,
   signal?: AbortSignal,
 ): Promise<Classification> {
-  return apiRequest({
-    path: `/ai/classifications/${encodeURIComponent(id)}`,
-    schema: classificationSchema,
+  return call(classificationSchema, (o) => aiGetClassification(id, o), {
     signal,
   });
 }
@@ -46,9 +52,7 @@ export function getClassification(
 export function getMatchingConfig(
   signal?: AbortSignal,
 ): Promise<MatchingConfig> {
-  return apiRequest({
-    path: "/admin/matching-config",
-    schema: matchingConfigSchema,
+  return call(matchingConfigSchema, (o) => adminGetMatchingConfig(o), {
     signal,
   });
 }
@@ -56,20 +60,13 @@ export function getMatchingConfig(
 export function updateMatchingConfig(
   body: MatchingConfig,
 ): Promise<MatchingConfig> {
-  return apiRequest({
-    method: "PUT",
-    path: "/admin/matching-config",
-    body,
-    schema: matchingConfigSchema,
-  });
+  return call(matchingConfigSchema, (o) => adminUpdateMatchingConfig(body, o));
 }
 
 export function getPriorityConfig(
   signal?: AbortSignal,
 ): Promise<PriorityConfig> {
-  return apiRequest({
-    path: "/admin/priority-config",
-    schema: priorityConfigSchema,
+  return call(priorityConfigSchema, (o) => adminGetPriorityConfig(o), {
     signal,
   });
 }
@@ -77,20 +74,11 @@ export function getPriorityConfig(
 export function updatePriorityConfig(
   body: PriorityConfig,
 ): Promise<PriorityConfig> {
-  return apiRequest({
-    method: "PUT",
-    path: "/admin/priority-config",
-    body,
-    schema: priorityConfigSchema,
-  });
+  return call(priorityConfigSchema, (o) => adminUpdatePriorityConfig(body, o));
 }
 
 export function listModels(signal?: AbortSignal): Promise<ModelRegistry> {
-  return apiRequest({
-    path: "/admin/ai/models",
-    schema: modelRegistrySchema,
-    signal,
-  });
+  return call(modelRegistrySchema, (o) => adminListAiModels(o), { signal });
 }
 
 /** `from`/`to` are calendar dates (YYYY-MM-DD), whole days in IST. */
@@ -98,10 +86,7 @@ export function getAiQuality(
   params: { from: string; to: string },
   signal?: AbortSignal,
 ): Promise<AiQuality> {
-  return apiRequest({
-    path: "/admin/ai/quality",
-    query: params,
-    schema: aiQualitySchema,
+  return call(aiQualitySchema, (o) => adminGetAiQuality(params, o), {
     signal,
   });
 }

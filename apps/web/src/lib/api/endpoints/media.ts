@@ -1,4 +1,5 @@
-import { apiRequest } from "../client";
+import { mediaCompleteUpload, mediaCreateUpload } from "@civicpulse/api-client";
+import { call } from "../generated-client";
 import {
   type MediaAsset,
   mediaAssetSchema,
@@ -22,11 +23,7 @@ export function createUpload(
   body: CreateUploadBody,
   signal?: AbortSignal,
 ): Promise<UploadTicket> {
-  return apiRequest({
-    method: "POST",
-    path: "/media/uploads",
-    body,
-    schema: uploadTicketSchema,
+  return call(uploadTicketSchema, (o) => mediaCreateUpload(body, o), {
     signal,
   });
 }
@@ -36,10 +33,7 @@ export function completeUpload(
   uploadId: string,
   signal?: AbortSignal,
 ): Promise<MediaAsset> {
-  return apiRequest({
-    method: "POST",
-    path: `/media/uploads/${encodeURIComponent(uploadId)}/complete`,
-    schema: mediaAssetSchema,
+  return call(mediaAssetSchema, (o) => mediaCompleteUpload(uploadId, o), {
     signal,
   });
 }

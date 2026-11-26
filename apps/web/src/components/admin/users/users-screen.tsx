@@ -90,6 +90,7 @@ export function UsersScreen() {
   return (
     <div className="motion-safe:animate-rise">
       <PageHeader
+        section="users"
         title={t("title")}
         description={t("description")}
         actions={

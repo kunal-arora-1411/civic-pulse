@@ -1,5 +1,19 @@
+import {
+  adminListJurisdictions,
+  issuesAddRelated,
+  issuesChangeStatus,
+  issuesGeojson,
+  issuesGet,
+  issuesList,
+  issuesMerge,
+  issuesRemoveRelated,
+  issuesSetCategory,
+  issuesSetPriority,
+  issuesSetSeverity,
+  issuesSplit,
+} from "@civicpulse/api-client";
 import { z } from "zod";
-import { apiRequest } from "../client";
+import { call, callVoid, queryParams } from "../generated-client";
 import { type Paginated, paginated } from "../schemas";
 import type { PriorityBand, SeverityLevel } from "../schemas-ai";
 import {
@@ -52,12 +66,11 @@ export function listIssues(
   params: IssueListParams,
   signal?: AbortSignal,
 ): Promise<Paginated<IssueListItem>> {
-  return apiRequest({
-    path: "/issues",
-    query: params,
-    schema: paginated(issueListItemSchema),
-    signal,
-  });
+  return call(
+    paginated(issueListItemSchema),
+    (o) => issuesList(queryParams(params), o),
+    { signal },
+  );
 }
 
 /** `bbox` is `[minLng, minLat, maxLng, maxLat]`. */
@@ -65,10 +78,8 @@ export function getIssuesGeoJson(
   params: IssueFilterParams & { bbox: readonly number[] },
   signal?: AbortSignal,
 ): Promise<IssueFeatureCollection> {
-  return apiRequest({
-    path: "/issues/geojson",
-    query: { ...params, bbox: params.bbox.join(",") },
-    schema: issueFeatureCollectionSchema,
+  const query = queryParams({ ...params, bbox: params.bbox.join(",") });
+  return call(issueFeatureCollectionSchema, (o) => issuesGeojson(query, o), {
     signal,
   });
 }
@@ -91,11 +102,7 @@ export function getIssue(
   id: string,
   signal?: AbortSignal,
 ): Promise<IssueDetail | MergedIssue> {
-  return apiRequest({
-    path: `/issues/${encodeURIComponent(id)}`,
-    schema: issueOrMergedSchema,
-    signal,
-  });
+  return call(issueOrMergedSchema, (o) => issuesGet(id, o), { signal });
 }
 
 export type ChangeStatusBody = {
@@ -110,12 +117,7 @@ export function changeIssueStatus(
   id: string,
   body: ChangeStatusBody,
 ): Promise<IssueDetail> {
-  return apiRequest({
-    method: "PATCH",
-    path: `/issues/${encodeURIComponent(id)}/status`,
-    body,
-    schema: issueDetailSchema,
-  });
+  return call(issueDetailSchema, (o) => issuesChangeStatus(id, body, o));
 }
 
 /*
@@ -129,12 +131,7 @@ export function changeIssueCategory(
   id: string,
   body: { category_id: string; reason: string; version: number },
 ): Promise<IssueDetail> {
-  return apiRequest({
-    method: "PATCH",
-    path: `/issues/${encodeURIComponent(id)}/category`,
-    body,
-    schema: issueDetailSchema,
-  });
+  return call(issueDetailSchema, (o) => issuesSetCategory(id, body, o));
 }
 
 /** `severity: null` clears an override and goes back to the rules. */
@@ -142,12 +139,7 @@ export function setIssueSeverity(
   id: string,
   body: { severity: SeverityLevel | null; reason: string; version: number },
 ): Promise<IssueDetail> {
-  return apiRequest({
-    method: "PATCH",
-    path: `/issues/${encodeURIComponent(id)}/severity`,
-    body,
-    schema: issueDetailSchema,
-  });
+  return call(issueDetailSchema, (o) => issuesSetSeverity(id, body, o));
 }
 
 /** `band: null` clears an override and goes back to the computed band. */
@@ -155,12 +147,7 @@ export function setIssuePriority(
   id: string,
   body: { band: PriorityBand | null; reason: string; version: number },
 ): Promise<IssueDetail> {
-  return apiRequest({
-    method: "PATCH",
-    path: `/issues/${encodeURIComponent(id)}/priority`,
-    body,
-    schema: issueDetailSchema,
-  });
+  return call(issueDetailSchema, (o) => issuesSetPriority(id, body, o));
 }
 
 /** `id` survives; the sources are merged into it. */
@@ -168,12 +155,7 @@ export function mergeIssues(
   id: string,
   body: { source_issue_ids: string[]; reason: string; version: number },
 ): Promise<IssueDetail> {
-  return apiRequest({
-    method: "POST",
-    path: `/issues/${encodeURIComponent(id)}/merge`,
-    body,
-    schema: issueDetailSchema,
-  });
+  return call(issueDetailSchema, (o) => issuesMerge(id, body, o));
 }
 
 export type SplitTarget = { new_issue: true } | { issue_id: string };
@@ -187,40 +169,31 @@ export function splitIssue(
     version: number;
   },
 ): Promise<SplitResult> {
-  return apiRequest({
-    method: "POST",
-    path: `/issues/${encodeURIComponent(id)}/split`,
-    body,
-    schema: splitResultSchema,
-  });
+  return call(splitResultSchema, (o) => issuesSplit(id, body, o));
 }
 
 export function addRelatedIssue(
   id: string,
   body: { issue_id: string; note?: string },
 ): Promise<void> {
-  return apiRequest({
-    method: "POST",
-    path: `/issues/${encodeURIComponent(id)}/related`,
-    body,
-  });
+  return callVoid((o) => issuesAddRelated(id, body, o));
 }
 
 export function removeRelatedIssue(id: string, otherId: string): Promise<void> {
-  return apiRequest({
-    method: "DELETE",
-    path: `/issues/${encodeURIComponent(id)}/related/${encodeURIComponent(otherId)}`,
-  });
+  return callVoid((o) => issuesRemoveRelated(id, otherId, o));
 }
 
 /** Ward outlines for the map overlay. */
 export function listWardBoundaries(
   signal?: AbortSignal,
 ): Promise<Paginated<JurisdictionWithGeometry>> {
-  return apiRequest({
-    path: "/admin/jurisdictions",
-    query: { kind: "ward", include_geometry: true, limit: 100 },
-    schema: paginated(jurisdictionWithGeometrySchema),
-    signal,
-  });
+  return call(
+    paginated(jurisdictionWithGeometrySchema),
+    (o) =>
+      adminListJurisdictions(
+        { kind: "ward", include_geometry: true, limit: 100 },
+        o,
+      ),
+    { signal },
+  );
 }

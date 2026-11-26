@@ -609,6 +609,7 @@ export function ReviewScreen() {
   return (
     <div className="motion-safe:animate-rise">
       <PageHeader
+        section="review"
         title={t("title")}
         description={t("description")}
         actions={

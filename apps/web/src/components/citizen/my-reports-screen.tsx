@@ -28,13 +28,27 @@ export function useMyReports(pageSize = PAGE_SIZE) {
 export function NoReports() {
   const t = useTranslations("reports");
   return (
-    <div className="grid justify-items-center gap-3 rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center">
-      <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-secondary-foreground">
+    <div className="relative grid justify-items-center gap-3 overflow-hidden rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-card">
+      <div
+        aria-hidden="true"
+        className="bg-survey-grid absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]"
+      />
+      <span className="bg-brand-gradient relative grid size-14 place-items-center rounded-2xl text-white shadow-raised">
         <Inbox aria-hidden="true" className="size-6" />
       </span>
-      <p className="font-semibold">{t("emptyTitle")}</p>
-      <p className="max-w-sm text-muted-foreground">{t("emptyBody")}</p>
-      <Link href="/report" className={buttonVariants({ className: "mt-1" })}>
+      <p className="relative text-xl font-semibold tracking-tight">
+        {t("emptyTitle")}
+      </p>
+      <p className="relative max-w-sm text-muted-foreground">
+        {t("emptyBody")}
+      </p>
+      <Link
+        href="/report"
+        className={buttonVariants({
+          variant: "ink",
+          className: "relative mt-2",
+        })}
+      >
         <MapPinPlus aria-hidden="true" />
         {t("emptyCta")}
       </Link>
@@ -78,7 +92,7 @@ export function MyReportsScreen() {
 
   return (
     <div className="grid gap-4">
-      <p className="text-sm text-muted-foreground" aria-live="polite">
+      <p className="eyebrow" aria-live="polite">
         {t("count", { count: total })}
       </p>
       <ul className="grid gap-3">

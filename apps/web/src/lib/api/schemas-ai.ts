@@ -1,47 +1,63 @@
+import {
+  Decision,
+  Feedback,
+  MatchingStatus as GenMatchingStatus,
+  PriorityBand as GenPriorityBand,
+  SeverityLevel as GenSeverityLevel,
+  PriorityFactorOut,
+  PriorityOut,
+  SeverityOut,
+} from "@civicpulse/api-client";
 import { z } from "zod";
+import { expectType, type Same } from "./type-checks";
 
 /*
  * Building blocks of the Phase 2 contract (docs/api/phase-2-contract.md)
  * that the Phase 1 report and issue shapes embed: severity, priority and
  * the duplicate-matching signals. They import nothing from the other
  * schema files, so schemas-phase1.ts can use them without a cycle.
+ *
+ * Enums, severity and priority come from the orval-generated schemas
+ * (@civicpulse/api-client). The ordered constants stay literal tuples
+ * because the UI lists them in that order (the spec's enums aren't always
+ * in display order); a type check ties each one to its generated enum.
+ *
+ * Match signals stay hand-written: the spec types `signals` as a
+ * free-form object, but the review screens rely on its fields.
  */
 
 /** Lowest to highest. Raises are capped at `critical`. */
 export const SEVERITY_LEVELS = ["low", "medium", "high", "critical"] as const;
-export const severityLevelSchema = z.enum(SEVERITY_LEVELS);
+expectType<Same<(typeof SEVERITY_LEVELS)[number], GenSeverityLevel>>(true);
+export const severityLevelSchema = GenSeverityLevel;
 export type SeverityLevel = z.infer<typeof severityLevelSchema>;
 
 /** Highest first, the order staff scan them in. */
 export const PRIORITY_BANDS = ["critical", "high", "medium", "low"] as const;
-export const priorityBandSchema = z.enum(PRIORITY_BANDS);
+expectType<Same<(typeof PRIORITY_BANDS)[number], GenPriorityBand>>(true);
+export const priorityBandSchema = GenPriorityBand;
 export type PriorityBand = z.infer<typeof priorityBandSchema>;
 
-export const severitySchema = z.object({
-  level: severityLevelSchema,
-  source: z.enum(["rule", "override"]),
-  /** Why staff overrode it. Detail only, and only when overridden. */
-  reason: z.string().nullish(),
+// Adapter: `reason` may also be missing.
+export const severitySchema = SeverityOut.extend({
+  /** How the rules got there, or why staff overrode it. */
+  reason: SeverityOut.shape.reason.optional(),
 });
 export type Severity = z.infer<typeof severitySchema>;
 
-export const priorityFactorSchema = z.object({
-  factor: z.string(),
+// Adapter: the spec leaves `value` untyped; the UI formats it, so it is
+// narrowed to what the contract lists.
+export const priorityFactorSchema = PriorityFactorOut.extend({
   /** A level, a count, a number of days or a yes/no, depending on the factor. */
   value: z.union([z.string(), z.number(), z.boolean()]).nullish(),
-  normalized: z.number(),
-  points: z.number(),
-  explanation_key: z.string(),
 });
 export type PriorityFactor = z.infer<typeof priorityFactorSchema>;
 
-export const prioritySchema = z.object({
-  score: z.number(),
-  /** The effective band: the override when there is one. */
-  band: priorityBandSchema,
-  computed_band: priorityBandSchema,
-  overridden: z.boolean(),
-  override_reason: z.string().nullish(),
+// Adapters: one schema for the list shape (PriorityOut) and the detail
+// shape (PriorityDetailOut, which adds `factors`), and `override_reason`
+// may also be missing.
+export const prioritySchema = PriorityOut.extend({
+  override_reason: PriorityOut.shape.override_reason.optional(),
   /** Issue detail only, sorted by points, highest first. */
   factors: z.array(priorityFactorSchema).nullish(),
 });
@@ -53,7 +69,8 @@ export const MATCHING_STATUSES = [
   "review",
   "new_issue",
 ] as const;
-export const matchingStatusSchema = z.enum(MATCHING_STATUSES);
+expectType<Same<(typeof MATCHING_STATUSES)[number], GenMatchingStatus>>(true);
+export const matchingStatusSchema = GenMatchingStatus;
 export type MatchingStatus = z.infer<typeof matchingStatusSchema>;
 
 export const matchSignalsSchema = z.object({
@@ -89,10 +106,11 @@ export const MATCH_DECISIONS = [
   "chosen_by_reviewer",
   "not_chosen",
 ] as const;
-export const matchDecisionKindSchema = z.enum(MATCH_DECISIONS);
+expectType<Same<(typeof MATCH_DECISIONS)[number], Decision>>(true);
+export const matchDecisionKindSchema = Decision;
 export type MatchDecisionKind = z.infer<typeof matchDecisionKindSchema>;
 
-export const matchFeedbackSchema = z.enum(["correct", "incorrect"]);
+export const matchFeedbackSchema = Feedback;
 export type MatchFeedback = z.infer<typeof matchFeedbackSchema>;
 
 /** `match` on a staff report view: the decision that placed the report. */

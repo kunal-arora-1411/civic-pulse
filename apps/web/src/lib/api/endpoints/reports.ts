@@ -1,4 +1,10 @@
-import { apiRequest } from "../client";
+import {
+  geoReverse,
+  reportsCreate,
+  reportsGet,
+  reportsListMine,
+} from "@civicpulse/api-client";
+import { call } from "../generated-client";
 import { type Paginated, paginated } from "../schemas";
 import {
   type IssueStatus,
@@ -15,12 +21,11 @@ export function reverseGeocode(
   point: { lat: number; lng: number },
   signal?: AbortSignal,
 ): Promise<ReverseGeocode> {
-  return apiRequest({
-    path: "/geo/reverse",
-    query: { lat: point.lat, lng: point.lng },
-    schema: reverseGeocodeSchema,
-    signal,
-  });
+  return call(
+    reverseGeocodeSchema,
+    (o) => geoReverse({ lat: point.lat, lng: point.lng }, o),
+    { signal },
+  );
 }
 
 export type CreateReportBody = {
@@ -53,11 +58,7 @@ export function createReport(
   body: CreateReportBody,
   options: { idempotencyKey: string },
 ): Promise<Report> {
-  return apiRequest({
-    method: "POST",
-    path: "/reports",
-    body,
-    schema: reportSchema,
+  return call(reportSchema, (o) => reportsCreate(body, o), {
     idempotencyKey: options.idempotencyKey,
   });
 }
@@ -66,18 +67,16 @@ export function listMyReports(
   params: { limit?: number; offset?: number; status?: IssueStatus } = {},
   signal?: AbortSignal,
 ): Promise<Paginated<MyReport>> {
-  return apiRequest({
-    path: "/users/me/reports",
-    query: params,
-    schema: paginated(myReportSchema),
-    signal,
-  });
+  // The spec's `status` is repeatable; one value serialises the same way.
+  const { status, ...rest } = params;
+  return call(
+    paginated(myReportSchema),
+    (o) =>
+      reportsListMine({ ...rest, status: status ? [status] : undefined }, o),
+    { signal },
+  );
 }
 
 export function getReport(id: string, signal?: AbortSignal): Promise<Report> {
-  return apiRequest({
-    path: `/reports/${encodeURIComponent(id)}`,
-    schema: reportSchema,
-    signal,
-  });
+  return call(reportSchema, (o) => reportsGet(id, o), { signal });
 }

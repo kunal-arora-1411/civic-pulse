@@ -53,6 +53,8 @@ type Form = {
   fields: DraftField[];
 };
 
+const DEFAULT_NEW_ICON: CategoryIconName = "signpost";
+
 function toForm(category: Category | null, nextSortOrder: number): Form {
   return {
     code: category?.code ?? "",
@@ -60,8 +62,11 @@ function toForm(category: Category | null, nextSortOrder: number): Form {
     nameHi: category?.name_i18n.hi ?? "",
     descriptionEn: category?.description_i18n?.en ?? "",
     descriptionHi: category?.description_i18n?.hi ?? "",
-    icon:
-      category?.icon && category.icon in CATEGORY_ICONS
+    // Creating requires an icon (the API rejects null with 422), so a new
+    // category starts with a neutral one. Editing may still clear it.
+    icon: !category
+      ? DEFAULT_NEW_ICON
+      : category.icon && category.icon in CATEGORY_ICONS
         ? (category.icon as CategoryIconName)
         : "",
     minPhotos: String(category?.evidence.min_photos ?? 1),
@@ -146,7 +151,7 @@ export function CategoryDialog({
         const { code: _code, ...changes } = body;
         return updateCategory(category.id, changes);
       }
-      return createCategory(body);
+      return createCategory({ ...body, icon: form.icon || DEFAULT_NEW_ICON });
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
@@ -255,7 +260,7 @@ export function CategoryDialog({
                   set("icon", event.target.value as CategoryIconName | "")
                 }
               >
-                <option value="">{t("noIcon")}</option>
+                {category ? <option value="">{t("noIcon")}</option> : null}
                 {(Object.keys(CATEGORY_ICONS) as CategoryIconName[]).map(
                   (name) => (
                     <option key={name} value={name}>

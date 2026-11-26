@@ -1,3 +1,20 @@
+import {
+  ClassificationOut,
+  type ClassificationStatus as GenClassificationStatus,
+  MatchingConfig as GenMatchingConfig,
+  PriorityConfig as GenPriorityConfig,
+  MatchingThresholds,
+  MatchingWeights,
+  ModelList,
+  ModelOut,
+  PriorityBands,
+  PriorityWeights,
+  QualityOut,
+  RecurrenceConfig,
+  ReviewStatus,
+  SeverityPoints,
+  Suggestion,
+} from "@civicpulse/api-client";
 import { z } from "zod";
 import { matchSignalsSchema } from "./schemas-ai";
 import {
@@ -5,38 +22,44 @@ import {
   issueListItemSchema,
   staffReportSchema,
 } from "./schemas-phase1";
+import { expectType, type Same } from "./type-checks";
 
 /*
  * Response schemas for the Phase 2 contract (docs/api/phase-2-contract.md)
  * that build on the Phase 1 shapes: category suggestions, review tasks,
  * merge and split results, and the configuration and governance screens.
  * Severity, priority and match signals live in schemas-ai.ts.
+ *
+ * Classification, configuration and governance come from the
+ * orval-generated schemas (@civicpulse/api-client). Review tasks and split
+ * results embed the hand-written report and issue shapes (see
+ * schemas-phase1.ts for why), so they stay hand-written too.
  */
 
 // ------------------------------------------------------- category suggestion
 
 export const CLASSIFICATION_STATUSES = ["pending", "done", "failed"] as const;
 export type ClassificationStatus = (typeof CLASSIFICATION_STATUSES)[number];
+expectType<Same<ClassificationStatus, z.infer<typeof GenClassificationStatus>>>(
+  true,
+);
 
-export const categorySuggestionSchema = z.object({
-  category_id: z.string(),
-  code: z.string(),
-  /** 0–1. Never shown to citizens as a number. */
-  confidence: z.number(),
-});
+export const categorySuggestionSchema = Suggestion;
 export type CategorySuggestion = z.infer<typeof categorySuggestionSchema>;
 
 /** `POST /ai/classifications` (200 or 202) and `GET /ai/classifications/{id}`. */
-export const classificationSchema = z.object({
-  id: z.string(),
-  status: z.enum(CLASSIFICATION_STATUSES),
-  model_id: z.string().nullish(),
+// Adapters: the lists and flags default when missing, `model_id` and
+// `error` may be missing, and `created_at` (required in the spec) is
+// optional because nothing reads it.
+export const classificationSchema = ClassificationOut.extend({
+  model_id: ClassificationOut.shape.model_id.optional(),
   /** Active tenant categories only, best first, at most 3. */
-  suggestions: z.array(categorySuggestionSchema).default([]),
-  not_civic: z.boolean().default(false),
-  needs_manual: z.boolean().default(false),
+  suggestions: ClassificationOut.shape.suggestions.default([]),
+  not_civic: ClassificationOut.shape.not_civic.default(false),
+  needs_manual: ClassificationOut.shape.needs_manual.default(false),
   /** `ai_unavailable` when the AI couldn't run. */
-  error: z.string().nullish(),
+  error: ClassificationOut.shape.error.optional(),
+  created_at: ClassificationOut.shape.created_at.optional(),
 });
 export type Classification = z.infer<typeof classificationSchema>;
 
@@ -53,7 +76,7 @@ export type ReviewCandidate = z.infer<typeof reviewCandidateSchema>;
 export const reviewTaskSchema = z.object({
   id: z.string(),
   created_at: z.string(),
-  status: z.enum(["open", "resolved"]).default("open"),
+  status: ReviewStatus.default("open"),
   report: staffReportSchema,
   /** Best candidate first. */
   candidates: z.array(reviewCandidateSchema).default([]),
@@ -70,53 +93,25 @@ export type SplitResult = z.infer<typeof splitResultSchema>;
 
 // ------------------------------------------------------------ configuration
 
-const signalWeights = z.object({
-  geo: z.number(),
-  visual: z.number(),
-  category: z.number(),
-  time: z.number(),
-});
-
-export const matchingConfigSchema = z.object({
-  auto_link_enabled: z.boolean(),
-  weights: signalWeights,
-  thresholds: z.object({
-    auto: z.number(),
-    review: z.number(),
-    /** Null: the floor measured for the active vision model applies. */
-    visual_min: z.number().nullable(),
+// Adapter: the spec shares one schema between the request and the
+// response, so every field has a default and the nested objects are
+// optional. The app always gets (and sends back) the full config, so the
+// nested objects are required here, and `visual_min` is always present
+// (`null` means the measured floor for the active vision model applies).
+export const matchingConfigSchema = GenMatchingConfig.extend({
+  weights: MatchingWeights,
+  thresholds: MatchingThresholds.extend({
+    visual_min: MatchingThresholds.shape.visual_min.unwrap(),
   }),
-  classification_threshold: z.number(),
-  fallback_review_threshold: z.number(),
 });
 export type MatchingConfig = z.infer<typeof matchingConfigSchema>;
 
-export const priorityConfigSchema = z.object({
-  weights: z.object({
-    severity: z.number(),
-    reporters: z.number(),
-    age: z.number(),
-    recurrence: z.number(),
-    near_places: z.number(),
-  }),
-  severity_points: z.object({
-    low: z.number(),
-    medium: z.number(),
-    high: z.number(),
-    critical: z.number(),
-  }),
-  reporters_saturation: z.number(),
-  age_saturation_days: z.number(),
-  recurrence: z.object({
-    radius_m: z.number(),
-    lookback_days: z.number(),
-    saturation: z.number(),
-  }),
-  bands: z.object({
-    critical: z.number(),
-    high: z.number(),
-    medium: z.number(),
-  }),
+// Adapter: as for matching, the nested objects are required here.
+export const priorityConfigSchema = GenPriorityConfig.extend({
+  weights: PriorityWeights,
+  severity_points: SeverityPoints,
+  recurrence: RecurrenceConfig,
+  bands: PriorityBands,
 });
 export type PriorityConfig = z.infer<typeof priorityConfigSchema>;
 
@@ -129,47 +124,22 @@ export const MODEL_TASKS = [
 ] as const;
 export type ModelTask = (typeof MODEL_TASKS)[number];
 
-export const modelRegistryEntrySchema = z.object({
-  model_id: z.string(),
-  task: z.string(),
-  name: z.string(),
-  version: z.string(),
-  source: z.string().nullish(),
-  license: z.string().nullish(),
-  deployed_at: z.string().nullish(),
-  intended_use: z.string().nullish(),
-  metrics: z.record(z.string(), z.unknown()).nullish(),
-  /** The model in use for its task: the one deployed most recently. */
-  active: z.boolean(),
+// Adapter: the descriptive fields may also be missing, and `deployed_at`
+// and `metrics` may be null.
+export const modelRegistryEntrySchema = ModelOut.extend({
+  source: ModelOut.shape.source.optional(),
+  license: ModelOut.shape.license.optional(),
+  deployed_at: ModelOut.shape.deployed_at.nullish(),
+  intended_use: ModelOut.shape.intended_use.optional(),
+  metrics: ModelOut.shape.metrics.nullish(),
 });
 export type ModelRegistryEntry = z.infer<typeof modelRegistryEntrySchema>;
 
-export const modelRegistrySchema = z.object({
+export const modelRegistrySchema = ModelList.extend({
   /** Newest deployment first. */
   items: z.array(modelRegistryEntrySchema),
 });
 export type ModelRegistry = z.infer<typeof modelRegistrySchema>;
 
-export const aiQualitySchema = z.object({
-  from: z.string(),
-  to: z.string(),
-  classifications: z.object({
-    done: z.number(),
-    failed: z.number(),
-    /** Reports whose citizen kept the top suggestion, by category code. */
-    accepted_by_category: z.record(z.string(), z.number()),
-    /** Reports whose citizen chose another category, by the chosen code. */
-    corrected_by_category: z.record(z.string(), z.number()),
-  }),
-  matching: z.object({
-    auto_linked: z.number(),
-    sent_to_review: z.number(),
-    new_issue: z.number(),
-  }),
-  reviews: z.object({ linked: z.number(), new_issue: z.number() }),
-  auto_link_feedback: z.object({
-    correct: z.number(),
-    incorrect: z.number(),
-  }),
-});
+export const aiQualitySchema = QualityOut;
 export type AiQuality = z.infer<typeof aiQualitySchema>;

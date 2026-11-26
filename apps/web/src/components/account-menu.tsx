@@ -88,11 +88,11 @@ export function AccountMenu({ align = "end" }: { align?: "start" | "end" }) {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className="flex h-9 items-center gap-2 rounded-lg ps-1 pe-2 text-sm font-medium hover:bg-muted"
+        className="flex h-9 items-center gap-2 rounded-lg ps-1 pe-2 text-sm font-medium hover:bg-current/10"
       >
         <span
           aria-hidden="true"
-          className="grid size-7 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+          className="bg-brand-gradient grid size-7 place-items-center rounded-full text-xs font-semibold text-white"
         >
           {initials(user.display_name || "?")}
         </span>
@@ -101,16 +101,13 @@ export function AccountMenu({ align = "end" }: { align?: "start" | "end" }) {
           {name}
         </span>
         <span className="sr-only">{t("menuLabel")}</span>
-        <ChevronDown
-          aria-hidden="true"
-          className="size-4 text-muted-foreground"
-        />
+        <ChevronDown aria-hidden="true" className="size-4 opacity-60" />
       </button>
       <div
         id={panelId}
         hidden={!open}
         className={cn(
-          "absolute top-full z-40 mt-2 w-60 rounded-xl border border-border bg-card p-1.5 shadow-raised motion-safe:animate-fade",
+          "absolute top-full z-40 mt-2 w-60 rounded-2xl border border-border bg-card p-1.5 text-card-foreground shadow-raised motion-safe:animate-fade",
           align === "end" ? "end-0" : "start-0",
         )}
       >

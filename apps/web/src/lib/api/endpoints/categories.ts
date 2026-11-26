@@ -1,4 +1,10 @@
-import { apiRequest } from "../client";
+import {
+  adminCreateCategory,
+  adminListCategories,
+  adminUpdateCategory,
+  categoriesList,
+} from "@civicpulse/api-client";
+import { call } from "../generated-client";
 import { type Paginated, paginated } from "../schemas";
 import {
   type Category,
@@ -12,22 +18,17 @@ import {
  * works with just the tenant header.
  */
 export function listCategories(signal?: AbortSignal): Promise<Category[]> {
-  return apiRequest({
-    path: "/categories",
-    schema: categorySchema.array(),
-    signal,
-  });
+  return call(categorySchema.array(), (o) => categoriesList(o), { signal });
 }
 
 export function listAdminCategories(
   signal?: AbortSignal,
 ): Promise<Paginated<Category>> {
-  return apiRequest({
-    path: "/admin/categories",
-    query: { limit: 100 },
-    schema: paginated(categorySchema),
-    signal,
-  });
+  return call(
+    paginated(categorySchema),
+    (o) => adminListCategories({ limit: 100 }, o),
+    { signal },
+  );
 }
 
 export type CategoryInput = {
@@ -42,23 +43,16 @@ export type CategoryInput = {
   is_active: boolean;
 };
 
-export function createCategory(body: CategoryInput): Promise<Category> {
-  return apiRequest({
-    method: "POST",
-    path: "/admin/categories",
-    body,
-    schema: categorySchema,
-  });
+/** Creating needs an icon (CategoryCreate); only an update may clear it. */
+export type CreateCategoryInput = CategoryInput & { icon: string };
+
+export function createCategory(body: CreateCategoryInput): Promise<Category> {
+  return call(categorySchema, (o) => adminCreateCategory(body, o));
 }
 
 export function updateCategory(
   id: string,
   body: Partial<CategoryInput>,
 ): Promise<Category> {
-  return apiRequest({
-    method: "PATCH",
-    path: `/admin/categories/${encodeURIComponent(id)}`,
-    body,
-    schema: categorySchema,
-  });
+  return call(categorySchema, (o) => adminUpdateCategory(id, body, o));
 }

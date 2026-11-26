@@ -353,7 +353,7 @@ export function ReportFlow({
           id="report-step-heading"
           ref={headingRef}
           tabIndex={-1}
-          className="text-xl font-semibold outline-none sm:text-2xl"
+          className="text-2xl font-semibold tracking-tight outline-none sm:text-3xl"
         >
           {t(`${STEP_KEYS[step]}.title`)}
         </h2>
@@ -447,6 +447,7 @@ export function ReportFlow({
           </Button>
         ) : null}
         <Button
+          variant="ink"
           size="lg"
           className="flex-1 sm:ms-auto sm:flex-none sm:px-8"
           onClick={continueFrom}

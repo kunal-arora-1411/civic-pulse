@@ -127,6 +127,7 @@ export function MapScreen() {
   return (
     <div className="grid gap-4 motion-safe:animate-rise">
       <PageHeader
+        section="map"
         title={t("title")}
         description={t("description")}
         actions={
