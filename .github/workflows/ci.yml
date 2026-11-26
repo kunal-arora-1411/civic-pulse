@@ -103,18 +103,6 @@ jobs:
       - name: Model tests
         run: uv run pytest tests/ai --confcutdir=tests/ai -v
 
-  images:
-    name: Docker images
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build API and database images
-        run: docker compose -f infra/docker-compose.yml build db api
-
-      - name: Build the AI worker image (downloads and verifies the weights)
-        run: docker compose -f infra/docker-compose.yml build ai-worker
-
   web:
     name: Web (lint, types, build)
     runs-on: ubuntu-latest
@@ -150,9 +138,9 @@ jobs:
         run: pnpm --filter @civicpulse/web build
 
   e2e:
-    name: End-to-end (Playwright, full stack)
+    name: End-to-end (Playwright, full stack, real models)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -166,14 +154,53 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The whole compose stack, as developers run it. The geocoder is off
-      # so the run doesn't depend on (or load) the public Nominatim server;
-      # wards come from PostGIS either way and the tests accept a missing
-      # street address.
+      # The images are built here, with BuildKit's layer cache kept in the
+      # GitHub Actions cache (docs/adr/0005-ci-real-model-image-cache.md).
+      # The AI worker's dependency and weight layers (~1.3 GB) only change
+      # with uv.lock or models.lock.json, so most runs restore them instead
+      # of reinstalling and redownloading; a code change rebuilds only the
+      # last few layers. Each image has its own cache scope so they don't
+      # evict each other. This is also the only place CI builds the images.
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the database image
+        uses: docker/build-push-action@v6
+        with:
+          context: infra/db
+          tags: civicpulse-db:16-3.5
+          load: true
+          cache-from: type=gha,scope=db
+          cache-to: type=gha,scope=db,mode=max
+
+      - name: Build the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          tags: civicpulse-api:dev
+          load: true
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Build the AI worker image (real models, weights verified)
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          file: infra/ai-worker/Dockerfile
+          tags: civicpulse-ai-worker:dev
+          load: true
+          cache-from: type=gha,scope=ai-worker
+          cache-to: type=gha,scope=ai-worker,mode=max
+
+      # The whole compose stack, as developers run it, from the images just
+      # built: the real AI worker included, so the AI tests (AC-02 to
+      # AC-08) run against CLIP itself. The geocoder is off so the run
+      # doesn't depend on (or load) the public Nominatim server; wards come
+      # from PostGIS either way and the tests accept a missing street
+      # address.
       - name: Start the stack
         env:
           GEOCODER: none
-        run: docker compose -f infra/docker-compose.yml up -d --build --wait
+        run: docker compose -f infra/docker-compose.yml up -d --no-build --wait
 
       - name: Seed demo data
         run: docker compose -f infra/docker-compose.yml exec -T ai-worker python scripts/seed.py
@@ -208,4 +235,4 @@ jobs:
 
       - name: Service logs
         if: failure()
-        run: docker compose -f infra/docker-compose.yml logs api worker
+        run: docker compose -f infra/docker-compose.yml logs api worker ai-worker beat
