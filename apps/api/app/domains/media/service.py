@@ -235,7 +235,11 @@ def to_media_out(storage: ObjectStorage, asset: MediaAsset, *, staff: bool) -> M
         height=asset.height,
         thumb_url=_sign(storage, asset.thumb_key) if ready else None,
         display_url=_sign(storage, asset.display_key) if ready else None,
-        original_url=_sign(storage, asset.storage_key) if staff else None,
+        original_url=(
+            _sign(storage, asset.storage_key)
+            if staff and asset.original_purged_at is None
+            else None
+        ),
         captured_at=asset.captured_at,
     )
 

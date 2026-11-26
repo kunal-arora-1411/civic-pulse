@@ -69,6 +69,9 @@ class User(TimestampMixin, Base):
     # Last accepted TOTP time step, so a code can't be replayed in its window.
     mfa_last_used_step: Mapped[int | None] = mapped_column(BigInteger)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when the owner had their personal data wiped (P6-12). The row
+    # stays so reports and history keep their references.
+    anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     roles: Mapped[list[UserRole]] = relationship(
         back_populates="user",

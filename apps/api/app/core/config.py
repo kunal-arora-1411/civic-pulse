@@ -183,6 +183,11 @@ class Settings(BaseSettings):
     # Dispatched outbox events (and their delivery log, which cascades) are
     # kept this long for tracing, then deleted by housekeeping.
     outbox_retention_days: int = 7
+    # Original photos (full EXIF, GPS included, faces unblurred) are kept
+    # this many days after processing, then deleted by housekeeping; the
+    # stripped variants stay. 0 keeps originals indefinitely, which is the
+    # default until the retention periods are decided (P6-12).
+    media_original_retention_days: int = 0
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -1103,6 +1103,87 @@
         }
       }
     },
+    "/api/v1/users/me/anonymize": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Delete my personal data and end every session (citizens)",
+        "description": "Wipes the caller's phone, email, name, preferences and photo metadata\nand signs them out everywhere. Reports stay, without anything that\nidentifies the reporter. Irreversible; staff get 403.",
+        "operationId": "users_anonymize_me",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "tags": [
