@@ -102,6 +102,10 @@ def upgrade() -> None:
                 EXECUTE format(
                     'GRANT SELECT, INSERT, DELETE ON outbox_deliveries TO %I', '{role}'
                 );
+                -- The dispatcher's retention step deletes dispatched events.
+                -- Migration 0007 granted only SELECT, INSERT and UPDATE here,
+                -- because nothing deleted from this table at the time.
+                EXECUTE format('GRANT DELETE ON outbox_events TO %I', '{role}');
             ELSE
                 RAISE NOTICE 'role {role} does not exist; skipping grants';
             END IF;
