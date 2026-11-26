@@ -35,6 +35,7 @@ celery_app = Celery(
         "app.domains.matching.tasks",
         "app.domains.operations.tasks",
         "app.domains.sla.tasks",
+        "app.domains.outbox.tasks",
     ],
 )
 
@@ -69,6 +70,13 @@ celery_app.conf.update(
         "housekeeping-cleanup": {
             "task": "civicpulse.housekeeping.cleanup",
             "schedule": crontab(minute=17),
+        },
+        # Delivers what committed to `outbox_events`. Twenty seconds is the
+        # longest a notification should sit behind the transaction that
+        # wrote it; the claim uses SKIP LOCKED, so overlapping runs are safe.
+        "outbox-dispatch": {
+            "task": "civicpulse.outbox.dispatch",
+            "schedule": 20.0,
         },
         # Re-queues reports stuck in matching, applies the AI-unavailable
         # fallback after two minutes, fails abandoned classifications and

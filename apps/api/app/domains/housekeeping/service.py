@@ -14,12 +14,14 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import Delete, delete, or_, select
 
+from app.core.config import get_settings
 from app.core.idempotency import IdempotencyKey
 from app.core.logging import log_fields
 from app.core.storage import ObjectStorage, StorageError, get_storage
 from app.core.tenancy import system_session
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.media.models import MediaAsset, MediaStatus
+from app.domains.outbox.service import purge_dispatched
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,7 @@ class CleanupResult:
     auth_sessions: int = 0
     idempotency_keys: int = 0
     uploads: int = 0
+    outbox: int = 0
     stuck_processing: list[tuple[uuid.UUID, uuid.UUID]] = field(default_factory=list)
 
     def summary(self) -> dict[str, int]:
@@ -48,6 +51,7 @@ class CleanupResult:
             "auth_sessions": self.auth_sessions,
             "idempotency_keys": self.idempotency_keys,
             "uploads": self.uploads,
+            "outbox": self.outbox,
             "stuck_processing": len(self.stuck_processing),
         }
 
@@ -127,6 +131,10 @@ async def cleanup(
         "housekeeping: expired idempotency keys",
     )
     result.uploads = await _delete_abandoned_uploads(storage, now - UPLOAD_RETENTION)
+    # Dispatched outbox events past retention, with their delivery rows.
+    result.outbox = await purge_dispatched(
+        older_than_days=get_settings().outbox_retention_days, now=now
+    )
 
     async with system_session(reason="housekeeping: stuck media") as db:
         result.stuck_processing = [
