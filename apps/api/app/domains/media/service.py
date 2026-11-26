@@ -12,7 +12,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import Forbidden, NotFound
+from app.core.errors import Forbidden, NotFound, ServiceUnavailable
 from app.core.logging import log_fields
 from app.core.storage import ObjectStorage, ObjectTooLarge, StorageError
 from app.domains.media.errors import (
@@ -23,6 +23,7 @@ from app.domains.media.errors import (
 )
 from app.domains.media.inspect import EXTENSIONS, InvalidImage, inspect
 from app.domains.media.models import ALLOWED_CONTENT_TYPES, MediaAsset, MediaPurpose, MediaStatus
+from app.domains.media.scan import ScannerUnavailable, scan_upload
 from app.domains.media.schemas import (
     MediaAssetOut,
     MediaOut,
@@ -104,9 +105,9 @@ async def create_upload(
     )
 
 
-async def _verify(storage: ObjectStorage, asset: MediaAsset) -> tuple[int, int, int, dict]:
+async def _verify(storage: ObjectStorage, asset: MediaAsset) -> tuple[bytes, int, int, dict]:
     """Check the stored object against the declaration. Returns
-    (size, width, height, exif) or raises InvalidImage with a reason."""
+    (data, width, height, exif) or raises InvalidImage with a reason."""
     settings = get_settings()
     head = await storage.head(asset.storage_key)
     if head is None:
@@ -127,7 +128,7 @@ async def _verify(storage: ObjectStorage, asset: MediaAsset) -> tuple[int, int, 
         tz=settings.local_timezone,
     )
     exif = dict(info.exif.private)
-    return len(data), info.width, info.height, exif
+    return data, info.width, info.height, exif
 
 
 async def complete_upload(
@@ -153,10 +154,21 @@ async def complete_upload(
         return asset
 
     try:
-        size, width, height, exif = await _verify(storage, asset)
+        data, width, height, exif = await _verify(storage, asset)
     except InvalidImage as exc:
         await _fail(db, storage, asset, exc.reason)
         raise UploadVerificationFailed(details={"reason": exc.reason}) from None
+    # Scanned after the image checks, so the scanner only ever sees files
+    # that already decode as the declared image type.
+    try:
+        scan = await scan_upload(data, media_id=str(asset.id))
+    except ScannerUnavailable:
+        # The asset stays pending, so the client can complete it again.
+        raise ServiceUnavailable("The upload could not be scanned. Try again shortly.") from None
+    if not scan.clean:
+        await _fail(db, storage, asset, "malware_detected")
+        raise UploadVerificationFailed(details={"reason": "malware_detected"})
+    size = len(data)
 
     asset.status = MediaStatus.PROCESSING
     asset.size_bytes = size

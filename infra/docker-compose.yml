@@ -297,6 +297,25 @@ services:
       redis:
         condition: service_healthy
 
+  # Upload malware scanning (P6-07). Opt-in, because the image and its
+  # signature database are large: `docker compose --profile scan up -d
+  # clamav`, then set CLAMAV_HOST=clamav for the api. With CLAMAV_HOST set
+  # and clamd down, upload completion answers 503 instead of skipping the
+  # scan. StreamMaxLength must cover MEDIA_MAX_BYTES (10 MB by default).
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["scan"]
+    environment:
+      CLAMD_CONF_StreamMaxLength: 25M
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+
 volumes:
   db-data:
   redis-data:

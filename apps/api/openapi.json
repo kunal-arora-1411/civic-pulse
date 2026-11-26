@@ -3895,7 +3895,7 @@
           "media"
         ],
         "summary": "Complete Upload",
-        "description": "Step 3: verify the uploaded bytes (size, checksum, real image type).\n\nOn failure the object is deleted and the upload can't be retried; start\na new one. On success the asset is `processing` until the worker has\nmade its variants.",
+        "description": "Step 3: verify the uploaded bytes (size, checksum, real image type),\nand scan them for malware when a scanner is configured.\n\nOn failure the object is deleted and the upload can't be retried; start\na new one. On success the asset is `processing` until the worker has\nmade its variants.",
         "operationId": "media_complete_upload",
         "security": [
           {
@@ -3986,6 +3986,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {

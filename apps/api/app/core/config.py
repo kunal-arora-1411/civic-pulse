@@ -134,6 +134,13 @@ class Settings(BaseSettings):
     media_upload_url_ttl_seconds: int = 600
     media_download_url_ttl_seconds: int = 600
     media_max_pending_uploads: int = 20
+    # Malware scanning of uploads with clamd (INSTREAM over TCP). Empty
+    # host means no scanning. When a host is set, an unreachable scanner
+    # blocks upload completion (503) rather than letting files through.
+    # clamd's StreamMaxLength must be at least media_max_bytes.
+    clamav_host: str = ""
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = 30.0
 
     # Reverse geocoding (address text only; wards and zones come from PostGIS).
     # Nominatim's usage policy allows one request per second per application
