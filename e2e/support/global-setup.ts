@@ -1,9 +1,16 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { chromium } from "@playwright/test";
-import { API_URL, PHOTO_PATH, TENANT } from "./env";
-
-const COMPOSE = "docker compose -f infra/docker-compose.yml";
+import { chromium, request } from "@playwright/test";
+import { Api } from "./api";
+import {
+  API_URL,
+  COMPOSE,
+  PHOTO_PATH,
+  SEEDED,
+  STAFF_PATH,
+  TENANT,
+} from "./env";
+import { type GeneratedStaff, STAFF_ROLES, type StaffKey } from "./staff";
 const START_HINT = `Start it from the repo root with:\n  ${COMPOSE} up -d --build --wait`;
 const SEED_HINT = `Seed it with:\n  ${COMPOSE} exec -T ai-worker python scripts/seed.py`;
 
@@ -117,7 +124,41 @@ async function generatePhoto() {
   }
 }
 
+/**
+ * Fresh staff accounts for this run (support/staff.ts), made by the seeded
+ * municipal admin, and which embedding model the stack is running.
+ */
+async function createStaff() {
+  const context = await request.newContext();
+  try {
+    const api = new Api(context);
+    const admin = await api.login(SEEDED.municipalAdmin);
+    const phones = {} as Record<StaffKey, string>;
+    for (const [key, role] of Object.entries(STAFF_ROLES)) {
+      phones[key as StaffKey] = await api.createStaff(
+        admin,
+        role,
+        `e2e ${key}`,
+      );
+    }
+    const models = await api.aiModels(admin);
+    const embedding = models.find(
+      (model) => model.task === "embedding" && model.active,
+    );
+    const staff: GeneratedStaff = {
+      phones,
+      embeddingModel: embedding?.model_id ?? null,
+    };
+    const path = fileURLToPath(STAFF_PATH);
+    await mkdir(fileURLToPath(new URL(".", STAFF_PATH)), { recursive: true });
+    await writeFile(path, JSON.stringify(staff, null, 2));
+  } finally {
+    await context.dispose();
+  }
+}
+
 export default async function globalSetup() {
   await checkStack();
   await generatePhoto();
+  await createStaff();
 }
