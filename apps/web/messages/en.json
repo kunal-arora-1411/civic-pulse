@@ -960,7 +960,10 @@
         "citizensConfirm": "Reporters can confirm the fix for this category.",
         "answers": "Confirmed: {confirmations}. Still broken: {unresolved}.",
         "approve": "Approve fix",
-        "reject": "Send back"
+        "reject": "Send back",
+        "sceneMatch": "The after photos look {percent}% like the reported photos.",
+        "sceneMatchPending": "The photos haven't been compared yet.",
+        "sceneMatchAdvice": "A repaired spot can look different, so check the photos yourself."
       },
       "assignDialog": {
         "title": "Assign {reference}",

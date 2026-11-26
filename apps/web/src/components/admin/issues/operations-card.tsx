@@ -98,6 +98,16 @@ export function OperationsCard({
           ) : (
             <p className="text-sm text-muted-foreground">{t("noPhoto")}</p>
           )}
+          {closure.after_photos.length > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {closure.scene_match
+                ? t("sceneMatch", {
+                    percent: Math.round(closure.scene_match.similarity * 100),
+                  })
+                : t("sceneMatchPending")}{" "}
+              {t("sceneMatchAdvice")}
+            </p>
+          ) : null}
           {closure.reason_code ? (
             <p className="text-sm">
               {t("reasonCode", {

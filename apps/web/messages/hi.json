@@ -960,7 +960,10 @@
         "citizensConfirm": "इस श्रेणी में शिकायतकर्ता सुधार की पुष्टि कर सकते हैं।",
         "answers": "पुष्टि: {confirmations}। अभी भी खराब: {unresolved}।",
         "approve": "सुधार मंज़ूर करें",
-        "reject": "वापस भेजें"
+        "reject": "वापस भेजें",
+        "sceneMatch": "बाद की फ़ोटो शिकायत वाली फ़ोटो से {percent}% मिलती-जुलती हैं।",
+        "sceneMatchPending": "फ़ोटो की तुलना अभी नहीं हुई है।",
+        "sceneMatchAdvice": "ठीक की गई जगह अलग दिख सकती है, इसलिए फ़ोटो खुद देखें।"
       },
       "assignDialog": {
         "title": "{reference} सौंपें",

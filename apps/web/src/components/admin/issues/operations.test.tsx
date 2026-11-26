@@ -115,6 +115,39 @@ describe("OperationsCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("gives the photo similarity as advice when there's an after photo", () => {
+    const photo = {
+      id: "m-after",
+      status: "ready" as const,
+      thumb_url: null,
+      display_url: null,
+    };
+    renderWithProviders(
+      <OperationsCard
+        issue={makeIssueDetail({
+          status: "pending_verification",
+          operations: {
+            assignment: ASSIGNMENT,
+            closure_request: {
+              ...CLOSURE,
+              after_photos: [photo],
+              scene_match: { similarity: 0.873, model_id: "clip" },
+            },
+          },
+        })}
+        canAssign
+        canApprove
+        onAssign={noop}
+        onApprove={noop}
+        onReject={noop}
+      />,
+    );
+    expect(
+      screen.getByText(/look 87% like the reported photos/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/check the photos yourself/)).toBeInTheDocument();
+  });
+
   it("hides assign and approve from staff without those permissions", () => {
     renderWithProviders(
       <OperationsCard
