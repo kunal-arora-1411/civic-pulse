@@ -68,11 +68,7 @@ test("the citizen's report flow and report list are accessible", async ({
   await expectAccessible(page, "my-reports");
 });
 
-test("the operator's console is accessible", async ({
-  page,
-  context,
-  api,
-}) => {
+test("the operator's console is accessible", async ({ page, context, api }) => {
   await giveSession(context, await api.login(SEEDED.operator));
   await page.goto("/admin/issues");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
