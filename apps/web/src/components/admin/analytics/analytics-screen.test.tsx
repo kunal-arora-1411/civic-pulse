@@ -41,6 +41,10 @@ vi.mock("@/components/map/lazy-maps", () => ({
     return <div data-testid="hotspot-map">{props.cells.length} cells</div>;
   },
 }));
+// Handing a Blob to the browser is a DOM side effect with nothing to assert
+// here beyond the name and body it receives.
+const saveFileSpy = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/download", () => ({ saveFile: saveFileSpy }));
 
 beforeAll(() => {
   // Recharts sizes itself with ResizeObserver, which jsdom lacks.
@@ -294,5 +298,101 @@ describe("AnalyticsScreen", () => {
       ).not.toBeInTheDocument(),
     );
     expect(requests).toHaveLength(0);
+  });
+
+  it("downloads the filtered issues as the file the server names", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/admin/analytics?range=custom&from=2026-10-01&to=2026-10-31&ward=w1",
+    );
+    saveFileSpy.mockReset();
+    const exported: URL[] = [];
+    server.use(
+      http.get(`${API}/analytics/export`, ({ request }) => {
+        exported.push(new URL(request.url));
+        return new HttpResponse("reference,status\nCP-1,resolved\n", {
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition":
+              'attachment; filename="issues-2026-10-01-to-2026-10-31.csv"',
+            "X-Export-Rows": "2",
+            "X-Export-Truncated": "false",
+          },
+        });
+      }),
+    );
+    const { user } = renderWithProviders(<AnalyticsScreen />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Download CSV" }),
+    );
+
+    await waitFor(() => expect(saveFileSpy).toHaveBeenCalledTimes(1));
+    const [blob, filename] = saveFileSpy.mock.calls[0];
+    expect(filename).toBe("issues-2026-10-01-to-2026-10-31.csv");
+    expect(await (blob as Blob).text()).toContain("CP-1,resolved");
+    // The file covers exactly what the figures cover.
+    expect(exported).toHaveLength(1);
+    expect(exported[0].searchParams.get("from")).toBe("2026-10-01");
+    expect(exported[0].searchParams.get("to")).toBe("2026-10-31");
+    expect(exported[0].searchParams.get("ward_id")).toBe("w1");
+    expect(await screen.findByText("2 issues downloaded")).toBeInTheDocument();
+  });
+
+  it("says when the file was capped instead of passing it off as complete", async () => {
+    saveFileSpy.mockReset();
+    server.use(
+      http.get(
+        `${API}/analytics/export`,
+        () =>
+          new HttpResponse("reference\n", {
+            headers: {
+              "Content-Type": "text/csv; charset=utf-8",
+              "X-Export-Rows": "20000",
+              "X-Export-Truncated": "true",
+            },
+          }),
+      ),
+    );
+    const { user } = renderWithProviders(<AnalyticsScreen />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Download CSV" }),
+    );
+
+    expect(
+      await screen.findByText(/Partial file: the first 20,?000 issues/),
+    ).toBeInTheDocument();
+    // Without a Content-Disposition the file still gets a usable name.
+    expect(saveFileSpy.mock.calls[0][1]).toBe("issues.csv");
+  });
+
+  it("explains a failed export instead of downloading nothing", async () => {
+    saveFileSpy.mockReset();
+    server.use(
+      http.get(`${API}/analytics/export`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "forbidden",
+              message: "Missing permission.",
+              request_id: "r1",
+            },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+    const { user } = renderWithProviders(<AnalyticsScreen />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Download CSV" }),
+    );
+
+    expect(
+      await screen.findByText("Couldn't download the file"),
+    ).toBeInTheDocument();
+    expect(saveFileSpy).not.toHaveBeenCalled();
   });
 });

@@ -1062,6 +1062,16 @@
         "feedback": "of {count} reviewed",
         "metric": "Measure",
         "value": "Rate"
+      },
+      "export": {
+        "label": "Download CSV",
+        "busy": "Preparing the file…",
+        "fallbackFilename": "issues.csv",
+        "doneTitle": "{rows, plural, one {# issue downloaded} other {# issues downloaded}}",
+        "truncatedTitle": "Partial file: the first {rows, plural, one {# issue} other {# issues}}",
+        "truncatedDescription": "The export stops at 20,000 issues. Narrow the period or the filters to get the rest.",
+        "failedTitle": "Couldn't download the file",
+        "rangeInvalid": "Fix the custom range first."
       }
     }
   },

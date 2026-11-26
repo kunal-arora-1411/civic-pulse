@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { apiRequest, type QueryValue } from "../client";
+import { apiDownload, apiRequest, type QueryValue } from "../client";
 import {
   type Activity,
   type AnalyticsOverview,
@@ -76,3 +76,11 @@ export const getAnalyticsHotspots = (q: AnalyticsQuery, signal?: AbortSignal) =>
 
 export const getAnalyticsActivity = (q: AnalyticsQuery, signal?: AbortSignal) =>
   get<Activity>("/activity", q, activitySchema, signal);
+
+/**
+ * Every issue in the period within the caller's scope, as CSV (AN-002).
+ * The same filters as the figures, so the file matches the dashboard; the
+ * backend keeps reporter identity out of it and audits the download.
+ */
+export const exportAnalyticsCsv = (q: AnalyticsQuery, signal?: AbortSignal) =>
+  apiDownload({ path: "/analytics/export", query: q, signal });
