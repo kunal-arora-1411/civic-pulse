@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   type LucideIcon,
   Map as MapIcon,
+  Megaphone,
   ScrollText,
   SlidersHorizontal,
   Tags,
@@ -22,6 +23,7 @@ export type AdminNavKey =
   | "review"
   | "map"
   | "analytics"
+  | "announcements"
   | "categories"
   | "matching"
   | "priority"
@@ -42,6 +44,7 @@ export type AdminNavItem = {
     | "/admin/review"
     | "/admin/map"
     | "/admin/analytics"
+    | "/admin/announcements"
     | "/admin/categories"
     | "/admin/settings/matching"
     | "/admin/settings/priority"
@@ -91,6 +94,13 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     href: "/admin/analytics",
     icon: ChartLine,
     permission: "analytics:read",
+  },
+  {
+    key: "announcements",
+    group: "operations",
+    href: "/admin/announcements",
+    icon: Megaphone,
+    permission: "config:read",
   },
   {
     key: "categories",
