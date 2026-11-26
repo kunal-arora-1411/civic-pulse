@@ -1671,6 +1671,17 @@
       "placedTitle": "Tracked as issue {reference}",
       "badgeChecking": "Checking for similar reports",
       "badgeReview": "Being checked by staff"
+    },
+    "withdraw": {
+      "button": "Withdraw my report",
+      "title": "Withdraw {reference}?",
+      "description": "Your report stays on record but no longer counts towards the issue. Other people's reports aren't affected.",
+      "close": "Close",
+      "cancel": "Keep my report",
+      "submit": "Withdraw",
+      "done": "Report withdrawn",
+      "withdrawn": "You withdrew this report. It no longer counts towards the issue.",
+      "refused": "This report can't be withdrawn now: the issue is already fixed, or it's still being matched."
     }
   },
   "landing": {

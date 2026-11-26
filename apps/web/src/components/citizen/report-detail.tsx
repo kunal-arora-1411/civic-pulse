@@ -35,6 +35,7 @@ import {
   soonest,
 } from "@/lib/report/matching";
 import { MatchingBadge, MatchingStatus } from "./matching-status";
+import { WithdrawReport } from "./withdraw-report";
 
 /** Issues nobody can support any more (the API refuses with 422). */
 const CLOSED = new Set<IssueStatus>(["closed", "rejected"]);
@@ -210,6 +211,7 @@ function Body({ report }: { report: Report }) {
               <PublicTimeline events={report.issue.timeline} />
             </>
           ) : null}
+          <WithdrawReport report={report} />
         </Card>
       </div>
     </div>
