@@ -11,6 +11,13 @@
 #
 # Every credential below is a development default for this stack only.
 # Override any of them from your shell or with `--env-file .env`.
+#
+# To run a second stack next to this one (another checkout, an e2e run),
+# give it its own project name, image tag and host ports, for example
+#   IMAGE_TAG=e2e API_PORT=18000 DB_PORT=15432 ... docker compose -p cp-e2e ...
+# The *_PORT variables only change the host side; inside the compose
+# network every service keeps its usual port. Browsers then need matching
+# S3_PUBLIC_ENDPOINT, CORS_ORIGINS, S3_CORS_ORIGINS and WEB_URL values.
 name: civicpulse
 
 x-db-env: &db-env
@@ -76,7 +83,7 @@ services:
     environment:
       <<: *db-env
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -90,7 +97,7 @@ services:
     image: redis:7.4-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -112,8 +119,8 @@ services:
       # and answers preflights for any requested header from these origins.
       MINIO_API_CORS_ALLOW_ORIGIN: ${S3_CORS_ORIGINS:-http://localhost:3000,http://localhost:3100}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -166,9 +173,9 @@ services:
   mailpit:
     image: axllent/mailpit:v1.29
     ports:
-      - "8025:8025"
+      - "${MAILPIT_PORT:-8025}:8025"
       # SMTP, so the channel can also be exercised from the host.
-      - "1025:1025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 5s
@@ -178,7 +185,7 @@ services:
   # One-shot job: applies migrations as the owner role, then exits.
   migrate:
     # Same image as api (built there); never pulled from a registry.
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     pull_policy: never
     command: ["alembic", "upgrade", "head"]
     environment:
@@ -193,11 +200,11 @@ services:
   api:
     build:
       context: ../apps/api
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     environment:
       <<: *api-env
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -220,7 +227,7 @@ services:
   # watchdog. Never the `ai` queue: that belongs to the ai-worker, so every
   # embedding in the database comes from one model.
   worker:
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     pull_policy: never
     command:
       - celery
@@ -257,7 +264,7 @@ services:
     build:
       context: ../apps/api
       dockerfile: ../../infra/ai-worker/Dockerfile
-    image: civicpulse-ai-worker:dev
+    image: civicpulse-ai-worker:${IMAGE_TAG:-dev}
     environment:
       <<: *api-env
       AI_PROVIDER: onnx
@@ -280,7 +287,7 @@ services:
   # The schedule state file lives in /tmp because the image runs as a
   # non-root user without write access to /app.
   beat:
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     pull_policy: never
     command:
       - celery

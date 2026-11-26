@@ -16,7 +16,7 @@
 services:
   ai-worker:
     build: !reset null
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     pull_policy: never
     command:
       - celery
