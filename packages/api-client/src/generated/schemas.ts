@@ -136,6 +136,139 @@ export const AllowedTransition = zod.object({
 export type AllowedTransition = zod.input<typeof AllowedTransition>;
 export type AllowedTransitionOutput = zod.output<typeof AllowedTransition>;
 
+export const savedFiltersRangeDefault = `30d`;
+export const savedFiltersStatusMax = 10;
+
+export const savedFiltersIntervalDefault = `day`;
+
+export const SavedFilters = zod.object({
+  "range": zod.enum(['7d', '30d', '90d', 'mtd', 'custom']).default(savedFiltersRangeDefault),
+  "from": zod.union([zod.string(),zod.null()]).optional(),
+  "to": zod.union([zod.string(),zod.null()]).optional(),
+  "category_id": zod.union([zod.string(),zod.null()]).optional(),
+  "ward_id": zod.union([zod.string(),zod.null()]).optional(),
+  "status": zod.array(IssueStatus).max(savedFiltersStatusMax).optional(),
+  "interval": zod.enum(['day', 'week']).default(savedFiltersIntervalDefault)
+}).describe('The dashboard\'s filters, in the same vocabulary as its URL.');
+
+export type SavedFilters = zod.input<typeof SavedFilters>;
+export type SavedFiltersOutput = zod.output<typeof SavedFilters>;
+
+export const analyticsViewCreateNameMax = 80;
+
+export const analyticsViewCreateIsDefaultDefault = false;
+
+export const AnalyticsViewCreate = zod.object({
+  "name": zod.string().min(1).max(analyticsViewCreateNameMax),
+  "filters": SavedFilters,
+  "is_default": zod.boolean().default(analyticsViewCreateIsDefaultDefault)
+});
+
+export type AnalyticsViewCreate = zod.input<typeof AnalyticsViewCreate>;
+export type AnalyticsViewCreateOutput = zod.output<typeof AnalyticsViewCreate>;
+
+export const AnalyticsViewOut = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "filters": SavedFilters,
+  "is_default": zod.boolean(),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+});
+
+export type AnalyticsViewOut = zod.input<typeof AnalyticsViewOut>;
+export type AnalyticsViewOutOutput = zod.output<typeof AnalyticsViewOut>;
+
+export const analyticsViewUpdateNameOneMax = 80;
+
+
+
+export const AnalyticsViewUpdate = zod.object({
+  "name": zod.union([zod.string().min(1).max(analyticsViewUpdateNameOneMax),zod.null()]).optional(),
+  "filters": zod.union([SavedFilters,zod.null()]).optional(),
+  "is_default": zod.union([zod.boolean(),zod.null()]).optional()
+});
+
+export type AnalyticsViewUpdate = zod.input<typeof AnalyticsViewUpdate>;
+export type AnalyticsViewUpdateOutput = zod.output<typeof AnalyticsViewUpdate>;
+
+export const AnnouncementKind = zod.enum(['planned_works', 'outage', 'advisory']);
+
+export type AnnouncementKind = zod.input<typeof AnnouncementKind>;
+export type AnnouncementKindOutput = zod.output<typeof AnnouncementKind>;
+
+export const AnnouncementCreate = zod.object({
+  "kind": AnnouncementKind,
+  "title_i18n": zod.record(zod.string(), zod.string()),
+  "body_i18n": zod.record(zod.string(), zod.string()),
+  "ward_id": zod.union([zod.string(),zod.null()]).optional(),
+  "category_id": zod.union([zod.string(),zod.null()]).optional(),
+  "starts_at": zod.string(),
+  "ends_at": zod.string()
+});
+
+export type AnnouncementCreate = zod.input<typeof AnnouncementCreate>;
+export type AnnouncementCreateOutput = zod.output<typeof AnnouncementCreate>;
+
+export const AppDomainsAnalyticsSchemasWardRef = zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string()
+});
+
+export type AppDomainsAnalyticsSchemasWardRef = zod.input<typeof AppDomainsAnalyticsSchemasWardRef>;
+export type AppDomainsAnalyticsSchemasWardRefOutput = zod.output<typeof AppDomainsAnalyticsSchemasWardRef>;
+
+export const CategoryRef = zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name_i18n": zod.record(zod.string(), zod.string()),
+  "icon": zod.string()
+}).describe('The short form embedded in reports and issues.');
+
+export type CategoryRef = zod.input<typeof CategoryRef>;
+export type CategoryRefOutput = zod.output<typeof CategoryRef>;
+
+export const UserRef = zod.object({
+  "id": zod.string(),
+  "display_name": zod.union([zod.string(),zod.null()])
+});
+
+export type UserRef = zod.input<typeof UserRef>;
+export type UserRefOutput = zod.output<typeof UserRef>;
+
+export const AnnouncementOut = zod.object({
+  "id": zod.string(),
+  "kind": AnnouncementKind,
+  "title_i18n": zod.record(zod.string(), zod.string()),
+  "body_i18n": zod.record(zod.string(), zod.string()),
+  "ward": zod.union([AppDomainsAnalyticsSchemasWardRef,zod.null()]),
+  "category": zod.union([CategoryRef,zod.null()]),
+  "starts_at": zod.string(),
+  "ends_at": zod.string(),
+  "state": zod.enum(['scheduled', 'active', 'ended', 'withdrawn']),
+  "withdrawn_at": zod.union([zod.string(),zod.null()]),
+  "created_by": zod.union([UserRef,zod.null()]),
+  "created_at": zod.string(),
+  "updated_at": zod.string()
+});
+
+export type AnnouncementOut = zod.input<typeof AnnouncementOut>;
+export type AnnouncementOutOutput = zod.output<typeof AnnouncementOut>;
+
+export const AnnouncementUpdate = zod.object({
+  "kind": zod.union([AnnouncementKind,zod.null()]).optional(),
+  "title_i18n": zod.union([zod.record(zod.string(), zod.string()),zod.null()]).optional(),
+  "body_i18n": zod.union([zod.record(zod.string(), zod.string()),zod.null()]).optional(),
+  "ward_id": zod.union([zod.string(),zod.null()]).optional(),
+  "category_id": zod.union([zod.string(),zod.null()]).optional(),
+  "starts_at": zod.union([zod.string(),zod.null()]).optional(),
+  "ends_at": zod.union([zod.string(),zod.null()]).optional()
+}).describe('Only the fields sent change. `ward_id`/`category_id` sent as null\nwiden the notice to the whole city / every category.');
+
+export type AnnouncementUpdate = zod.input<typeof AnnouncementUpdate>;
+export type AnnouncementUpdateOutput = zod.output<typeof AnnouncementUpdate>;
+
 
 export const approveClosurePublicNoteOneMax = 2000;
 
@@ -179,14 +312,6 @@ export const TeamRef = zod.object({
 
 export type TeamRef = zod.input<typeof TeamRef>;
 export type TeamRefOutput = zod.output<typeof TeamRef>;
-
-export const UserRef = zod.object({
-  "id": zod.string(),
-  "display_name": zod.union([zod.string(),zod.null()])
-});
-
-export type UserRef = zod.input<typeof UserRef>;
-export type UserRefOutput = zod.output<typeof UserRef>;
 
 export const WorkOrderState = zod.enum(['pending_acceptance', 'accepted', 'in_progress', 'completion_requested', 'done', 'declined', 'cancelled']);
 
@@ -259,16 +384,6 @@ export const Bin = zod.object({
 export type Bin = zod.input<typeof Bin>;
 export type BinOutput = zod.output<typeof Bin>;
 
-export const CategoryRef = zod.object({
-  "id": zod.string(),
-  "code": zod.string(),
-  "name_i18n": zod.record(zod.string(), zod.string()),
-  "icon": zod.string()
-}).describe('The short form embedded in reports and issues.');
-
-export type CategoryRef = zod.input<typeof CategoryRef>;
-export type CategoryRefOutput = zod.output<typeof CategoryRef>;
-
 export const StatusCount = zod.object({
   "status": IssueStatus,
   "count": zod.int()
@@ -304,15 +419,6 @@ export const ByStatus = zod.object({
 
 export type ByStatus = zod.input<typeof ByStatus>;
 export type ByStatusOutput = zod.output<typeof ByStatus>;
-
-export const AppDomainsAnalyticsSchemasWardRef = zod.object({
-  "id": zod.string(),
-  "code": zod.string(),
-  "name": zod.string()
-});
-
-export type AppDomainsAnalyticsSchemasWardRef = zod.input<typeof AppDomainsAnalyticsSchemasWardRef>;
-export type AppDomainsAnalyticsSchemasWardRefOutput = zod.output<typeof AppDomainsAnalyticsSchemasWardRef>;
 
 export const WardRow = zod.object({
   "ward": zod.union([AppDomainsAnalyticsSchemasWardRef,zod.null()]),
@@ -1812,6 +1918,16 @@ export const Overview = zod.object({
 export type Overview = zod.input<typeof Overview>;
 export type OverviewOutput = zod.output<typeof Overview>;
 
+export const PageAnnouncementOut = zod.object({
+  "items": zod.array(AnnouncementOut),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+});
+
+export type PageAnnouncementOut = zod.input<typeof PageAnnouncementOut>;
+export type PageAnnouncementOutOutput = zod.output<typeof PageAnnouncementOut>;
+
 export const PlatformTenant = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -1989,6 +2105,20 @@ export const ProgressBody = zod.object({
 
 export type ProgressBody = zod.input<typeof ProgressBody>;
 export type ProgressBodyOutput = zod.output<typeof ProgressBody>;
+
+export const PublicAnnouncement = zod.object({
+  "id": zod.string(),
+  "kind": AnnouncementKind,
+  "title_i18n": zod.record(zod.string(), zod.string()),
+  "body_i18n": zod.record(zod.string(), zod.string()),
+  "ward": zod.union([AppDomainsAnalyticsSchemasWardRef,zod.null()]),
+  "category": zod.union([CategoryRef,zod.null()]),
+  "starts_at": zod.string(),
+  "ends_at": zod.string()
+});
+
+export type PublicAnnouncement = zod.input<typeof PublicAnnouncement>;
+export type PublicAnnouncementOutput = zod.output<typeof PublicAnnouncement>;
 
 export const PublicFeatureProperties = zod.object({
   "id": zod.string(),
@@ -4174,6 +4304,113 @@ export const AnalyticsExportHeaders = zod.object({
 export type AnalyticsExportHeaders = zod.input<typeof AnalyticsExportHeaders>;
 export type AnalyticsExportHeadersOutput = zod.output<typeof AnalyticsExportHeaders>;
 
+export const analyticsViewsListHeadersXTenantOneMax = 63;
+
+
+export const AnalyticsViewsListHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(analyticsViewsListHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AnalyticsViewsListHeaders = zod.input<typeof AnalyticsViewsListHeaders>;
+export type AnalyticsViewsListHeadersOutput = zod.output<typeof AnalyticsViewsListHeaders>;
+
+export const analyticsViewsCreateHeadersXTenantOneMax = 63;
+
+
+export const AnalyticsViewsCreateHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(analyticsViewsCreateHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AnalyticsViewsCreateHeaders = zod.input<typeof AnalyticsViewsCreateHeaders>;
+export type AnalyticsViewsCreateHeadersOutput = zod.output<typeof AnalyticsViewsCreateHeaders>;
+
+export const analyticsViewsUpdateHeadersXTenantOneMax = 63;
+
+
+export const AnalyticsViewsUpdateHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(analyticsViewsUpdateHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AnalyticsViewsUpdateHeaders = zod.input<typeof AnalyticsViewsUpdateHeaders>;
+export type AnalyticsViewsUpdateHeadersOutput = zod.output<typeof AnalyticsViewsUpdateHeaders>;
+
+export const analyticsViewsDeleteHeadersXTenantOneMax = 63;
+
+
+export const AnalyticsViewsDeleteHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(analyticsViewsDeleteHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AnalyticsViewsDeleteHeaders = zod.input<typeof AnalyticsViewsDeleteHeaders>;
+export type AnalyticsViewsDeleteHeadersOutput = zod.output<typeof AnalyticsViewsDeleteHeaders>;
+
+export const adminAnnouncementsListParamsLimitDefault = 20;
+export const adminAnnouncementsListParamsLimitMax = 100;
+
+export const adminAnnouncementsListParamsOffsetDefault = 0;
+export const adminAnnouncementsListParamsOffsetMin = 0;
+
+
+export const AdminAnnouncementsListParams = zod.object({
+  "state": zod.union([zod.enum(['scheduled', 'active', 'ended', 'withdrawn']),zod.null()]).optional(),
+  "ward_id": zod.union([zod.string(),zod.null()]).optional(),
+  "limit": zod.int().min(1).max(adminAnnouncementsListParamsLimitMax).default(adminAnnouncementsListParamsLimitDefault).describe('Page size (1-100).'),
+  "offset": zod.int().min(adminAnnouncementsListParamsOffsetMin).default(adminAnnouncementsListParamsOffsetDefault).describe('Number of items to skip.')
+})
+
+export type AdminAnnouncementsListParams = zod.input<typeof AdminAnnouncementsListParams>;
+export type AdminAnnouncementsListParamsOutput = zod.output<typeof AdminAnnouncementsListParams>;
+
+export const adminAnnouncementsListHeadersXTenantOneMax = 63;
+
+
+export const AdminAnnouncementsListHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminAnnouncementsListHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminAnnouncementsListHeaders = zod.input<typeof AdminAnnouncementsListHeaders>;
+export type AdminAnnouncementsListHeadersOutput = zod.output<typeof AdminAnnouncementsListHeaders>;
+
+export const adminAnnouncementsCreateHeadersXTenantOneMax = 63;
+
+
+export const AdminAnnouncementsCreateHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminAnnouncementsCreateHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminAnnouncementsCreateHeaders = zod.input<typeof AdminAnnouncementsCreateHeaders>;
+export type AdminAnnouncementsCreateHeadersOutput = zod.output<typeof AdminAnnouncementsCreateHeaders>;
+
+export const adminAnnouncementsGetHeadersXTenantOneMax = 63;
+
+
+export const AdminAnnouncementsGetHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminAnnouncementsGetHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminAnnouncementsGetHeaders = zod.input<typeof AdminAnnouncementsGetHeaders>;
+export type AdminAnnouncementsGetHeadersOutput = zod.output<typeof AdminAnnouncementsGetHeaders>;
+
+export const adminAnnouncementsUpdateHeadersXTenantOneMax = 63;
+
+
+export const AdminAnnouncementsUpdateHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminAnnouncementsUpdateHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminAnnouncementsUpdateHeaders = zod.input<typeof AdminAnnouncementsUpdateHeaders>;
+export type AdminAnnouncementsUpdateHeadersOutput = zod.output<typeof AdminAnnouncementsUpdateHeaders>;
+
+export const adminAnnouncementsWithdrawHeadersXTenantOneMax = 63;
+
+
+export const AdminAnnouncementsWithdrawHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminAnnouncementsWithdrawHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminAnnouncementsWithdrawHeaders = zod.input<typeof AdminAnnouncementsWithdrawHeaders>;
+export type AdminAnnouncementsWithdrawHeadersOutput = zod.output<typeof AdminAnnouncementsWithdrawHeaders>;
+
 export const issuesSupportGetHeadersXTenantOneMax = 63;
 
 
@@ -4232,3 +4469,11 @@ export const PublicIssuesGeojsonParams = zod.object({
 
 export type PublicIssuesGeojsonParams = zod.input<typeof PublicIssuesGeojsonParams>;
 export type PublicIssuesGeojsonParamsOutput = zod.output<typeof PublicIssuesGeojsonParams>;
+
+export const PublicAnnouncementsListParams = zod.object({
+  "ward_id": zod.union([zod.string(),zod.null()]).optional(),
+  "category_id": zod.union([zod.string(),zod.null()]).optional()
+})
+
+export type PublicAnnouncementsListParams = zod.input<typeof PublicAnnouncementsListParams>;
+export type PublicAnnouncementsListParamsOutput = zod.output<typeof PublicAnnouncementsListParams>;

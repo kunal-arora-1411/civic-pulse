@@ -261,9 +261,16 @@ export function ReportFlow({
       queryClient.invalidateQueries({ queryKey: ["reports", "mine"] });
     },
     onError: async (error, { key, body }) => {
-      // No connection: keep the report on the device and send it later
-      // with the same key and body (P6-01). Any other error is shown.
-      if (isApiError(error) && error.status === 0) {
+      // The device is offline: keep the report and send it later with the
+      // same key and body (P6-01). A dropped connection while online may
+      // have reached the server, so it gets the usual retry screen, which
+      // replays the same request.
+      if (
+        isApiError(error) &&
+        error.status === 0 &&
+        typeof navigator !== "undefined" &&
+        navigator.onLine === false
+      ) {
         if (await enqueueReport(key, body)) {
           finishDraft();
           setQueued(true);

@@ -6,11 +6,11 @@ their references. `media_assets.original_purged_at` marks a photo whose
 original object (with its full EXIF, GPS included) was deleted by the
 retention job; the stripped, face-checked variants stay.
 
-Numbered 0015 to leave 0012-0014 to branches being built in parallel; it
-follows 0011 until those merge, and the merge re-points `down_revision`.
+Numbered 0015 to leave room for branches built in parallel; it follows
+0014 (analytics extras), the latest on main when this branch merged it.
 
 Revision ID: 0015
-Revises: 0011
+Revises: 0014
 Create Date: 2026-11-26
 """
 
@@ -22,7 +22,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0015"
-down_revision: str | None = "0011"
+down_revision: str | None = "0014"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

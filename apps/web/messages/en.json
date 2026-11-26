@@ -121,7 +121,8 @@
       "matching": "Matching",
       "priority": "Priority rules",
       "ai": "AI models",
-      "sla": "SLA targets"
+      "sla": "SLA targets",
+      "announcements": "Announcements"
     },
     "overview": {
       "title": "Welcome back",
@@ -1090,6 +1091,87 @@
         "truncatedDescription": "The export stops at 20,000 issues. Narrow the period or the filters to get the rest.",
         "failedTitle": "Couldn't download the file",
         "rangeInvalid": "Fix the custom range first."
+      },
+      "views": {
+        "label": "Saved view",
+        "choose": "Choose a saved view",
+        "none": "No saved views yet",
+        "defaultOption": "{name} (default)",
+        "save": "Save view",
+        "makeDefault": "Open by default",
+        "isDefault": "Default view",
+        "delete": "Delete “{name}”",
+        "saved": "Saved “{name}”",
+        "deleted": "Deleted “{name}”",
+        "defaultSet": "“{name}” now opens by default",
+        "defaultCleared": "“{name}” no longer opens by default",
+        "failed": "That didn't work",
+        "dialogTitle": "Save this view",
+        "dialogDescription": "Keeps the period, filters and interval on screen under a name. Only you can see your saved views.",
+        "name": "Name",
+        "nameTaken": "You already have a view with this name.",
+        "openByDefault": "Open the dashboard on this view",
+        "saveSubmit": "Save view",
+        "cancel": "Cancel"
+      }
+    },
+    "announcements": {
+      "title": "Announcements",
+      "description": "Notices for residents about planned works, outages and advisories, shown on the public tracker while they're current.",
+      "add": "New announcement",
+      "readOnly": "You can view announcements. Publishing them needs configuration access.",
+      "stateFilter": "Show",
+      "allStates": "All announcements",
+      "states": {
+        "active": "Showing now",
+        "scheduled": "Scheduled",
+        "ended": "Ended",
+        "withdrawn": "Withdrawn"
+      },
+      "loadError": "Announcements couldn't be loaded",
+      "retry": "Try again",
+      "tableLabel": "Service announcements",
+      "colTitle": "Announcement",
+      "colArea": "Area",
+      "colStarts": "From",
+      "colEnds": "Until",
+      "colState": "Status",
+      "colActions": "Actions",
+      "wholeCity": "Whole city",
+      "allCategories": "All categories",
+      "empty": "No announcements here yet.",
+      "edit": "Edit",
+      "editFor": "Edit “{title}”",
+      "withdraw": "Withdraw",
+      "withdrawFor": "Withdraw “{title}”",
+      "withdrawTitle": "Withdraw “{title}”?",
+      "withdrawBody": "It comes off the public tracker straight away. It stays in this list and in the audit log.",
+      "withdrawn": "Withdrew “{title}”",
+      "created": "Published “{title}”",
+      "updated": "Saved “{title}”",
+      "close": "Close",
+      "cancel": "Cancel",
+      "createTitle": "New announcement",
+      "editTitle": "Edit announcement",
+      "dialogDescription": "Shown on the public tracker between the start and end times. Add Hindi text so more residents can read it.",
+      "kind": "Type",
+      "ward": "Ward",
+      "category": "Category",
+      "titleEn": "Title (English)",
+      "titleHi": "Title (Hindi)",
+      "bodyEn": "Message (English)",
+      "bodyHi": "Message (Hindi)",
+      "optional": "Optional",
+      "startsAt": "Starts",
+      "endsAt": "Ends",
+      "timesInIst": "India Standard Time",
+      "publish": "Publish",
+      "saveChanges": "Save changes",
+      "errors": {
+        "titleRequired": "Enter an English title.",
+        "bodyRequired": "Enter an English message.",
+        "timeRequired": "Enter a date and time.",
+        "endBeforeStart": "The end must be after the start."
       }
     }
   },
@@ -1852,6 +1934,11 @@
       "noMedian": "Nothing fixed yet",
       "days": "{count, plural, one {# day} other {# days}}",
       "retry": "Try again"
+    },
+    "announcements": {
+      "title": "Service announcements",
+      "wholeCity": "Whole city",
+      "until": "Until {until}"
     }
   },
   "sla": {
@@ -1871,5 +1958,10 @@
     "queuedFailed": "Not sent: the report needs changes",
     "discard": "Discard",
     "sendNow": "Send now"
+  },
+  "announcementKind": {
+    "planned_works": "Planned works",
+    "outage": "Service outage",
+    "advisory": "Advisory"
   }
 }

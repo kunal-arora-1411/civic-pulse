@@ -70,7 +70,7 @@ variables.
 
 Migration `0015` adds `users.anonymized_at`, `media_assets.original_purged_at`
 and a partial index for the retention job. It is numbered 0015 to leave
-room for branches built in parallel and follows `0011` until they merge.
+room for branches built in parallel and follows `0014`.
 
 ## 7. Web app (no API change)
 

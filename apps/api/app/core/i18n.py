@@ -51,3 +51,11 @@ I18nLabel = Annotated[
 
 I18nDescription = Annotated[dict[str, str], AfterValidator(_description)]
 """Optional longer text: may be empty, 2000 characters per locale."""
+
+
+def _body(value: dict[str, Any]) -> dict[str, str]:
+    return _clean(value, max_length=2000, require_en=True)
+
+
+I18nBody = Annotated[dict[str, str], AfterValidator(_body)]
+"""Required longer text: `en` must be present, 2000 characters per locale."""

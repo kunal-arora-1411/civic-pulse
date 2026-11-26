@@ -10,6 +10,7 @@
  */
 import type {
   Activity,
+  AdminAnnouncementsListParams,
   AdminGetAiQualityParams,
   AdminListAuditEventsParams,
   AdminListCategoriesParams,
@@ -32,6 +33,12 @@ import type {
   AnalyticsOverviewParams,
   AnalyticsResolutionTimesParams,
   AnalyticsTrendParams,
+  AnalyticsViewCreate,
+  AnalyticsViewOut,
+  AnalyticsViewUpdate,
+  AnnouncementCreate,
+  AnnouncementOut,
+  AnnouncementUpdate,
   ApproveClosure,
   AssignmentCreate,
   AssignmentOut,
@@ -85,12 +92,15 @@ import type {
   OtpRequestOut,
   OtpVerifyIn,
   Overview,
+  PageAnnouncementOut,
   PlatformListTenantsParams,
   PlatformTenant,
   PlatformTenantPage,
   PriorityConfig,
   PriorityOverride,
   ProgressBody,
+  PublicAnnouncement,
+  PublicAnnouncementsListParams,
   PublicFeatureCollection,
   PublicIssueDetail,
   PublicIssuePage,
@@ -1592,6 +1602,137 @@ export const analyticsExport = (
     }
 
 /**
+ * The caller's saved views, the default first, then by name.
+ * @summary List Saved Views
+ */
+export const analyticsViewsList = (
+
+ options?: SecondParameter<typeof customInstance<AnalyticsViewOut[]>>,) => {
+      return customInstance<AnalyticsViewOut[]>(
+      {url: `/api/v1/analytics/views`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Save filters under a name. Making it the default un-defaults any
+ * other. 409 `name_taken` when the name (ignoring case) is in use;
+ * 422 `too_many_views` past the limit of 20.
+ * @summary Create Saved View
+ */
+export const analyticsViewsCreate = (
+    analyticsViewCreate: AnalyticsViewCreate,
+ options?: SecondParameter<typeof customInstance<AnalyticsViewOut>>,) => {
+      return customInstance<AnalyticsViewOut>(
+      {url: `/api/v1/analytics/views`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: analyticsViewCreate
+    },
+      options);
+    }
+
+/**
+ * @summary Update Saved View
+ */
+export const analyticsViewsUpdate = (
+    viewId: string,
+    analyticsViewUpdate: AnalyticsViewUpdate,
+ options?: SecondParameter<typeof customInstance<AnalyticsViewOut>>,) => {
+      return customInstance<AnalyticsViewOut>(
+      {url: `/api/v1/analytics/views/${encodeURIComponent(String(viewId))}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: analyticsViewUpdate
+    },
+      options);
+    }
+
+/**
+ * @summary Delete Saved View
+ */
+export const analyticsViewsDelete = (
+    viewId: string,
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/analytics/views/${encodeURIComponent(String(viewId))}`, method: 'DELETE'
+    },
+      options);
+    }
+
+/**
+ * All announcements, latest start first, optionally by state or ward.
+ * @summary List Announcements
+ */
+export const adminAnnouncementsList = (
+    params?: AdminAnnouncementsListParams,
+ options?: SecondParameter<typeof customInstance<PageAnnouncementOut>>,) => {
+      return customInstance<PageAnnouncementOut>(
+      {url: `/api/v1/admin/announcements`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Publish a notice for a ward (or the city when `ward_id` is omitted).
+ * It shows publicly from `starts_at` until `ends_at`, which must be in
+ * the future. Audited as `announcement.create`.
+ * @summary Create Announcement
+ */
+export const adminAnnouncementsCreate = (
+    announcementCreate: AnnouncementCreate,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: announcementCreate
+    },
+      options);
+    }
+
+/**
+ * @summary Get Announcement
+ */
+export const adminAnnouncementsGet = (
+    announcementId: string,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements/${encodeURIComponent(String(announcementId))}`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Edit a notice that hasn't been withdrawn (409 `withdrawn` otherwise).
+ * Audited as `announcement.update` with before and after.
+ * @summary Update Announcement
+ */
+export const adminAnnouncementsUpdate = (
+    announcementId: string,
+    announcementUpdate: AnnouncementUpdate,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements/${encodeURIComponent(String(announcementId))}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: announcementUpdate
+    },
+      options);
+    }
+
+/**
+ * Take a notice down immediately; the row and its history are kept.
+ * Repeating it changes nothing. Audited as `announcement.withdraw`.
+ * @summary Withdraw Announcement
+ */
+export const adminAnnouncementsWithdraw = (
+    announcementId: string,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements/${encodeURIComponent(String(announcementId))}/withdraw`, method: 'POST'
+    },
+      options);
+    }
+
+/**
  * The support count and whether the caller supports the issue.
  * @summary Get Support
  */
@@ -1687,6 +1828,23 @@ export const publicScorecard = (
  options?: SecondParameter<typeof customInstance<Scorecard>>,) => {
       return customInstance<Scorecard>(
       {url: `/api/v1/public/${encodeURIComponent(String(tenant))}/scorecard`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Service announcements showing now, newest first, at most 50. With
+ * `ward_id` (or `category_id`), the city-wide (or all-category) ones are
+ * included too.
+ * @summary List Announcements
+ */
+export const publicAnnouncementsList = (
+    tenant: string,
+    params?: PublicAnnouncementsListParams,
+ options?: SecondParameter<typeof customInstance<PublicAnnouncement[]>>,) => {
+      return customInstance<PublicAnnouncement[]>(
+      {url: `/api/v1/public/${encodeURIComponent(String(tenant))}/announcements`, method: 'GET',
+        params
     },
       options);
     }
@@ -1789,6 +1947,15 @@ export type AnalyticsMatchingQualityResult = NonNullable<Awaited<ReturnType<type
 export type AnalyticsHotspotsResult = NonNullable<Awaited<ReturnType<typeof analyticsHotspots>>>
 export type AnalyticsActivityResult = NonNullable<Awaited<ReturnType<typeof analyticsActivity>>>
 export type AnalyticsExportResult = NonNullable<Awaited<ReturnType<typeof analyticsExport>>>
+export type AnalyticsViewsListResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsList>>>
+export type AnalyticsViewsCreateResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsCreate>>>
+export type AnalyticsViewsUpdateResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsUpdate>>>
+export type AnalyticsViewsDeleteResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsDelete>>>
+export type AdminAnnouncementsListResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsList>>>
+export type AdminAnnouncementsCreateResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsCreate>>>
+export type AdminAnnouncementsGetResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsGet>>>
+export type AdminAnnouncementsUpdateResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsUpdate>>>
+export type AdminAnnouncementsWithdrawResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsWithdraw>>>
 export type IssuesSupportGetResult = NonNullable<Awaited<ReturnType<typeof issuesSupportGet>>>
 export type IssuesSupportAddResult = NonNullable<Awaited<ReturnType<typeof issuesSupportAdd>>>
 export type IssuesSupportRemoveResult = NonNullable<Awaited<ReturnType<typeof issuesSupportRemove>>>
@@ -1796,3 +1963,4 @@ export type PublicIssuesListResult = NonNullable<Awaited<ReturnType<typeof publi
 export type PublicIssuesGeojsonResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGeojson>>>
 export type PublicIssuesGetResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGet>>>
 export type PublicScorecardResult = NonNullable<Awaited<ReturnType<typeof publicScorecard>>>
+export type PublicAnnouncementsListResult = NonNullable<Awaited<ReturnType<typeof publicAnnouncementsList>>>
