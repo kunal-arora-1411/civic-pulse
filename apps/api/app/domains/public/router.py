@@ -21,6 +21,8 @@ from app.core.ratelimit import enforce_window
 from app.core.redis import get_redis
 from app.core.storage import Storage
 from app.core.tenancy import set_tenant
+from app.domains.announcements import service as announcements
+from app.domains.announcements.schemas import PublicAnnouncement
 from app.domains.public import service
 from app.domains.public.schemas import (
     PublicFeatureCollection,
@@ -134,3 +136,21 @@ async def get_issue(
 async def scorecard(_: PublicTenant, db: DbSession) -> Scorecard:
     """Per ward: open issues, resolved issues and the median days to resolve."""
     return await service.scorecard(db)
+
+
+@router.get(
+    "/announcements",
+    operation_id="public_announcements_list",
+    response_model=list[PublicAnnouncement],
+    responses=error_responses(404, 422, 429),
+)
+async def list_announcements(
+    _: PublicTenant,
+    db: DbSession,
+    ward_id: uuid.UUID | None = None,
+    category_id: uuid.UUID | None = None,
+) -> list[PublicAnnouncement]:
+    """Service announcements showing now, newest first, at most 50. With
+    `ward_id` (or `category_id`), the city-wide (or all-category) ones are
+    included too."""
+    return await announcements.list_public(db, ward_id=ward_id, category_id=category_id)

@@ -44,6 +44,7 @@ describe("visibleNavItems", () => {
   it("shows every section to a municipal admin", () => {
     expect(visibleNavItems(makeAdmin()).map((item) => item.key)).toEqual([
       "overview",
+      "announcements",
       "categories",
       "matching",
       "priority",
@@ -124,6 +125,7 @@ describe("AdminNav", () => {
     );
     expect(links).toEqual([
       "Overview",
+      "Announcements",
       "Categories",
       "Matching",
       "Priority rules",

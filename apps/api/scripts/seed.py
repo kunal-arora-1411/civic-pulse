@@ -398,6 +398,8 @@ async def run() -> dict[str, int]:
         reporters=[user_ids[p] for p in ("+919000000005", "+919000000006", "+919000000007")],
         operator_id=user_ids["+919000000002"],
     )
+    # Last, so it also catches reports the other seeds leave bare.
+    backfilled = await phase1.backfill_report_photos(demo)
     await recompute_tenant(demo)
     return {
         "tenants": len(tenant_ids),
@@ -409,6 +411,7 @@ async def run() -> dict[str, int]:
         "issues": issues,
         "places": places,
         "analytics issues": history,
+        "photos backfilled": backfilled,
         **{f"extra reports {status}": count for status, count in sorted(matching.items())},
     }
 
