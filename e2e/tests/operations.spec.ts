@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { expectAccessible } from "../support/a11y";
 import type { Api, Session } from "../support/api";
 import { freshCitizenPhone } from "../support/api";
 import { INSIDE, PHOTO_PATH, SEEDED } from "../support/env";
@@ -125,6 +126,8 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
   await signInThroughUi(fieldPage, SEEDED.fieldWorker);
   await expect(fieldPage).toHaveURL(/\/field/);
   const queue = fieldPage.getByRole("list", { name: "Active" });
+  await expect(queue).toBeVisible();
+  await expectAccessible(fieldPage, "field-queue");
   await queue.getByText(issueRef).click();
   await expect(fieldPage).toHaveURL(
     new RegExp(`/field/work-orders/${workOrderId}`),
@@ -134,6 +137,8 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
   await expect(
     fieldPage.getByRole("link", { name: /get directions/i }),
   ).toHaveAttribute("href", /google\.com\/maps\/dir/);
+
+  await expectAccessible(fieldPage, "field-work-order");
 
   // Accept, start, post an update.
   await fieldPage.getByRole("button", { name: "Accept job" }).click();
@@ -176,6 +181,12 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
     .fill("Filled and levelled.");
   await dialog.getByRole("button", { name: "Approve fix" }).click();
   await expect(staffPage.getByText("Resolved").first()).toBeVisible();
+  // The workload view counts the job against Roads North.
+  await staffPage.goto("/admin/workload");
+  await expect(
+    staffPage.getByRole("heading", { level: 2, name: "Roads North" }),
+  ).toBeVisible();
+  await expectAccessible(staffPage, "admin-workload");
   await staff.close();
 
   // AC-12: the citizen says it's still broken, and the issue reopens.
