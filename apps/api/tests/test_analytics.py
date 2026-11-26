@@ -3,6 +3,8 @@ only staff with analytics:read in the same tenant see them."""
 
 from __future__ import annotations
 
+import csv
+import io
 from typing import Any
 
 import httpx
@@ -10,6 +12,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.domains.analytics import export as export_csv
 from tests.helpers import RecordingSms, Session
 from tests.phase1 import NE, NW, SE, City, login_new, make_city
 from tests.phase2 import ISSUES, issue, report
@@ -25,6 +28,7 @@ ENDPOINTS = (
     "matching-quality",
     "hotspots",
     "activity",
+    "export",
 )
 
 
@@ -191,3 +195,129 @@ async def test_figures_follow_the_callers_scope(
     # Unscoped staff still see the whole city.
     assert kpis(await _get(client, city.admin, "overview"))["reports"] == 3
     assert kpis(await _get(client, city.supervisor, "overview"))["reports"] == 3
+
+
+# --- CSV export (P5-05, AN-002) -----------------------------------------------------------
+
+# Column names that would identify a citizen or pinpoint a home. The export
+# must carry none of them: a permission check is not privacy filtering.
+IDENTITY_COLUMNS = {
+    "reporter",
+    "reporter_id",
+    "phone",
+    "email",
+    "name",
+    "display_name",
+    "description",
+    "lat",
+    "lng",
+    "address",
+    "address_text",
+}
+
+
+def _rows(response: httpx.Response) -> list[list[str]]:
+    # The BOM is there for Excel; the parser should not see it as data.
+    return list(csv.reader(io.StringIO(response.text.lstrip("\ufeff"))))
+
+
+async def _export(client: httpx.AsyncClient, who: Session, **query: Any) -> httpx.Response:
+    response = await client.get(f"{ANALYTICS}/export", headers=who.headers, params=query)
+    assert response.status_code == 200, response.text
+    return response
+
+
+async def test_export_lists_the_periods_issues_as_csv(
+    client: httpx.AsyncClient, city: City
+) -> None:
+    response = await _export(client, city.admin)
+    assert response.headers["content-type"].startswith("text/csv")
+    disposition = response.headers["content-disposition"]
+    assert disposition.startswith('attachment; filename="civicpulse-issues-')
+    assert disposition.endswith('.csv"')
+
+    header, *rows = _rows(response)
+    assert tuple(header) == export_csv.COLUMNS
+    assert len(rows) == 3
+    assert response.headers["x-export-rows"] == "3"
+    assert response.headers["x-export-truncated"] == "false"
+
+    # The issue resolved two days after it was reported says so.
+    resolved = [r for r in rows if r[header.index("status")] == "resolved"]
+    assert len(resolved) == 1
+    assert resolved[0][header.index("resolution_hours")] == "48.0"
+    assert resolved[0][header.index("sla_breached")] in {"yes", "no"}
+    # Every row names its category and ward, which is what makes it analysable.
+    assert {r[header.index("category")] for r in rows} == {"Waste"}
+    assert {r[header.index("ward")] for r in rows} == {"Ward NE", "Ward NW", "Ward SE"}
+
+
+async def test_export_carries_no_personal_data(client: httpx.AsyncClient, city: City) -> None:
+    response = await _export(client, city.admin)
+    header, *rows = _rows(response)
+
+    # A permission check is not privacy filtering: the column list is.
+    assert not {c.lower() for c in header} & IDENTITY_COLUMNS
+
+    phone = city.citizen.user.get("phone")
+    assert phone, "the fixture should know the citizen's number"
+    for row in rows:
+        assert phone not in ",".join(row)
+
+
+async def test_export_follows_the_callers_scope(
+    client: httpx.AsyncClient, sms: RecordingSms, owner_engine: AsyncEngine, city: City
+) -> None:
+    north = await login_new(
+        client, sms, owner_engine, city, "supervisor", jurisdiction_id=city.zones["N"]
+    )
+    response = await _export(client, north)
+    header, *rows = _rows(response)
+    assert len(rows) == 2
+    assert {r[header.index("ward")] for r in rows} == {"Ward NE", "Ward NW"}
+
+    # Asking for a ward outside the scope exports nothing rather than leaking it.
+    outside = await _export(client, north, ward_id=str(city.wards["SE"]))
+    assert outside.headers["x-export-rows"] == "0"
+
+
+async def test_export_is_audited(
+    client: httpx.AsyncClient, city: City, owner_engine: AsyncEngine
+) -> None:
+    await _export(client, city.admin, status=["resolved"])
+
+    async with owner_engine.connect() as conn:
+        row = (
+            await conn.execute(
+                text(
+                    "SELECT action, actor_id, after FROM audit_events "
+                    "WHERE action = 'analytics.export' ORDER BY id DESC LIMIT 1"
+                )
+            )
+        ).one()
+    assert row.action == "analytics.export"
+    assert row.after["rows"] == 1
+    assert row.after["status"] == ["resolved"]
+    assert row.after["truncated"] is False
+    # `unique_reporter_count` is an aggregate, not an identity: assert the
+    # absence of identity columns exactly, not by substring.
+    assert not {c.lower() for c in row.after["columns"]} & IDENTITY_COLUMNS
+
+
+async def test_export_says_when_the_cap_cut_it_short(
+    client: httpx.AsyncClient, city: City, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(export_csv, "EXPORT_MAX_ROWS", 1)
+    response = await _export(client, city.admin)
+    assert response.headers["x-export-rows"] == "1"
+    assert response.headers["x-export-truncated"] == "true"
+
+
+def test_a_formula_in_a_cell_is_neutralised() -> None:
+    # A category someone named `=HYPERLINK(...)` must stay text in the file.
+    assert export_csv.cell('=HYPERLINK("http://x")') == '\'=HYPERLINK("http://x")'
+    assert export_csv.cell("+1") == "'+1"
+    assert export_csv.cell("@sum") == "'@sum"
+    assert export_csv.cell("Waste") == "Waste"
+    assert export_csv.cell(3) == "3"
+    assert export_csv.cell(None) == ""
