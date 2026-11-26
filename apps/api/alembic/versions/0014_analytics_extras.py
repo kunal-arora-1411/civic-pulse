@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import os
 import re
+import uuid
 from collections.abc import Sequence
+from datetime import datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -42,7 +44,7 @@ def _app_role() -> str:
     return role
 
 
-def _tenant_fk(table: str) -> sa.Column[sa.Uuid]:
+def _tenant_fk(table: str) -> sa.Column[uuid.UUID]:
     return sa.Column(
         "tenant_id",
         sa.Uuid(),
@@ -51,7 +53,7 @@ def _tenant_fk(table: str) -> sa.Column[sa.Uuid]:
     )
 
 
-def _timestamps() -> list[sa.Column[sa.DateTime]]:
+def _timestamps() -> list[sa.Column[datetime]]:
     return [
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
