@@ -12,7 +12,14 @@ import {
   useTenant,
   useTenantMapView,
 } from "@/hooks/use-reference-data";
-import { createReport, type Report, reverseGeocode } from "@/lib/api";
+import {
+  type CreateReportBody,
+  createReport,
+  isApiError,
+  type Report,
+  reverseGeocode,
+} from "@/lib/api";
+import { enqueueReport } from "@/lib/offline/use-report-queue";
 import {
   type DraftLocation,
   type DraftPhoto,
@@ -49,6 +56,7 @@ import { LocationStep } from "./location-step";
 import { PhotosStep } from "./photos-step";
 import { ReportDone } from "./report-done";
 import { ReportProgress, STEP_KEYS } from "./report-progress";
+import { ReportQueued } from "./report-queued";
 import { ReviewStep } from "./review-step";
 import { useCategorySuggestion } from "./use-category-suggestion";
 import { usePhotoUploads } from "./use-photo-uploads";
@@ -91,6 +99,7 @@ export function ReportFlow({
   );
   const [submitError, setSubmitError] = useState<SubmitErrorInfo | null>(null);
   const [done, setDone] = useState<Report | null>(null);
+  const [queued, setQueued] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const moveFocus = useRef(false);
   const furthestRef = useRef(furthest);
@@ -228,40 +237,41 @@ export function ReportFlow({
     moveFocus.current = false;
     headingRef.current?.focus();
     headingRef.current?.scrollIntoView({ block: "nearest" });
-  }, [draft.step, done]);
+  }, [draft.step, done, queued]);
 
   // ---- submit
 
+  const finishDraft = () => {
+    // The submitted draft is finished with. A new draft (with a new
+    // idempotency key) replaces it, so "report another" can't replay.
+    uploads.reset();
+    setDraft(newDraft());
+    setFurthest(1);
+    setAttempted(new Set());
+    setResumed(false);
+    moveFocus.current = true;
+  };
+
   const mutation = useMutation({
-    mutationFn: ({
-      key,
-      submittedAt,
-    }: {
-      key: string;
-      submittedAt: string;
-    }) => {
-      if (!category) throw new Error("No category");
-      const mediaIds = uploads.photos.flatMap((photo) =>
-        photo.mediaId ? [photo.mediaId] : [],
-      );
-      return createReport(
-        buildReportBody(draft, category, mediaIds, new Date(submittedAt)),
-        { idempotencyKey: key },
-      );
-    },
+    mutationFn: ({ key, body }: { key: string; body: CreateReportBody }) =>
+      createReport(body, { idempotencyKey: key }),
     onSuccess: (report) => {
-      // The submitted draft is finished with. A new draft (with a new
-      // idempotency key) replaces it, so "report another" can't replay.
-      uploads.reset();
-      setDraft(newDraft());
-      setFurthest(1);
-      setAttempted(new Set());
-      setResumed(false);
+      finishDraft();
       setDone(report);
-      moveFocus.current = true;
       queryClient.invalidateQueries({ queryKey: ["reports", "mine"] });
     },
-    onError: (error) => setSubmitError(submitErrorInfo(error)),
+    onError: async (error, { key, body }) => {
+      // No connection: keep the report on the device and send it later
+      // with the same key and body (P6-01). Any other error is shown.
+      if (isApiError(error) && error.status === 0) {
+        if (await enqueueReport(key, body)) {
+          finishDraft();
+          setQueued(true);
+          return;
+        }
+      }
+      setSubmitError(submitErrorInfo(error));
+    },
   });
 
   const submit = (
@@ -281,7 +291,16 @@ export function ReportFlow({
     if (submittedAt !== draft.submittedAt) {
       setDraft((current) => ({ ...current, submittedAt }));
     }
-    mutation.mutate({ key, submittedAt });
+    const mediaIds = uploads.photos.flatMap((photo) =>
+      photo.mediaId ? [photo.mediaId] : [],
+    );
+    const body = buildReportBody(
+      draft,
+      category,
+      mediaIds,
+      new Date(submittedAt),
+    );
+    mutation.mutate({ key, body });
   };
 
   const submitAsNew = () => {
@@ -311,6 +330,18 @@ export function ReportFlow({
     moveFocus.current = true;
     window.history.replaceState(null, "", "?step=1");
   };
+
+  if (queued) {
+    return (
+      <ReportQueued
+        onAnother={() => {
+          setQueued(false);
+          moveFocus.current = true;
+          window.history.replaceState(null, "", "?step=1");
+        }}
+      />
+    );
+  }
 
   if (done) {
     return (

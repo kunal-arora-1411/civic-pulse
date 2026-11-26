@@ -1836,5 +1836,18 @@
     "overdue": "Overdue",
     "dueSoon": "Due soon",
     "dueAt": "SLA due {date}"
+  },
+  "offline": {
+    "banner": "You're offline. Reports you send are saved and go out when you're back online.",
+    "sentTitle": "{count, plural, one {Your saved report was sent} other {# saved reports were sent}}",
+    "sentDescription": "You'll find them under My reports.",
+    "failedTitle": "{count, plural, one {A saved report couldn't be sent} other {# saved reports couldn't be sent}}",
+    "failedDescription": "Open the report page to check it and try again.",
+    "queuedTitle": "Saved. We'll send it when you're online",
+    "queuedBody": "Your report is stored on this device and will be sent automatically once you have a connection. Keep the app signed in.",
+    "queuedPending": "{count, plural, one {# report waiting to be sent} other {# reports waiting to be sent}}",
+    "queuedFailed": "Not sent: the report needs changes",
+    "discard": "Discard",
+    "sendNow": "Send now"
   }
 }
