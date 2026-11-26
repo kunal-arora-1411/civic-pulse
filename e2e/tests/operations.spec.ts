@@ -187,6 +187,11 @@ test("assign, field work, approval and a citizen reopen (AC-10 to AC-12)", async
     staffPage.getByRole("heading", { level: 2, name: "Roads North" }),
   ).toBeVisible();
   await expectAccessible(staffPage, "admin-workload");
+  await staffPage.goto("/admin/moderation");
+  await expect(
+    staffPage.getByRole("heading", { level: 1, name: "Moderation" }),
+  ).toBeVisible();
+  await expectAccessible(staffPage, "admin-moderation");
   await staff.close();
 
   // AC-12: the citizen says it's still broken, and the issue reopens.

@@ -52,14 +52,6 @@ test("the operator's console is accessible", async ({ page, context, api }) => {
   await expectAccessible(page, "admin-issues");
 });
 
-test("the moderation queue is accessible", async ({ page, context, api }) => {
-  await giveSession(context, await api.login(SEEDED.operator));
-  await page.goto("/admin/moderation");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await page.waitForLoadState("networkidle");
-  await expectAccessible(page, "admin-moderation");
-});
-
 test("the teams and closure rules pages are accessible", async ({
   page,
   context,
