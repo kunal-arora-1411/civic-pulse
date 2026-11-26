@@ -38,10 +38,13 @@ export function Hero() {
 
           <Link
             href="/report"
-            aria-label={t("hero.composerLabel")}
             style={delay(4)}
             className="lp-rise group mt-10 grid w-full max-w-[780px] gap-4 rounded-[22px] border border-lp-hair bg-white p-4 text-start shadow-[0_1px_2px_rgb(10_15_18/0.04),0_24px_60px_-12px_rgb(10_61_56/0.14)] transition-[border-color,box-shadow] duration-300 hover:border-[#d6dad5] hover:shadow-[0_1px_2px_rgb(10_15_18/0.05),0_30px_70px_-14px_rgb(10_61_56/0.22)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lp-teal-vivid sm:mt-12 sm:p-5"
           >
+            {/* The name comes from this text, not aria-label: the visible
+                content is a decorative preview, and an aria-label that
+                doesn't contain the visible text fails WCAG 2.5.3. */}
+            <span className="sr-only">{t("hero.composerLabel")}</span>
             <div aria-hidden="true" className="contents">
               <div className="flex items-center gap-2.5">
                 <span

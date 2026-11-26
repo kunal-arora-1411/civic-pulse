@@ -19,18 +19,83 @@ export type Session = {
 
 export type Category = { id: string; code: string };
 
+export type MatchingStatus = "pending" | "linked" | "review" | "new_issue";
+
+export type Signals = {
+  distance_m: number;
+  radius_m: number;
+  visual: number | null;
+  same_photo: boolean;
+  thresholds: { auto: number; review: number; visual_min: number };
+  reason: string | null;
+};
+
+export type MatchDecision = {
+  id: string;
+  candidate_issue_id: string;
+  rank: number;
+  score: number;
+  signals: Signals;
+  decision:
+    | "auto_linked"
+    | "sent_to_review"
+    | "rejected_candidate"
+    | "chosen_by_reviewer"
+    | "not_chosen";
+};
+
 export type Report = {
   id: string;
   reference: string;
   view: "owner" | "staff";
-  matching_status?: "pending" | "linked" | "review" | "new_issue";
+  matching_status?: MatchingStatus;
   media: { id: string; status: "processing" | "ready" | "failed" }[];
   issue: {
     id: string;
     reference: string;
     status: string;
+    report_count?: number;
+    unique_reporter_count?: number;
     timeline?: Record<string, unknown>[];
   };
+  /** Staff view only. */
+  match_decisions?: MatchDecision[];
+};
+
+/** A report that may still be waiting for matching or review. */
+export type PendingReport = Omit<Report, "issue"> & {
+  issue: Report["issue"] | null;
+};
+
+export type Issue = {
+  id: string;
+  reference: string;
+  status: string;
+  version: number;
+  report_count: number;
+  unique_reporter_count: number;
+  merged_into?: { id: string; reference: string } | null;
+  reports: { id: string; reference: string }[];
+};
+
+export type ReviewTask = {
+  id: string;
+  status: "open" | "resolved";
+  report: { id: string; reference: string };
+  candidates: {
+    match_decision_id: string;
+    score: number;
+    signals: Signals;
+    issue: { id: string; reference: string };
+  }[];
+};
+
+type ReportInput = {
+  categoryCode: string;
+  lat: number;
+  lng: number;
+  description: string;
+  photo?: Buffer;
 };
 
 export type ApiErrorBody = {
@@ -71,9 +136,13 @@ export class Api {
       data: { phone },
     });
     // The per-phone resend cooldown (30 s) can still be running when a
-    // seeded account signs in again straight after a previous run. Wait
-    // exactly as long as the API says, once.
-    if (challenge.status() === 429) {
+    // seeded account signed in moments ago, here or in a parallel test.
+    // Wait exactly as long as the API says, a few times at most.
+    for (
+      let attempt = 0;
+      attempt < 3 && challenge.status() === 429;
+      attempt++
+    ) {
       const body = (await challenge.json()) as ApiErrorBody;
       const wait = Number(body.error.details.retry_after ?? 0);
       if (body.error.code !== "rate_limited" || wait > 35) {
@@ -126,8 +195,11 @@ export class Api {
     return (await response.json()) as Category[];
   }
 
+  private categoryList?: Promise<Category[]>;
+
   async categoryId(code: string): Promise<string> {
-    const category = (await this.categories()).find((c) => c.code === code);
+    this.categoryList ??= this.categories();
+    const category = (await this.categoryList).find((c) => c.code === code);
     if (!category) throw new Error(`No category "${code}"`);
     return category.id;
   }
@@ -168,19 +240,27 @@ export class Api {
     return ((await completed.json()) as { id: string }).id;
   }
 
-  async createReport(
+  async createReport(session: Session, input: ReportInput): Promise<Report> {
+    const created = await this.submitReport(session, input);
+    return this.waitForIssue(session, created.id);
+  }
+
+  /** Sends a report and returns at once, before matching has run. */
+  async submitReport(
     session: Session,
-    input: {
-      categoryCode: string;
-      lat: number;
-      lng: number;
-      description: string;
-      photo?: Buffer;
-    },
-  ): Promise<Report> {
+    input: ReportInput,
+  ): Promise<PendingReport> {
     const mediaIds = input.photo
       ? [await this.uploadPhoto(session, input.photo)]
       : [];
+    return this.postReport(session, { ...input, mediaIds });
+  }
+
+  /** `POST /reports` with photos that are already uploaded. */
+  async postReport(
+    session: Session,
+    input: Omit<ReportInput, "photo"> & { mediaIds: string[] },
+  ): Promise<PendingReport> {
     const response = await expectOk(
       await this.request.post(url("/reports"), {
         headers: { ...this.bearer(session), "Idempotency-Key": randomUUID() },
@@ -194,14 +274,35 @@ export class Api {
             source: "gps",
           },
           details: {},
-          media_ids: mediaIds,
+          media_ids: input.mediaIds,
           client_created_at: new Date().toISOString(),
         },
       }),
       "Creating a report",
     );
-    const created = (await response.json()) as Report;
-    return this.waitForIssue(session, created.id);
+    return (await response.json()) as PendingReport;
+  }
+
+  /**
+   * Waits until matching has decided (linked, new issue or sent to
+   * review), whichever it is.
+   */
+  async waitForMatching(
+    session: Session,
+    id: string,
+    timeoutMs = 90_000,
+  ): Promise<PendingReport> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const report = await this.getReport(session, id);
+      if (report.matching_status !== "pending") return report;
+      if (Date.now() > deadline) {
+        throw new Error(
+          `Report ${id} was still being matched after ${timeoutMs} ms`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 
   /**
@@ -236,6 +337,79 @@ export class Api {
     return (await response.json()) as Report;
   }
 
+  /** Staff: the issue detail. */
+  async getIssue(session: Session, id: string): Promise<Issue> {
+    const response = await expectOk(
+      await this.request.get(url(`/issues/${id}`), {
+        headers: this.bearer(session),
+      }),
+      "Reading an issue",
+    );
+    return (await response.json()) as Issue;
+  }
+
+  /** Staff: the open review task for a report, if there is one. */
+  async reviewTaskFor(
+    session: Session,
+    reportId: string,
+  ): Promise<ReviewTask | undefined> {
+    const response = await expectOk(
+      await this.request.get(url("/review-tasks"), {
+        headers: this.bearer(session),
+        params: { status: "open", limit: 100 },
+      }),
+      "Listing review tasks",
+    );
+    const page = (await response.json()) as { items: ReviewTask[] };
+    return page.items.find((task) => task.report.id === reportId);
+  }
+
+  async resolveReview(
+    session: Session,
+    taskId: string,
+    action: { action: "link"; issue_id: string } | { action: "new_issue" },
+  ): Promise<void> {
+    await expectOk(
+      await this.request.post(url(`/review-tasks/${taskId}/resolve`), {
+        headers: this.bearer(session),
+        data: action,
+      }),
+      "Resolving a review task",
+    );
+  }
+
+  /** Staff: the AI models the API has registered, newest first. */
+  async aiModels(session: Session) {
+    const response = await expectOk(
+      await this.request.get(url("/admin/ai/models"), {
+        headers: this.bearer(session),
+      }),
+      "Listing AI models",
+    );
+    return (
+      (await response.json()) as {
+        items: { model_id: string; task: string; active: boolean }[];
+      }
+    ).items;
+  }
+
+  /** Municipal admin: a new staff account in the tenant. */
+  async createStaff(
+    session: Session,
+    role: "operator" | "municipal_admin" | "supervisor" | "field_worker",
+    displayName: string,
+  ): Promise<string> {
+    const phone = freshCitizenPhone().replace(/^\+9198/, "+9197");
+    await expectOk(
+      await this.request.post(url("/admin/users"), {
+        headers: { ...this.bearer(session), "Idempotency-Key": randomUUID() },
+        data: { phone, display_name: displayName, roles: [{ role }] },
+      }),
+      `Creating a ${role}`,
+    );
+    return phone;
+  }
+
   async myReports(session: Session) {
     const response = await expectOk(
       await this.request.get(url("/users/me/reports"), {
@@ -250,10 +424,24 @@ export class Api {
     };
   }
 
+  /** A JSON call that must succeed, for arranging staff-side steps. */
+  async send<T>(
+    session: Session,
+    method: "GET" | "POST" | "PATCH",
+    path: string,
+    data?: unknown,
+  ): Promise<T> {
+    const response = await expectOk(
+      await this.raw(session, method, path, data),
+      `${method} ${path}`,
+    );
+    return (await response.json()) as T;
+  }
+
   /** A raw call, for asserting on refusals. */
   raw(
     session: Session,
-    method: "GET" | "PATCH",
+    method: "GET" | "POST" | "PATCH",
     path: string,
     data?: unknown,
   ): Promise<APIResponse> {

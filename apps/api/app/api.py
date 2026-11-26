@@ -7,6 +7,8 @@ from fastapi import APIRouter
 from app.domains.ai.router import admin_router as ai_admin_router
 from app.domains.ai.router import router as ai_router
 from app.domains.analytics.router import router as analytics_router
+from app.domains.analytics.views import router as analytics_views_router
+from app.domains.announcements.router import router as announcements_router
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
 from app.domains.categories.router import router as categories_router
@@ -20,6 +22,7 @@ from app.domains.notifications.router import router as notifications_router
 from app.domains.operations.field_router import router as field_router
 from app.domains.operations.router import router as operations_router
 from app.domains.org.router import router as org_router
+from app.domains.outbox.router import router as outbox_router
 from app.domains.public.router import router as public_router
 from app.domains.reports.router import router as reports_router
 from app.domains.sla.router import router as sla_router
@@ -51,6 +54,9 @@ api_router.include_router(matching_router)
 api_router.include_router(operations_router)
 api_router.include_router(field_router)
 api_router.include_router(notifications_router)
+api_router.include_router(outbox_router)
 api_router.include_router(analytics_router)
+api_router.include_router(analytics_views_router)
+api_router.include_router(announcements_router)
 api_router.include_router(community_router)
 api_router.include_router(public_router)

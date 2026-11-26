@@ -3,6 +3,7 @@ verification, reopen, withdraw and workload (docs/api/phase-3-contract.md)."""
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -12,9 +13,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 import app.models  # noqa: F401  (configure every mapper before using the service)
+from app.domains.ai.analysis import ensure_embeddings
 from app.domains.operations.closure import close_expired
 from tests.helpers import RecordingSms
-from tests.phase1 import SW, login_new
+from tests.phase1 import NW, SW, login_new
 from tests.phase2 import ISSUES, issue, report, view
 from tests.phase3 import (
     FIELD,
@@ -366,6 +368,57 @@ async def test_closure_request_then_supervisor_approval(
     assert (await work_order(client, ops.worker))["state"] == "done"
 
 
+async def _closure_with_after_photo(
+    client: httpx.AsyncClient, ops: Ops, *, after_seed: int
+) -> tuple[dict[str, Any], str]:
+    """A pothole reported with scene 1, closed with an after photo of
+    `after_seed`. Returns the supervisor's issue detail and the photo id."""
+    detail = await verified_issue(client, ops, seed=1)
+    assert (await assign(client, ops, detail, ops.worker)).status_code == 201
+    wo = await work_order(client, ops.worker)
+    wo = (await act(client, ops.worker, wo, "accept")).json()
+    wo = (await act(client, ops.worker, wo, "start")).json()
+    photo = await evidence(client, ops.worker, "after", seed=after_seed)
+    response = await act(client, ops.worker, wo, "request-closure", media_ids=[photo])
+    assert response.status_code == 200, response.text
+    return await issue(client, ops.city.supervisor, detail["id"]), photo
+
+
+async def _embed_all(ops: Ops, detail: dict[str, Any], after_photo: str) -> None:
+    report_photos = [m["id"] for r in detail["reports"] for m in r["media"]]
+    await ensure_embeddings(
+        ops.city.tenant.id, [uuid.UUID(m) for m in [*report_photos, after_photo]]
+    )
+
+
+async def test_scene_match_compares_after_photos_with_the_reports(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    detail, photo = await _closure_with_after_photo(client, ops, after_seed=1)
+    # Nothing to compare until both sides are analysed.
+    assert detail["operations"]["closure_request"]["scene_match"] is None
+
+    await _embed_all(ops, detail, photo)
+    detail = await issue(client, ops.city.supervisor, detail["id"])
+    match = detail["operations"]["closure_request"]["scene_match"]
+    assert match is not None
+    assert match["similarity"] > 0.9
+    assert match["model_id"]
+
+
+async def test_scene_match_is_low_for_a_different_place(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    detail, photo = await _closure_with_after_photo(client, ops, after_seed=7)
+    await _embed_all(ops, detail, photo)
+    detail = await issue(client, ops.city.supervisor, detail["id"])
+    match = detail["operations"]["closure_request"]["scene_match"]
+    assert match is not None
+    assert match["similarity"] < 0.6
+    # Advice only: the closure is still pending the supervisor's decision.
+    assert detail["status"] == "pending_verification"
+
+
 async def test_closure_rejection_sends_work_back(client: httpx.AsyncClient, ops: Ops) -> None:
     detail = await to_pending_verification(client, ops)
     response = await client.post(
@@ -576,3 +629,139 @@ async def test_every_phase3_table_has_forced_rls(owner_engine: AsyncEngine) -> N
         ).all()
     assert {r[0] for r in rows} == set(tables)
     assert all(r[1] and r[2] for r in rows)
+
+
+# --- bulk actions (FR-078) -------------------------------------------------------------------
+
+BULK = "/api/v1/issues/bulk"
+
+
+async def test_bulk_assign_reports_each_item_and_audits(
+    client: httpx.AsyncClient, ops: Ops, owner_engine: AsyncEngine
+) -> None:
+    first = await verified_issue(client, ops, seed=1)
+    second = await verified_issue(client, ops, seed=9, point=NW)
+    response = await client.post(
+        BULK,
+        headers=ops.city.supervisor.headers,
+        json={
+            "action": "assign",
+            "team_id": ops.team_id,
+            "assignee_id": ops.worker.user["id"],
+            "items": [
+                {"issue_id": first["id"], "version": first["version"]},
+                # Stale: someone changed it since the queue was loaded.
+                {"issue_id": second["id"], "version": second["version"] - 1},
+            ],
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["succeeded"], body["failed"]) == (1, 1)
+    assert body["results"] == [
+        {"issue_id": first["id"], "ok": True, "error": None},
+        {"issue_id": second["id"], "ok": False, "error": "version_conflict"},
+    ]
+    assert (await issue(client, ops.city.supervisor, first["id"]))["status"] == "assigned"
+    assert (await issue(client, ops.city.supervisor, second["id"]))["status"] == "verified"
+    async with owner_engine.connect() as conn:
+        assigned = (
+            (
+                await conn.execute(
+                    text(
+                        "SELECT entity_id::text FROM audit_events "
+                        "WHERE action = 'issue.assigned' AND entity_id::text IN (:a, :b)"
+                    ),
+                    {"a": first["id"], "b": second["id"]},
+                )
+            )
+            .scalars()
+            .all()
+        )
+        summary = (
+            await conn.execute(
+                text(
+                    "SELECT after FROM audit_events WHERE action = 'issue.bulk_action' "
+                    "AND jsonb_exists(CAST(after AS jsonb) -> 'succeeded', :a)"
+                ),
+                {"a": first["id"]},
+            )
+        ).scalar_one()
+    assert assigned == [first["id"]]
+    assert summary["failed"] == {second["id"]: "version_conflict"}
+
+
+async def _reported_issue(
+    client: httpx.AsyncClient, ops: Ops, seed: int, point: tuple[float, float]
+) -> dict[str, Any]:
+    from tests.phase2 import scene_photo
+
+    photo = await scene_photo(client, ops.city.citizen, seed)
+    own = await report(client, ops.city, ops.city.citizen, point=point, media_ids=[photo])
+    return await issue(client, ops.city.operator, own["issue"]["id"])
+
+
+async def test_bulk_status_change_uses_the_single_issue_rules(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    first = await _reported_issue(client, ops, 1, NW)
+    second = await _reported_issue(client, ops, 9, SW)
+    items = [
+        {"issue_id": first["id"], "version": first["version"]},
+        {"issue_id": second["id"], "version": second["version"]},
+    ]
+    # Rejecting needs a reason, exactly as for one issue.
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={"action": "status", "to_status": "rejected", "items": items},
+    )
+    assert response.status_code == 200, response.text
+    assert {r["error"] for r in response.json()["results"]} == {"reason_required"}
+
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={
+            "action": "status",
+            "to_status": "rejected",
+            "reason": "Private land, not a municipal road",
+            "items": items,
+        },
+    )
+    assert response.json()["succeeded"] == 2, response.text
+    assert (await issue(client, ops.city.operator, first["id"]))["status"] == "rejected"
+
+
+async def test_bulk_assign_needs_the_assign_permission(client: httpx.AsyncClient, ops: Ops) -> None:
+    detail = await verified_issue(client, ops)
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={
+            "action": "assign",
+            "team_id": ops.team_id,
+            "items": [{"issue_id": detail["id"], "version": detail["version"]}],
+        },
+    )
+    assert response.status_code == 404
+    assert (await issue(client, ops.city.supervisor, detail["id"]))["status"] == "verified"
+
+
+async def test_bulk_refuses_duplicates_and_oversized_batches(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    detail = await verified_issue(client, ops)
+    item = {"issue_id": detail["id"], "version": detail["version"]}
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={"action": "status", "to_status": "under_review", "items": [item, item]},
+    )
+    assert response.status_code == 422
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={"action": "status", "to_status": "under_review", "items": [item] * 51},
+    )
+    assert response.status_code == 422

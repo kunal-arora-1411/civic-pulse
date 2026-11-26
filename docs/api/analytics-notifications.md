@@ -156,7 +156,7 @@ example are illustrative.
 ```
 
 `kind`: `report_new_issue`, `report_linked`, `issue_status`,
-`review_task`, `assignment`. Clients must still render an unknown kind
+`review_task`, `assignment`, `sla_breach`. Clients must still render an unknown kind
 (generic icon).
 
 | Method and path | Body / query | Response |
@@ -170,9 +170,12 @@ Errors: `401` without a session, `422` for a malformed id or page.
 
 ### Email (the outbox's `email` channel)
 
-The same events also leave the building by email, once a relay is configured.
-`issue.assigned` is the only event emailed today: it is the one that asks a
-person to act. The in-app inbox above remains the record of everything.
+The same events also leave the building by email, SMS and Web Push, under
+each person's preferences: see
+[notification-delivery.md](notification-delivery.md). This section covers
+the `issue.assigned` email, which carries more than the other notifications
+because it asks a person to act. The in-app inbox above remains the record
+of everything.
 
 The channel runs inside the outbox dispatcher
 ([§15 of the PRD](../../CivicPulse_Product_Requirements_Document_v1.0.md),
@@ -204,8 +207,9 @@ channel, so a missing email can be told apart from an unsent one:
 | `delivered` | the subject | The relay accepted it |
 | `skipped` | `the assignment names nobody to email` | Assigned to a team with no individual named |
 | `skipped` | `the assignee has no email address` | An account without one |
+| `skipped` | `the assignee turned assignment emails off` | Their notification preferences |
 | `skipped` | `no SMTP relay is configured` | `SMTP_HOST` is empty |
-| `failed` | the error | The relay refused; the next tick retries, and after 5 attempts the event is abandoned and left `failed` |
+| `failed` | the error | The relay refused; retried with backoff, and after 5 attempts the event becomes a dead letter ([notification-delivery.md §2](notification-delivery.md#2-retries-and-dead-letters-p4-06)) |
 
 Email text is rendered server-side rather than as a message key, because a mail
 program cannot resolve one. That is the one place the "text is an i18n key"

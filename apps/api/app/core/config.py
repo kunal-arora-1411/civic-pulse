@@ -35,6 +35,12 @@ class Settings(BaseSettings):
 
     env: Environment = Environment.DEVELOPMENT
     log_level: str = "INFO"
+    # Error reporting and tracing (app/core/observability.py); off when empty.
+    sentry_dsn: SecretStr | None = None
+    sentry_traces_sample_rate: float = 0.0
+    otel_exporter_otlp_endpoint: str = ""
+    # The deployed version (a git SHA or tag), reported with errors and traces.
+    release: str = ""
     service_name: str = "civicpulse-api"
 
     # The API connects as the non-superuser app role so that RLS applies.
@@ -75,6 +81,17 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_max_per_hour: int = 5
     otp_max_per_ip_per_hour: int = 30
+    # Per client address on the other unauthenticated auth endpoints. Each
+    # challenge already allows only a few wrong codes; these stop one
+    # address from spraying guesses across many challenges or tokens.
+    otp_verify_max_per_ip_per_hour: int = 120
+    mfa_verify_max_per_ip_per_hour: int = 60
+    refresh_max_per_ip_per_hour: int = 600
+    # GET /tenants/current resolves any slug without a login.
+    tenant_lookup_max_per_ip_per_minute: int = 300
+    # The public tracker (/public/{tenant}/...), per client address. Raise
+    # it for load tests run from a single machine (infra/load).
+    public_max_per_ip_per_minute: int = 300
     dev_fixed_otp: bool = False
     dev_fixed_otp_code: str = "000000"
     sms_provider: str = "console"
@@ -93,6 +110,33 @@ class Settings(BaseSettings):
     smtp_from: str = "CivicPulse <no-reply@civicpulse.local>"
     # Links in email go to the web app, not to the API.
     web_url: str = "http://localhost:3000"
+
+    # Web Push (VAPID, RFC 8292). Both keys empty switches the push channel
+    # off: the subscribe endpoints answer 503 and the dispatcher never tries.
+    # The private key is the base64url raw P-256 scalar or a PEM; the public
+    # key is the base64url uncompressed point browsers are given. Generate
+    # a pair with `python scripts/vapid_keys.py`.
+    vapid_public_key: str = ""
+    vapid_private_key: SecretStr | None = None
+    # The contact push services use if our pushes misbehave (mailto: or https:).
+    vapid_subject: str = "mailto:ops@civicpulse.local"
+    # A subscription's endpoint is a URL the dispatcher will POST to, so it
+    # must belong to a real browser push service: anything else is refused at
+    # subscribe time (it would let a user aim our servers at internal hosts).
+    # Matched as the host or a dot-suffix of it.
+    push_endpoint_hosts: list[str] = [
+        "fcm.googleapis.com",
+        "updates.push.services.mozilla.com",
+        "push.apple.com",
+        "notify.windows.com",
+    ]
+
+    # Repeated notifications (PRD 15.2): the same person is told about the
+    # same issue on the same external channel at most once per window, and
+    # gets at most this many notification texts a day (the in-app inbox
+    # still has every one). One-time passwords are limited separately.
+    notification_dedup_minutes: int = 10
+    notification_sms_per_day: int = 10
 
     # MFA
     totp_encryption_key: SecretStr
@@ -126,6 +170,13 @@ class Settings(BaseSettings):
     media_upload_url_ttl_seconds: int = 600
     media_download_url_ttl_seconds: int = 600
     media_max_pending_uploads: int = 20
+    # Malware scanning of uploads with clamd (INSTREAM over TCP). Empty
+    # host means no scanning. When a host is set, an unreachable scanner
+    # blocks upload completion (503) rather than letting files through.
+    # clamd's StreamMaxLength must be at least media_max_bytes.
+    clamav_host: str = ""
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = 30.0
 
     # Reverse geocoding (address text only; wards and zones come from PostGIS).
     # Nominatim's usage policy allows one request per second per application
@@ -168,6 +219,11 @@ class Settings(BaseSettings):
     # Dispatched outbox events (and their delivery log, which cascades) are
     # kept this long for tracing, then deleted by housekeeping.
     outbox_retention_days: int = 7
+    # Original photos (full EXIF, GPS included, faces unblurred) are kept
+    # this many days after processing, then deleted by housekeeping; the
+    # stripped variants stay. 0 keeps originals indefinitely, which is the
+    # default until the retention periods are decided (P6-12).
+    media_original_retention_days: int = 0
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -213,6 +269,12 @@ class Settings(BaseSettings):
     def mail_enabled(self) -> bool:
         """Whether email can be attempted at all: a relay, or nothing."""
         return bool(self.smtp_host.strip())
+
+    @property
+    def push_enabled(self) -> bool:
+        """Whether Web Push can be attempted: both halves of the VAPID pair."""
+        private = self.vapid_private_key.get_secret_value() if self.vapid_private_key else ""
+        return bool(self.vapid_public_key.strip() and private.strip())
 
     @property
     def staff_mfa_required(self) -> bool:

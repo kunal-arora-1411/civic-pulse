@@ -5,6 +5,7 @@ import {
   createUpload,
   type MediaAsset,
   type UploadContentType,
+  type UploadPurpose,
   type UploadTicket,
 } from "@/lib/api";
 
@@ -153,6 +154,8 @@ export type UploadCallbacks = {
   /** Fraction of bytes sent to storage, 0–1. */
   onProgress?: (fraction: number) => void;
   signal?: AbortSignal;
+  /** Defaults to a report photo. */
+  purpose?: UploadPurpose;
 };
 
 /**
@@ -164,7 +167,12 @@ export type UploadCallbacks = {
  */
 export async function uploadImage(
   image: PreparedImage,
-  { onStage, onProgress, signal }: UploadCallbacks = {},
+  {
+    onStage,
+    onProgress,
+    signal,
+    purpose = { purpose: "report_evidence" },
+  }: UploadCallbacks = {},
 ): Promise<MediaAsset> {
   if (image.blob.size > MAX_UPLOAD_BYTES) {
     throw new ApiError({
@@ -177,7 +185,7 @@ export async function uploadImage(
   const checksum = await sha256Hex(image.blob);
   const ticket = await createUpload(
     {
-      purpose: "report_evidence",
+      ...purpose,
       content_type: image.contentType,
       size_bytes: image.blob.size,
       checksum_sha256: checksum,

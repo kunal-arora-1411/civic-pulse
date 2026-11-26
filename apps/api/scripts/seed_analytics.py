@@ -14,12 +14,15 @@ SYNTHETIC. Compared to the Phase 1 issues these:
   match decisions and some reviewer feedback, so the AI quality rates
   are not empty.
 
-No photos: the dashboard doesn't need them, and processing hundreds of
-images would make the seed slow. Addresses start with "Analytics Street"
-so these rows are easy to tell apart from the Phase 1 issues.
+Each issue and each duplicate report carries a photo, like the Phase 1 ones.
+Processing a few hundred images makes this seed slower than it used to be, but
+it means every card in the citizen's list and every issue detail page shows a
+real scene instead of an empty frame. Addresses start with "Analytics Street"
+so these rows stay easy to tell apart from the Phase 1 issues.
 
 Idempotent: every issue, report and decision has a deterministic id and an
-issue that exists is skipped along with everything that belongs to it.
+issue that exists is skipped along with everything that belongs to it. An
+issue seeded before photos existed picks one up on a re-run.
 """
 
 from __future__ import annotations
@@ -31,13 +34,14 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from geoalchemy2 import WKTElement
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenancy import system_session
 from app.domains.issues.models import CivicIssue, EventType, IssueEvent, ReferenceKind, Visibility
 from app.domains.issues.references import allocate
 from app.domains.matching.models import Decision, Feedback, MatchDecision
+from app.domains.media.models import MediaAsset
 from app.domains.reports.models import MatchingStatus, Report, ReportStatus
 from app.domains.workflow.statuses import IssueStatus
 from scripts import seed_phase1 as phase1
@@ -252,7 +256,11 @@ async def seed_history(
 ) -> int:
     planned = plan(wards)
     ward_ids = list(wards)
-    async with system_session(reason="development seed: analytics history") as db:
+
+    # What already exists decides which photos are worth making: an existing
+    # issue keeps the photo it has, and a duplicate report that never made it
+    # into the database has nothing to attach to.
+    async with system_session(reason="development seed: analytics history lookup") as db:
         existing = set(
             (
                 await db.scalars(
@@ -262,9 +270,82 @@ async def seed_history(
                 )
             ).all()
         )
+        dup_report_ids = {
+            (issue.index, n): _seed_id(f"report/{n}", issue.index)
+            for issue in planned
+            for n, _ in enumerate(issue.duplicates, start=1)
+        }
+        present_dups = set(
+            (
+                await db.scalars(
+                    select(Report.id).where(Report.id.in_(list(dup_report_ids.values())))
+                )
+            ).all()
+        )
+
+    def dup_needs_photo(index: int, n: int) -> bool:
+        """Keep a photo for a duplicate report that exists, or one about to be made."""
+        return (
+            dup_report_ids[(index, n)] in present_dups or _seed_id("issue", index) not in existing
+        )
+
+    # One photo per issue, picked by index, so the citizen's list and the issue
+    # detail view show a real scene. Chosen deterministically, so a re-run does
+    # not churn the object store.
+    photos = {
+        issue.index: await phase1.ensure_photo(
+            tenant_id=tenant_id,
+            owner_id=reporters[issue.index % len(reporters)],
+            media_id=_seed_id("media", issue.index),
+            index=issue.index,
+            category_code=issue.category,
+            created_at=issue.created_at,
+        )
+        for issue in planned
+    }
+    # The duplicate reports on an issue are reports in their own right: they turn
+    # up in their reporter's list, so they need a photo of their own.
+    dup_photos = {
+        (issue.index, n): await phase1.ensure_photo(
+            tenant_id=tenant_id,
+            owner_id=reporters[reporter],
+            media_id=_seed_id(f"media/{n}", issue.index),
+            index=issue.index + n,
+            category_code=issue.category,
+            created_at=issue.created_at + timedelta(hours=hours),
+        )
+        for issue in planned
+        for n, (reporter, hours, _decision, _feedback) in enumerate(issue.duplicates, start=1)
+        if dup_needs_photo(issue.index, n)
+    }
+    async with system_session(reason="development seed: analytics history") as db:
         for issue in planned:
             issue_id = _seed_id("issue", issue.index)
             if issue_id in existing:
+                # Seeded before these issues had photos: attach the asset to the
+                # primary report and give the issue its cover image.
+                await db.execute(
+                    update(MediaAsset)
+                    .where(MediaAsset.id == photos[issue.index])
+                    .values(report_id=_seed_id("report/0", issue.index), position=0)
+                )
+                await db.execute(
+                    update(CivicIssue)
+                    .where(
+                        CivicIssue.id == issue_id,
+                        CivicIssue.cover_media_id.is_(None),
+                    )
+                    .values(cover_media_id=photos[issue.index])
+                )
+                for n, _ in enumerate(issue.duplicates, start=1):
+                    photo = dup_photos.get((issue.index, n))
+                    if photo is None:
+                        continue
+                    await db.execute(
+                        update(MediaAsset)
+                        .where(MediaAsset.id == photo)
+                        .values(report_id=dup_report_ids[(issue.index, n)], position=0)
+                    )
                 continue
             location = WKTElement(f"POINT({issue.lng} {issue.lat})", srid=4326)
             ward_id = ward_ids[issue.ward]
@@ -287,6 +368,7 @@ async def seed_history(
                     version=1 + len(issue.moves),
                     status_changed_at=last,
                     resolved_at=issue.resolved_at,
+                    cover_media_id=photos[issue.index],
                     created_at=issue.created_at,
                     updated_at=last,
                 )
@@ -313,6 +395,11 @@ async def seed_history(
                 reporters[primary],
                 issue.created_at,
                 MatchingStatus.NEW_ISSUE,
+            )
+            await db.execute(
+                update(MediaAsset)
+                .where(MediaAsset.id == photos[issue.index])
+                .values(report_id=report_id, position=0)
             )
             db.add(
                 IssueEvent(
@@ -365,6 +452,11 @@ async def seed_history(
                 at = issue.created_at + timedelta(hours=hours)
                 dup_id = await _add_report(
                     db, common, issue.index, n, reporters[reporter], at, MatchingStatus.LINKED
+                )
+                await db.execute(
+                    update(MediaAsset)
+                    .where(MediaAsset.id == dup_photos[(issue.index, n)])
+                    .values(report_id=dup_id, position=0)
                 )
                 auto = decision is Decision.AUTO_LINKED
                 db.add(

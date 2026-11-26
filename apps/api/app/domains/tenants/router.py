@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, status
 from app.core.db import DbSession
 from app.core.errors import error_responses
 from app.core.pagination import PageParamsDep
+from app.core.ratelimit import per_ip_limit
 from app.domains.geo import service as geo
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
@@ -32,7 +33,12 @@ TenantManager = Annotated[Principal, require(Permission.TENANT_MANAGE)]
     "/current",
     operation_id="tenants_get_current",
     response_model=TenantCurrent,
-    responses=error_responses(404, 422),
+    responses=error_responses(404, 422, 429),
+    dependencies=[
+        per_ip_limit(
+            "tenant-lookup", lambda s: s.tenant_lookup_max_per_ip_per_minute, 60, fail_open=True
+        )
+    ],
 )
 async def get_current_tenant(tenant: HeaderTenant, db: DbSession) -> TenantCurrent:
     view = await geo.map_view(db)

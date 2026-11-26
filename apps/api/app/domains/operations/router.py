@@ -14,7 +14,7 @@ from app.core.storage import Storage
 from app.domains.auth.dependencies import CurrentPrincipal
 from app.domains.issues import service as issues
 from app.domains.issues.schemas import IssueDetail, TimelineEvent
-from app.domains.operations import closure, service
+from app.domains.operations import bulk, closure, service
 from app.domains.operations.schemas import (
     ApproveClosure,
     AssignmentCreate,
@@ -185,3 +185,17 @@ async def reopen(
 async def workload(principal: Assigner, db: DbSession) -> Workload:
     """Open work per team and member, for teams in the caller's scope."""
     return await service.workload(db, principal)
+
+
+@router.post(
+    "/issues/bulk",
+    operation_id="issues_bulk",
+    response_model=bulk.BulkResult,
+    responses=error_responses(401, 403, 404, 422),
+)
+async def bulk_action(principal: Reader, db: DbSession, body: bulk.BulkAction) -> bulk.BulkResult:
+    """Change the status of, or assign, up to 50 issues at once (FR-078).
+    Each item carries the version the user saw and runs the single-issue
+    action with its own checks; refused items are reported per item and
+    don't undo the rest. Each change is audited, plus one summary event."""
+    return await bulk.run(db, principal, body)

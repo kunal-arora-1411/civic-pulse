@@ -2,6 +2,7 @@ import {
   type AnalyticsQuery,
   ISSUE_STATUSES,
   type IssueStatus,
+  type SavedFilters,
 } from "@/lib/api";
 
 /*
@@ -141,5 +142,42 @@ export function activeFilterCount(filters: AnalyticsFilters): number {
     (filters.category ? 1 : 0) +
     (filters.ward ? 1 : 0) +
     (filters.status.length ? 1 : 0)
+  );
+}
+
+/** The filters as a saved view stores them (FR-077). */
+export function toSavedFilters(filters: AnalyticsFilters): SavedFilters {
+  const custom = filters.range === "custom";
+  return {
+    range: filters.range,
+    from: custom && filters.from ? filters.from : null,
+    to: custom && filters.to ? filters.to : null,
+    category_id: filters.category || null,
+    ward_id: filters.ward || null,
+    status: [...filters.status],
+    interval: filters.interval,
+  };
+}
+
+export function fromSavedFilters(saved: SavedFilters): AnalyticsFilters {
+  return {
+    range: saved.range,
+    from: saved.from ?? "",
+    to: saved.to ?? "",
+    category: saved.category_id ?? "",
+    ward: saved.ward_id ?? "",
+    status: [...saved.status],
+    interval: saved.interval,
+  };
+}
+
+/** Whether the screen shows exactly what a saved view holds. */
+export function matchesSaved(
+  filters: AnalyticsFilters,
+  saved: SavedFilters,
+): boolean {
+  return (
+    serializeFilters(filters).toString() ===
+    serializeFilters(fromSavedFilters(saved)).toString()
   );
 }

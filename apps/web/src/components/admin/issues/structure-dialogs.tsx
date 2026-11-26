@@ -243,7 +243,11 @@ export function MergeDialog({
             })
           : t("title", { reference: issue.reference })
       }
-      description={confirming ? undefined : t("description")}
+      description={
+        confirming
+          ? undefined
+          : t("description", { reference: issue.reference })
+      }
       conflict={conflict}
       submitLabel={
         confirming ? (

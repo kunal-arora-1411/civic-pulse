@@ -76,6 +76,20 @@ class AssignmentOut(BaseModel):
     work_order: WorkOrderRef | None
 
 
+class SceneMatch(BaseModel):
+    """How alike the after photos and the citizens' photos look (FR-066).
+
+    Advice for the supervisor only: a fixed pothole rightly looks different
+    from the reported one, so nothing is decided from it (PRD §8.6)."""
+
+    similarity: float = Field(
+        ge=0,
+        le=1,
+        description="Best cosine similarity between any after photo and any report photo.",
+    )
+    model_id: str = Field(description="The vision model both photos were embedded with.")
+
+
 class ClosureRequestOut(BaseModel):
     id: uuid.UUID
     state: ClosureState
@@ -87,6 +101,13 @@ class ClosureRequestOut(BaseModel):
     requires_approval: bool
     confirmations: int
     unresolved: int
+    scene_match: SceneMatch | None = Field(
+        default=None,
+        description=(
+            "Null until the photos are analysed, with no after photo, or when "
+            "the AI is unavailable."
+        ),
+    )
 
 
 class OperationsOut(BaseModel):

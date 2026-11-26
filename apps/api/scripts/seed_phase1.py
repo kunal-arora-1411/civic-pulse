@@ -1,12 +1,17 @@
-"""Phase 1 development seed: categories and ~60 synthetic issues.
+"""Phase 1 development seed: categories and ~60 seeded issues.
 
-Called from scripts/seed.py. Everything here is SYNTHETIC: placeholder
-photos are flat colours with "SYNTHETIC" written on them, descriptions and
-addresses are invented, and every report comes from the seeded citizen.
+Called from scripts/seed.py. The **data is synthetic**: descriptions,
+addresses and locations are invented, and every report comes from the seeded
+citizen. The **photos are real**, openly licensed street photographs from
+`scripts/seed_photos/` (see its ATTRIBUTION.md); they replace the flat
+"SYNTHETIC" placeholders the seed used to draw, which made every report card
+look identical. If that folder is missing, the drawn placeholder is used
+instead, so the seed still works from a partial checkout.
 
-Idempotent: categories are upserted by code, and each synthetic issue,
-report and photo has a deterministic id, so a re-run skips whatever already
-exists (and finishes processing any photo a previous run left behind).
+Idempotent: categories are upserted by code, and each seeded issue, report and
+photo has a deterministic id, so a re-run skips whatever already exists (and
+finishes processing any photo a previous run left behind). A photo whose
+bytes no longer match the one on disk is replaced in place.
 """
 
 from __future__ import annotations
@@ -17,11 +22,12 @@ import random
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from geoalchemy2 import WKTElement
 from PIL import Image, ImageDraw, ImageFont
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -266,7 +272,11 @@ async def seed_categories(
 
 
 def placeholder_photo(index: int, category: SeedCategory) -> bytes:
-    """A flat-colour JPEG with the category name and SYNTHETIC on it."""
+    """A flat-colour JPEG with the category name and SYNTHETIC on it.
+
+    The fallback when `scripts/seed_photos/` is absent, so a partial checkout
+    still seeds. Real photos are preferred: see `photo_bytes`.
+    """
     image = Image.new("RGB", (1200, 900), category.color)
     draw = ImageDraw.Draw(image)
     big = ImageFont.load_default(size=72)
@@ -277,6 +287,33 @@ def placeholder_photo(index: int, category: SeedCategory) -> bytes:
     buffer = io.BytesIO()
     image.save(buffer, "JPEG", quality=80)
     return buffer.getvalue()
+
+
+SEED_PHOTO_DIR = Path(__file__).parent / "seed_photos"
+
+
+def seed_photo_paths(category_code: str) -> list[Path]:
+    """The committed photos for one category, in a stable order."""
+    folder = SEED_PHOTO_DIR / category_code
+    if not folder.is_dir():
+        return []
+    return sorted(folder.glob("*.jpg"))
+
+
+CATEGORY_BY_CODE = {category.code: category for category in CATEGORIES}
+
+
+def photo_bytes(index: int, category_code: str) -> bytes:
+    """The photo for one seeded issue: a real one, else the drawn placeholder.
+
+    Chosen by index so a given issue always gets the same picture, which keeps
+    a re-run from churning the object store, and so neighbouring reports in the
+    citizen's list show different scenes.
+    """
+    paths = seed_photo_paths(category_code)
+    if not paths:
+        return placeholder_photo(index, CATEGORY_BY_CODE[category_code])
+    return paths[index % len(paths)].read_bytes()
 
 
 @dataclass(frozen=True)
@@ -320,42 +357,143 @@ def plan(wards: dict[uuid.UUID, tuple[float, float, float, float]]) -> list[Plan
     return planned
 
 
-async def _ensure_photo(
-    tenant_id: uuid.UUID, owner_id: uuid.UUID, issue: PlannedIssue
+async def ensure_photo(
+    *,
+    tenant_id: uuid.UUID,
+    owner_id: uuid.UUID,
+    media_id: uuid.UUID,
+    index: int,
+    category_code: str,
+    created_at: datetime,
 ) -> uuid.UUID:
-    """Upload and process the placeholder photo unless that already happened."""
-    media_id = seed_id("media", issue.index)
+    """Store and process one seeded issue's photo, replacing changed bytes.
+
+    The bytes decide: a re-run after the photo set was updated rewrites the
+    object and reprocesses the asset, while an unchanged photo is left alone
+    (re-running the seed must not churn the bucket or the derived copies).
+
+    The caller passes `media_id`, so another seed can give its own issues
+    photos without the ids colliding with Phase 1's.
+    """
+    data = photo_bytes(index, category_code)
+    checksum = hashlib.sha256(data).hexdigest()
+    key = object_key(tenant_id, media_id, "original.jpg")
     async with system_session(reason="development seed: photos") as db:
-        status = await db.scalar(select(MediaAsset.status).where(MediaAsset.id == media_id))
-        if status is None:
-            data = placeholder_photo(issue.index, issue.category)
-            key = object_key(tenant_id, media_id, "original.jpg")
-            await get_storage().write(key, data, content_type="image/jpeg")
+        existing = (
+            await db.execute(
+                select(MediaAsset.status, MediaAsset.checksum_sha256).where(
+                    MediaAsset.id == media_id
+                )
+            )
+        ).one_or_none()
+        if (
+            existing is not None
+            and existing.checksum_sha256 == checksum
+            and existing.status == MediaStatus.READY
+        ):
+            return media_id
+
+        await get_storage().write(key, data, content_type="image/jpeg")
+        replacement = {
+            "status": MediaStatus.PROCESSING,
+            "content_type": "image/jpeg",
+            "declared_size_bytes": len(data),
+            "size_bytes": len(data),
+            "checksum_sha256": checksum,
+            "storage_key": key,
+            "width": 1200,
+            "height": 900,
+            "verified_at": created_at,
+            # The stored copies describe the previous bytes, and both steps below
+            # skip an asset that looks finished, so clear them to process afresh.
+            "processed_at": None,
+            "faces_checked_at": None,
+            "thumb_key": None,
+            "display_key": None,
+        }
+        if existing is None:
             db.add(
                 MediaAsset(
                     id=media_id,
                     tenant_id=tenant_id,
                     owner_id=owner_id,
                     purpose=MediaPurpose.REPORT_EVIDENCE,
-                    status=MediaStatus.PROCESSING,
-                    content_type="image/jpeg",
-                    declared_size_bytes=len(data),
-                    size_bytes=len(data),
-                    checksum_sha256=hashlib.sha256(data).hexdigest(),
-                    storage_key=key,
-                    width=1200,
-                    height=900,
-                    upload_expires_at=issue.created_at,
-                    verified_at=issue.created_at,
-                    created_at=issue.created_at,
+                    upload_expires_at=created_at,
+                    created_at=created_at,
+                    **replacement,
                 )
             )
-            status = MediaStatus.PROCESSING
-    if status == MediaStatus.PROCESSING:
-        await process_asset(media_id, tenant_id)
-        # With face blurring on, the face check is what publishes the copies.
-        await check_faces(media_id, tenant_id)
+        else:
+            # Same id, new bytes: the report keeps pointing at one asset.
+            await db.execute(
+                update(MediaAsset).where(MediaAsset.id == media_id).values(**replacement)
+            )
+    await process_asset(media_id, tenant_id)
+    # With face blurring on, the face check is what publishes the copies.
+    await check_faces(media_id, tenant_id)
     return media_id
+
+
+async def _ensure_photo(
+    tenant_id: uuid.UUID, owner_id: uuid.UUID, issue: PlannedIssue
+) -> uuid.UUID:
+    """The Phase 1 photo for one planned issue."""
+    return await ensure_photo(
+        tenant_id=tenant_id,
+        owner_id=owner_id,
+        media_id=seed_id("media", issue.index),
+        index=issue.index,
+        category_code=issue.category.code,
+        created_at=issue.created_at,
+    )
+
+
+async def backfill_report_photos(tenant_id: uuid.UUID) -> int:
+    """Give a photo to every report that has none, and return how many.
+
+    Each seed makes photos for the issues it owns, but a report added by another
+    seed (the matching examples in Phase 2, say) can still be bare, and a bare
+    report shows an empty frame in the citizen's list. This is the catch-all, so
+    the demo never shows one. The photo comes from the report's own category and
+    is dated when the report was made.
+    """
+    async with system_session(reason="development seed: bare reports") as db:
+        rows = (
+            await db.execute(
+                select(Report.id, Report.reporter_id, Report.created_at, Category.code)
+                .join(Category, Category.id == Report.category_id)
+                .where(
+                    Report.tenant_id == tenant_id,
+                    Report.id.not_in(
+                        select(MediaAsset.report_id).where(MediaAsset.report_id.is_not(None))
+                    ),
+                )
+                .order_by(Report.created_at)
+            )
+        ).all()
+
+    attachments: list[tuple[uuid.UUID, uuid.UUID]] = []
+    for report_id, reporter_id, created_at, category_code in rows:
+        media_id = uuid.uuid5(SEED_NAMESPACE, f"demo-city/media/backfill/{report_id}")
+        await ensure_photo(
+            tenant_id=tenant_id,
+            owner_id=reporter_id,
+            media_id=media_id,
+            index=report_id.int % 997,
+            category_code=category_code,
+            created_at=created_at,
+        )
+        attachments.append((media_id, report_id))
+
+    if attachments:
+        async with system_session(reason="development seed: bare reports") as db:
+            for media_id, report_id in attachments:
+                await db.execute(
+                    update(MediaAsset)
+                    .where(MediaAsset.id == media_id)
+                    .values(report_id=report_id, position=0)
+                )
+    return len(attachments)
 
 
 def _history(issue: PlannedIssue) -> list[tuple[IssueStatus, IssueStatus, str | None, str | None]]:

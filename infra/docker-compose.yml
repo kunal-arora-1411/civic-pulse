@@ -11,6 +11,13 @@
 #
 # Every credential below is a development default for this stack only.
 # Override any of them from your shell or with `--env-file .env`.
+#
+# To run a second stack next to this one (another checkout, an e2e run),
+# give it its own project name, image tag and host ports, for example
+#   IMAGE_TAG=e2e API_PORT=18000 DB_PORT=15432 ... docker compose -p cp-e2e ...
+# The *_PORT variables only change the host side; inside the compose
+# network every service keeps its usual port. Browsers then need matching
+# S3_PUBLIC_ENDPOINT, CORS_ORIGINS, S3_CORS_ORIGINS and WEB_URL values.
 name: civicpulse
 
 x-db-env: &db-env
@@ -41,6 +48,12 @@ x-api-env: &api-env
   # whole team and the e2e suite. The 30-second resend cooldown stays.
   OTP_MAX_PER_HOUR: ${OTP_MAX_PER_HOUR:-60}
   OTP_MAX_PER_IP_PER_HOUR: ${OTP_MAX_PER_IP_PER_HOUR:-1000}
+  # The other per-address limits, loosened for the same shared address.
+  OTP_VERIFY_MAX_PER_IP_PER_HOUR: ${OTP_VERIFY_MAX_PER_IP_PER_HOUR:-5000}
+  MFA_VERIFY_MAX_PER_IP_PER_HOUR: ${MFA_VERIFY_MAX_PER_IP_PER_HOUR:-1000}
+  REFRESH_MAX_PER_IP_PER_HOUR: ${REFRESH_MAX_PER_IP_PER_HOUR:-20000}
+  TENANT_LOOKUP_MAX_PER_IP_PER_MINUTE: ${TENANT_LOOKUP_MAX_PER_IP_PER_MINUTE:-3000}
+  PUBLIC_MAX_PER_IP_PER_MINUTE: ${PUBLIC_MAX_PER_IP_PER_MINUTE:-3000}
   # Report submissions per citizen, looser than production's 10 an hour
   # and 30 a day for the same reason: the seeded citizen is shared by the
   # team and by e2e runs repeated back to back.
@@ -64,9 +77,19 @@ x-api-env: &api-env
   # http://localhost:8025 and sends nothing outside the machine. Leaving
   # SMTP_HOST empty switches the outbox's email channel off entirely.
   SMTP_HOST: ${SMTP_HOST:-mailpit}
+  # Both empty switches Web Push off (scripts/vapid_keys.py makes a pair).
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
   SMTP_PORT: ${SMTP_PORT:-1025}
   SMTP_FROM: ${SMTP_FROM:-CivicPulse <no-reply@civicpulse.local>}
   WEB_URL: ${WEB_URL:-http://localhost:3000}
+  # Malware scanning, error reporting and tracing: all off unless set.
+  CLAMAV_HOST: ${CLAMAV_HOST:-}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  RELEASE: ${RELEASE:-}
+  MEDIA_ORIGINAL_RETENTION_DAYS: ${MEDIA_ORIGINAL_RETENTION_DAYS:-0}
 
 services:
   db:
@@ -76,7 +99,7 @@ services:
     environment:
       <<: *db-env
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -90,7 +113,7 @@ services:
     image: redis:7.4-alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -112,8 +135,8 @@ services:
       # and answers preflights for any requested header from these origins.
       MINIO_API_CORS_ALLOW_ORIGIN: ${S3_CORS_ORIGINS:-http://localhost:3000,http://localhost:3100}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -166,9 +189,9 @@ services:
   mailpit:
     image: axllent/mailpit:v1.29
     ports:
-      - "8025:8025"
+      - "${MAILPIT_PORT:-8025}:8025"
       # SMTP, so the channel can also be exercised from the host.
-      - "1025:1025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 5s
@@ -178,7 +201,7 @@ services:
   # One-shot job: applies migrations as the owner role, then exits.
   migrate:
     # Same image as api (built there); never pulled from a registry.
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     pull_policy: never
     command: ["alembic", "upgrade", "head"]
     environment:
@@ -193,11 +216,11 @@ services:
   api:
     build:
       context: ../apps/api
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     environment:
       <<: *api-env
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -220,7 +243,7 @@ services:
   # watchdog. Never the `ai` queue: that belongs to the ai-worker, so every
   # embedding in the database comes from one model.
   worker:
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     pull_policy: never
     command:
       - celery
@@ -257,7 +280,7 @@ services:
     build:
       context: ../apps/api
       dockerfile: ../../infra/ai-worker/Dockerfile
-    image: civicpulse-ai-worker:dev
+    image: civicpulse-ai-worker:${IMAGE_TAG:-dev}
     environment:
       <<: *api-env
       AI_PROVIDER: onnx
@@ -280,7 +303,7 @@ services:
   # The schedule state file lives in /tmp because the image runs as a
   # non-root user without write access to /app.
   beat:
-    image: civicpulse-api:dev
+    image: civicpulse-api:${IMAGE_TAG:-dev}
     pull_policy: never
     command:
       - celery
@@ -296,6 +319,24 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+
+  # Upload malware scanning (P6-07). Opt-in, because the image and its
+  # signature database are large: `docker compose --profile scan up -d
+  # clamav`, then set CLAMAV_HOST=clamav for the api. With CLAMAV_HOST set
+  # and clamd down, upload completion answers 503 instead of skipping the
+  # scan. clamd's StreamMaxLength must cover MEDIA_MAX_BYTES (10 MB by
+  # default); a larger stream is reported as a scanner error, not a pass.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["scan"]
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
 
 volumes:
   db-data:

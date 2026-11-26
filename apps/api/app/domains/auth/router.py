@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Cookie, Depends, Response, status
+from fastapi import APIRouter, BackgroundTasks, Body, Cookie, Depends, Response, status
 from redis.asyncio import Redis
 
 from app.core.db import DbSession
 from app.core.errors import Unauthenticated, error_responses
+from app.core.ratelimit import per_ip_limit
 from app.core.redis import get_redis
 from app.domains.auth import mfa, service
 from app.domains.auth.cookies import (
@@ -27,9 +28,9 @@ from app.domains.auth.schemas import (
     RefreshIn,
     TokenResponse,
 )
-from app.domains.auth.sms import SmsProvider, get_sms_provider
 from app.domains.tenants.dependencies import OptionalHeaderTenant
 from app.domains.users.service import to_me
+from app.jobs import JobsDep
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -57,9 +58,14 @@ async def request_otp(
     db: DbSession,
     tenant: OptionalHeaderTenant,
     redis: Annotated[Redis, Depends(get_redis)],
-    sms: Annotated[SmsProvider, Depends(get_sms_provider)],
+    jobs: JobsDep,
+    background: BackgroundTasks,
 ) -> OtpRequestOut:
-    issued = await service.request_otp(db, redis, sms, tenant=tenant, phone=body.phone)
+    issued = await service.request_otp(db, redis, tenant=tenant, phone=body.phone)
+    if issued.delivery_event_id is not None:
+        # After the commit, so the worker finds the row; if the broker is
+        # down, the dispatcher's next tick sends it instead.
+        background.add_task(jobs.deliver_event, issued.delivery_event_id)
     return OtpRequestOut(
         challenge_id=issued.challenge_id,
         expires_in=issued.expires_in,
@@ -71,7 +77,8 @@ async def request_otp(
     "/otp/verify",
     operation_id="auth_verify_otp",
     response_model=TokenResponse | MfaChallengeResponse,
-    responses=error_responses(400, 403, 404, 422, 429),
+    responses=error_responses(400, 403, 404, 422, 429, 503),
+    dependencies=[per_ip_limit("otp-verify", lambda s: s.otp_verify_max_per_ip_per_hour, 3600)],
     summary="Exchange a one-time code for tokens (or an MFA challenge)",
 )
 async def verify_otp(
@@ -89,7 +96,8 @@ async def verify_otp(
     "/refresh",
     operation_id="auth_refresh",
     response_model=TokenResponse,
-    responses=error_responses(401, 422),
+    responses=error_responses(401, 422, 429, 503),
+    dependencies=[per_ip_limit("refresh", lambda s: s.refresh_max_per_ip_per_hour, 3600)],
     summary="Rotate the refresh token and get a new access token",
 )
 async def refresh(
@@ -143,7 +151,8 @@ async def revoke_all_sessions(principal: CurrentPrincipal, db: DbSession) -> Res
     "/mfa/verify",
     operation_id="auth_verify_mfa",
     response_model=TokenResponse,
-    responses=error_responses(400, 401, 403, 422, 429),
+    responses=error_responses(400, 401, 403, 422, 429, 503),
+    dependencies=[per_ip_limit("mfa-verify", lambda s: s.mfa_verify_max_per_ip_per_hour, 3600)],
     summary="Complete login with a TOTP code",
 )
 async def verify_mfa(body: MfaVerifyIn, db: DbSession, response: Response) -> TokenResponse:

@@ -10,9 +10,11 @@
  */
 import type {
   Activity,
+  AdminAnnouncementsListParams,
   AdminGetAiQualityParams,
   AdminListAuditEventsParams,
   AdminListCategoriesParams,
+  AdminListDeadLettersParams,
   AdminListDepartmentsParams,
   AdminListJurisdictionsParams,
   AdminListTeamsParams,
@@ -32,10 +34,18 @@ import type {
   AnalyticsOverviewParams,
   AnalyticsResolutionTimesParams,
   AnalyticsTrendParams,
+  AnalyticsViewCreate,
+  AnalyticsViewOut,
+  AnalyticsViewUpdate,
+  AnnouncementCreate,
+  AnnouncementOut,
+  AnnouncementUpdate,
   ApproveClosure,
   AssignmentCreate,
   AssignmentOut,
   AuditEventPage,
+  BulkAction,
+  BulkResult,
   ByCategory,
   ByStatus,
   ByWard,
@@ -48,6 +58,11 @@ import type {
   ClassificationOut,
   ClosureConfig,
   ClosureRequestBody,
+  CommentCreate,
+  CommentList,
+  CommentOut,
+  DeadLetter,
+  DeadLetterPage,
   DeclineBody,
   DepartmentCreate,
   DepartmentOut,
@@ -76,26 +91,38 @@ import type {
   MfaSetupOut,
   MfaVerifyIn,
   ModelList,
+  ModerationCommentsListParams,
+  ModerationDecision,
+  ModerationItem,
+  ModerationPage,
   MyReportPage,
   NoteCreate,
   NotificationOut,
   NotificationPage,
+  NotificationPreferences,
   NotificationsListParams,
+  NotificationsUnsubscribePushParams,
   OtpRequestIn,
   OtpRequestOut,
   OtpVerifyIn,
   Overview,
+  PageAnnouncementOut,
   PlatformListTenantsParams,
   PlatformTenant,
   PlatformTenantPage,
+  PreferencesUpdate,
   PriorityConfig,
   PriorityOverride,
   ProgressBody,
+  PublicAnnouncement,
+  PublicAnnouncementsListParams,
   PublicFeatureCollection,
   PublicIssueDetail,
   PublicIssuePage,
   PublicIssuesGeojsonParams,
   PublicIssuesListParams,
+  PushSubscriptionIn,
+  PushSubscriptionOut,
   QualityOut,
   ReadAllResult,
   ReadinessOut,
@@ -312,6 +339,21 @@ export const usersUpdateMe = (
       {url: `/api/v1/users/me`, method: 'PATCH',
       headers: {'Content-Type': 'application/json', },
       data: userMeUpdate
+    },
+      options);
+    }
+
+/**
+ * Wipes the caller's phone, email, name, preferences and photo metadata
+ * and signs them out everywhere. Reports stay, without anything that
+ * identifies the reporter. Irreversible; staff get 403.
+ * @summary Delete my personal data and end every session (citizens)
+ */
+export const usersAnonymizeMe = (
+
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/users/me/anonymize`, method: 'POST'
     },
       options);
     }
@@ -610,7 +652,8 @@ export const mediaCreateUpload = (
     }
 
 /**
- * Step 3: verify the uploaded bytes (size, checksum, real image type).
+ * Step 3: verify the uploaded bytes (size, checksum, real image type),
+ * and scan them for malware when a scanner is configured.
  *
  * On failure the object is deleted and the upload can't be retried; start
  * a new one. On success the asset is `processing` until the worker has
@@ -1267,6 +1310,24 @@ export const workloadGet = (
     }
 
 /**
+ * Change the status of, or assign, up to 50 issues at once (FR-078).
+ * Each item carries the version the user saw and runs the single-issue
+ * action with its own checks; refused items are reported per item and
+ * don't undo the rest. Each change is audited, plus one summary event.
+ * @summary Bulk Action
+ */
+export const issuesBulk = (
+    bulkAction: BulkAction,
+ options?: SecondParameter<typeof customInstance<BulkResult>>,) => {
+      return customInstance<BulkResult>(
+      {url: `/api/v1/issues/bulk`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: bulkAction
+    },
+      options);
+    }
+
+/**
  * The caller's work orders, newest first.
  * @summary List Work Orders
  */
@@ -1428,6 +1489,95 @@ export const notificationsRead = (
     }
 
 /**
+ * Which kinds go out by email, SMS and Web Push. The in-app inbox
+ * always gets every notification.
+ * @summary Get Preferences
+ */
+export const notificationsGetPreferences = (
+
+ options?: SecondParameter<typeof customInstance<NotificationPreferences>>,) => {
+      return customInstance<NotificationPreferences>(
+      {url: `/api/v1/notifications/preferences`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Change the listed choices only. A kind the caller cannot receive, or a
+ * channel the kind is never sent on, is a 422.
+ * @summary Update Preferences
+ */
+export const notificationsUpdatePreferences = (
+    preferencesUpdate: PreferencesUpdate,
+ options?: SecondParameter<typeof customInstance<NotificationPreferences>>,) => {
+      return customInstance<NotificationPreferences>(
+      {url: `/api/v1/notifications/preferences`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: preferencesUpdate
+    },
+      options);
+    }
+
+/**
+ * Register this browser for Web Push. Re-subscribing the same endpoint
+ * updates it (and moves it to the caller). 503 when push is not configured.
+ * @summary Subscribe Push
+ */
+export const notificationsSubscribePush = (
+    pushSubscriptionIn: PushSubscriptionIn,
+ options?: SecondParameter<typeof customInstance<PushSubscriptionOut>>,) => {
+      return customInstance<PushSubscriptionOut>(
+      {url: `/api/v1/notifications/push-subscriptions`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: pushSubscriptionIn
+    },
+      options);
+    }
+
+/**
+ * Stop pushing to this browser. Idempotent.
+ * @summary Unsubscribe Push
+ */
+export const notificationsUnsubscribePush = (
+    params: NotificationsUnsubscribePushParams,
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/notifications/push-subscriptions`, method: 'DELETE',
+        params
+    },
+      options);
+    }
+
+/**
+ * Events the dispatcher stopped retrying, newest first, with every
+ * delivery attempt. Payloads are never shown.
+ * @summary List Dead Letters
+ */
+export const adminListDeadLetters = (
+    params?: AdminListDeadLettersParams,
+ options?: SecondParameter<typeof customInstance<DeadLetterPage>>,) => {
+      return customInstance<DeadLetterPage>(
+      {url: `/api/v1/admin/outbox/dead-letters`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Queue it again with a fresh set of attempts; channels that already
+ * delivered it are not asked twice. Audited.
+ * @summary Retry Dead Letter
+ */
+export const adminRetryDeadLetter = (
+    eventId: string,
+ options?: SecondParameter<typeof customInstance<DeadLetter>>,) => {
+      return customInstance<DeadLetter>(
+      {url: `/api/v1/admin/outbox/dead-letters/${encodeURIComponent(String(eventId))}/retry`, method: 'POST'
+    },
+      options);
+    }
+
+/**
  * Headline KPIs for the period, the same figures for the period just
  * before it, and a sparkline (daily up to 45 days, else weekly).
  * @summary Overview
@@ -1576,6 +1726,137 @@ export const analyticsExport = (
     }
 
 /**
+ * The caller's saved views, the default first, then by name.
+ * @summary List Saved Views
+ */
+export const analyticsViewsList = (
+
+ options?: SecondParameter<typeof customInstance<AnalyticsViewOut[]>>,) => {
+      return customInstance<AnalyticsViewOut[]>(
+      {url: `/api/v1/analytics/views`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Save filters under a name. Making it the default un-defaults any
+ * other. 409 `name_taken` when the name (ignoring case) is in use;
+ * 422 `too_many_views` past the limit of 20.
+ * @summary Create Saved View
+ */
+export const analyticsViewsCreate = (
+    analyticsViewCreate: AnalyticsViewCreate,
+ options?: SecondParameter<typeof customInstance<AnalyticsViewOut>>,) => {
+      return customInstance<AnalyticsViewOut>(
+      {url: `/api/v1/analytics/views`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: analyticsViewCreate
+    },
+      options);
+    }
+
+/**
+ * @summary Update Saved View
+ */
+export const analyticsViewsUpdate = (
+    viewId: string,
+    analyticsViewUpdate: AnalyticsViewUpdate,
+ options?: SecondParameter<typeof customInstance<AnalyticsViewOut>>,) => {
+      return customInstance<AnalyticsViewOut>(
+      {url: `/api/v1/analytics/views/${encodeURIComponent(String(viewId))}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: analyticsViewUpdate
+    },
+      options);
+    }
+
+/**
+ * @summary Delete Saved View
+ */
+export const analyticsViewsDelete = (
+    viewId: string,
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/analytics/views/${encodeURIComponent(String(viewId))}`, method: 'DELETE'
+    },
+      options);
+    }
+
+/**
+ * All announcements, latest start first, optionally by state or ward.
+ * @summary List Announcements
+ */
+export const adminAnnouncementsList = (
+    params?: AdminAnnouncementsListParams,
+ options?: SecondParameter<typeof customInstance<PageAnnouncementOut>>,) => {
+      return customInstance<PageAnnouncementOut>(
+      {url: `/api/v1/admin/announcements`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Publish a notice for a ward (or the city when `ward_id` is omitted).
+ * It shows publicly from `starts_at` until `ends_at`, which must be in
+ * the future. Audited as `announcement.create`.
+ * @summary Create Announcement
+ */
+export const adminAnnouncementsCreate = (
+    announcementCreate: AnnouncementCreate,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: announcementCreate
+    },
+      options);
+    }
+
+/**
+ * @summary Get Announcement
+ */
+export const adminAnnouncementsGet = (
+    announcementId: string,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements/${encodeURIComponent(String(announcementId))}`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Edit a notice that hasn't been withdrawn (409 `withdrawn` otherwise).
+ * Audited as `announcement.update` with before and after.
+ * @summary Update Announcement
+ */
+export const adminAnnouncementsUpdate = (
+    announcementId: string,
+    announcementUpdate: AnnouncementUpdate,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements/${encodeURIComponent(String(announcementId))}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: announcementUpdate
+    },
+      options);
+    }
+
+/**
+ * Take a notice down immediately; the row and its history are kept.
+ * Repeating it changes nothing. Audited as `announcement.withdraw`.
+ * @summary Withdraw Announcement
+ */
+export const adminAnnouncementsWithdraw = (
+    announcementId: string,
+ options?: SecondParameter<typeof customInstance<AnnouncementOut>>,) => {
+      return customInstance<AnnouncementOut>(
+      {url: `/api/v1/admin/announcements/${encodeURIComponent(String(announcementId))}/withdraw`, method: 'POST'
+    },
+      options);
+    }
+
+/**
  * The support count and whether the caller supports the issue.
  * @summary Get Support
  */
@@ -1614,6 +1895,86 @@ export const issuesSupportRemove = (
  options?: SecondParameter<typeof customInstance<SupportState>>,) => {
       return customInstance<SupportState>(
       {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/support`, method: 'DELETE'
+    },
+      options);
+    }
+
+/**
+ * Comments on the issue, oldest first. Citizens see approved comments
+ * and their own (with the moderator's reason if it was removed), never
+ * who wrote the others. Staff in scope see every comment and its flags.
+ * @summary List Comments
+ */
+export const issuesCommentsList = (
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<CommentList>>,) => {
+      return customInstance<CommentList>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/comments`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Add a comment (1 to 1000 characters). It is `pending` and visible to its
+ * author only until a moderator approves it. At most 10 a day per citizen
+ * (`429 rate_limited`); a merged issue is `422 issue_merged`.
+ * @summary Create Comment
+ */
+export const issuesCommentsCreate = (
+    issueId: string,
+    commentCreate: CommentCreate,
+ options?: SecondParameter<typeof customInstance<CommentOut>>,) => {
+      return customInstance<CommentOut>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/comments`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: commentCreate
+    },
+      options);
+    }
+
+/**
+ * Report an approved comment as abusive or misleading. Once per
+ * citizen; three flags take it back to the moderation queue. Your own
+ * comment: `422 invalid_transition`.
+ * @summary Flag Comment
+ */
+export const commentsFlag = (
+    commentId: string,
+ options?: SecondParameter<typeof customInstance<CommentOut>>,) => {
+      return customInstance<CommentOut>(
+      {url: `/api/v1/comments/${encodeURIComponent(String(commentId))}/flag`, method: 'POST'
+    },
+      options);
+    }
+
+/**
+ * The moderation queue for issues in the caller's scope: most flagged,
+ * then oldest, first.
+ * @summary Moderation Queue
+ */
+export const moderationCommentsList = (
+    params?: ModerationCommentsListParams,
+ options?: SecondParameter<typeof customInstance<ModerationPage>>,) => {
+      return customInstance<ModerationPage>(
+      {url: `/api/v1/moderation/comments`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Approve a comment (it becomes public and its flags are cleared) or
+ * reject it with a reason its author sees. Audited.
+ * @summary Moderate Comment
+ */
+export const moderationCommentsDecide = (
+    commentId: string,
+    moderationDecision: ModerationDecision,
+ options?: SecondParameter<typeof customInstance<ModerationItem>>,) => {
+      return customInstance<ModerationItem>(
+      {url: `/api/v1/moderation/comments/${encodeURIComponent(String(commentId))}`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: moderationDecision
     },
       options);
     }
@@ -1675,6 +2036,23 @@ export const publicScorecard = (
       options);
     }
 
+/**
+ * Service announcements showing now, newest first, at most 50. With
+ * `ward_id` (or `category_id`), the city-wide (or all-category) ones are
+ * included too.
+ * @summary List Announcements
+ */
+export const publicAnnouncementsList = (
+    tenant: string,
+    params?: PublicAnnouncementsListParams,
+ options?: SecondParameter<typeof customInstance<PublicAnnouncement[]>>,) => {
+      return customInstance<PublicAnnouncement[]>(
+      {url: `/api/v1/public/${encodeURIComponent(String(tenant))}/announcements`, method: 'GET',
+        params
+    },
+      options);
+    }
+
 export type HealthLiveResult = NonNullable<Awaited<ReturnType<typeof healthLive>>>
 export type HealthReadyResult = NonNullable<Awaited<ReturnType<typeof healthReady>>>
 export type TenantsGetCurrentResult = NonNullable<Awaited<ReturnType<typeof tenantsGetCurrent>>>
@@ -1688,6 +2066,7 @@ export type AuthSetupMfaResult = NonNullable<Awaited<ReturnType<typeof authSetup
 export type AuthEnableMfaResult = NonNullable<Awaited<ReturnType<typeof authEnableMfa>>>
 export type UsersGetMeResult = NonNullable<Awaited<ReturnType<typeof usersGetMe>>>
 export type UsersUpdateMeResult = NonNullable<Awaited<ReturnType<typeof usersUpdateMe>>>
+export type UsersAnonymizeMeResult = NonNullable<Awaited<ReturnType<typeof usersAnonymizeMe>>>
 export type AdminListUsersResult = NonNullable<Awaited<ReturnType<typeof adminListUsers>>>
 export type AdminCreateUserResult = NonNullable<Awaited<ReturnType<typeof adminCreateUser>>>
 export type AdminGetUserResult = NonNullable<Awaited<ReturnType<typeof adminGetUser>>>
@@ -1751,6 +2130,7 @@ export type IssuesRejectClosureResult = NonNullable<Awaited<ReturnType<typeof is
 export type IssuesVerifyResult = NonNullable<Awaited<ReturnType<typeof issuesVerify>>>
 export type IssuesReopenResult = NonNullable<Awaited<ReturnType<typeof issuesReopen>>>
 export type WorkloadGetResult = NonNullable<Awaited<ReturnType<typeof workloadGet>>>
+export type IssuesBulkResult = NonNullable<Awaited<ReturnType<typeof issuesBulk>>>
 export type FieldListWorkOrdersResult = NonNullable<Awaited<ReturnType<typeof fieldListWorkOrders>>>
 export type FieldGetWorkOrderResult = NonNullable<Awaited<ReturnType<typeof fieldGetWorkOrder>>>
 export type FieldAcceptResult = NonNullable<Awaited<ReturnType<typeof fieldAccept>>>
@@ -1762,6 +2142,12 @@ export type NotificationsListResult = NonNullable<Awaited<ReturnType<typeof noti
 export type NotificationsUnreadCountResult = NonNullable<Awaited<ReturnType<typeof notificationsUnreadCount>>>
 export type NotificationsReadAllResult = NonNullable<Awaited<ReturnType<typeof notificationsReadAll>>>
 export type NotificationsReadResult = NonNullable<Awaited<ReturnType<typeof notificationsRead>>>
+export type NotificationsGetPreferencesResult = NonNullable<Awaited<ReturnType<typeof notificationsGetPreferences>>>
+export type NotificationsUpdatePreferencesResult = NonNullable<Awaited<ReturnType<typeof notificationsUpdatePreferences>>>
+export type NotificationsSubscribePushResult = NonNullable<Awaited<ReturnType<typeof notificationsSubscribePush>>>
+export type NotificationsUnsubscribePushResult = NonNullable<Awaited<ReturnType<typeof notificationsUnsubscribePush>>>
+export type AdminListDeadLettersResult = NonNullable<Awaited<ReturnType<typeof adminListDeadLetters>>>
+export type AdminRetryDeadLetterResult = NonNullable<Awaited<ReturnType<typeof adminRetryDeadLetter>>>
 export type AnalyticsOverviewResult = NonNullable<Awaited<ReturnType<typeof analyticsOverview>>>
 export type AnalyticsTrendResult = NonNullable<Awaited<ReturnType<typeof analyticsTrend>>>
 export type AnalyticsByStatusResult = NonNullable<Awaited<ReturnType<typeof analyticsByStatus>>>
@@ -1772,10 +2158,25 @@ export type AnalyticsMatchingQualityResult = NonNullable<Awaited<ReturnType<type
 export type AnalyticsHotspotsResult = NonNullable<Awaited<ReturnType<typeof analyticsHotspots>>>
 export type AnalyticsActivityResult = NonNullable<Awaited<ReturnType<typeof analyticsActivity>>>
 export type AnalyticsExportResult = NonNullable<Awaited<ReturnType<typeof analyticsExport>>>
+export type AnalyticsViewsListResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsList>>>
+export type AnalyticsViewsCreateResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsCreate>>>
+export type AnalyticsViewsUpdateResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsUpdate>>>
+export type AnalyticsViewsDeleteResult = NonNullable<Awaited<ReturnType<typeof analyticsViewsDelete>>>
+export type AdminAnnouncementsListResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsList>>>
+export type AdminAnnouncementsCreateResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsCreate>>>
+export type AdminAnnouncementsGetResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsGet>>>
+export type AdminAnnouncementsUpdateResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsUpdate>>>
+export type AdminAnnouncementsWithdrawResult = NonNullable<Awaited<ReturnType<typeof adminAnnouncementsWithdraw>>>
 export type IssuesSupportGetResult = NonNullable<Awaited<ReturnType<typeof issuesSupportGet>>>
 export type IssuesSupportAddResult = NonNullable<Awaited<ReturnType<typeof issuesSupportAdd>>>
 export type IssuesSupportRemoveResult = NonNullable<Awaited<ReturnType<typeof issuesSupportRemove>>>
+export type IssuesCommentsListResult = NonNullable<Awaited<ReturnType<typeof issuesCommentsList>>>
+export type IssuesCommentsCreateResult = NonNullable<Awaited<ReturnType<typeof issuesCommentsCreate>>>
+export type CommentsFlagResult = NonNullable<Awaited<ReturnType<typeof commentsFlag>>>
+export type ModerationCommentsListResult = NonNullable<Awaited<ReturnType<typeof moderationCommentsList>>>
+export type ModerationCommentsDecideResult = NonNullable<Awaited<ReturnType<typeof moderationCommentsDecide>>>
 export type PublicIssuesListResult = NonNullable<Awaited<ReturnType<typeof publicIssuesList>>>
 export type PublicIssuesGeojsonResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGeojson>>>
 export type PublicIssuesGetResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGet>>>
 export type PublicScorecardResult = NonNullable<Awaited<ReturnType<typeof publicScorecard>>>
+export type PublicAnnouncementsListResult = NonNullable<Awaited<ReturnType<typeof publicAnnouncementsList>>>

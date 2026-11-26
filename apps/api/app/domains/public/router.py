@@ -13,6 +13,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
+from app.core.config import get_settings
 from app.core.db import DbSession
 from app.core.errors import NotFound, ServiceUnavailable, error_responses
 from app.core.logging import log_fields
@@ -21,6 +22,8 @@ from app.core.ratelimit import enforce_window
 from app.core.redis import get_redis
 from app.core.storage import Storage
 from app.core.tenancy import set_tenant
+from app.domains.announcements import service as announcements
+from app.domains.announcements.schemas import PublicAnnouncement
 from app.domains.public import service
 from app.domains.public.schemas import (
     PublicFeatureCollection,
@@ -33,7 +36,6 @@ from app.domains.workflow.statuses import IssueStatus
 
 logger = logging.getLogger(__name__)
 
-PUBLIC_RATE_LIMIT = 300  # requests per client address per minute
 CACHE_CONTROL = "public, max-age=30, stale-while-revalidate=120"
 
 
@@ -45,7 +47,12 @@ async def _public_tenant(
 ) -> uuid.UUID:
     client = request.client.host if request.client else "unknown"
     try:
-        await enforce_window(get_redis(), f"ratelimit:public:{client}", PUBLIC_RATE_LIMIT, 60)
+        await enforce_window(
+            get_redis(),
+            f"ratelimit:public:{client}",
+            get_settings().public_max_per_ip_per_minute,
+            60,
+        )
     except ServiceUnavailable:
         # Read-only public data: an unreachable limiter must not take the
         # tracker down with it.
@@ -134,3 +141,21 @@ async def get_issue(
 async def scorecard(_: PublicTenant, db: DbSession) -> Scorecard:
     """Per ward: open issues, resolved issues and the median days to resolve."""
     return await service.scorecard(db)
+
+
+@router.get(
+    "/announcements",
+    operation_id="public_announcements_list",
+    response_model=list[PublicAnnouncement],
+    responses=error_responses(404, 422, 429),
+)
+async def list_announcements(
+    _: PublicTenant,
+    db: DbSession,
+    ward_id: uuid.UUID | None = None,
+    category_id: uuid.UUID | None = None,
+) -> list[PublicAnnouncement]:
+    """Service announcements showing now, newest first, at most 50. With
+    `ward_id` (or `category_id`), the city-wide (or all-category) ones are
+    included too."""
+    return await announcements.list_public(db, ward_id=ward_id, category_id=category_id)

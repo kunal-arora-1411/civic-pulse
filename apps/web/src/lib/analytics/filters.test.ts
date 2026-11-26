@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_FILTERS,
+  fromSavedFilters,
   isRangeInvalid,
+  matchesSaved,
   parseFilters,
   resolvePeriod,
   serializeFilters,
   todayIst,
   toQuery,
+  toSavedFilters,
 } from "./filters";
 
 describe("analytics filters", () => {
@@ -61,5 +64,39 @@ describe("analytics filters", () => {
       ward_id: undefined,
       status: undefined,
     });
+  });
+});
+
+describe("saved filters", () => {
+  it("converts to and from what a saved view stores", () => {
+    const filters = parseFilters(
+      new URLSearchParams(
+        "range=custom&from=2026-10-01&to=2026-10-31&category=c1&status=resolved&interval=week",
+      ),
+    );
+    const saved = toSavedFilters(filters);
+    expect(saved).toEqual({
+      range: "custom",
+      from: "2026-10-01",
+      to: "2026-10-31",
+      category_id: "c1",
+      ward_id: null,
+      status: ["resolved"],
+      interval: "week",
+    });
+    expect(fromSavedFilters(saved)).toEqual(filters);
+    expect(matchesSaved(filters, saved)).toBe(true);
+    expect(matchesSaved({ ...filters, ward: "w1" }, saved)).toBe(false);
+  });
+
+  it("keeps dates only for a custom range", () => {
+    const saved = toSavedFilters({
+      ...DEFAULT_FILTERS,
+      range: "7d",
+      from: "2026-10-01",
+      to: "2026-10-31",
+    });
+    expect(saved.from).toBeNull();
+    expect(saved.to).toBeNull();
   });
 });

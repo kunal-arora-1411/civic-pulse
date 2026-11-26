@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import Delete, delete, or_, select
+from sqlalchemy import Delete, delete, or_, select, update
 
 from app.core.config import get_settings
 from app.core.idempotency import IdempotencyKey
@@ -43,6 +43,7 @@ class CleanupResult:
     idempotency_keys: int = 0
     uploads: int = 0
     outbox: int = 0
+    purged_originals: int = 0
     stuck_processing: list[tuple[uuid.UUID, uuid.UUID]] = field(default_factory=list)
 
     def summary(self) -> dict[str, int]:
@@ -52,6 +53,7 @@ class CleanupResult:
             "idempotency_keys": self.idempotency_keys,
             "uploads": self.uploads,
             "outbox": self.outbox,
+            "purged_originals": self.purged_originals,
             "stuck_processing": len(self.stuck_processing),
         }
 
@@ -106,6 +108,52 @@ async def _delete_abandoned_uploads(storage: ObjectStorage, cutoff: datetime) ->
             return removed
 
 
+async def _purge_original_media(storage: ObjectStorage, cutoff: datetime) -> int:
+    """Delete original photos processed before `cutoff` (P6-12).
+
+    Only ready photos whose public variants exist, and that passed the face
+    check when blurring is on, so nothing still needs the original. Objects
+    go first, as above; the row keeps its key and records the purge.
+    """
+    settings = get_settings()
+    removed = 0
+    while True:
+        async with system_session(reason="housekeeping: media retention") as db:
+            query = (
+                select(MediaAsset.id, MediaAsset.storage_key)
+                .where(
+                    MediaAsset.status == MediaStatus.READY,
+                    MediaAsset.original_purged_at.is_(None),
+                    MediaAsset.processed_at < cutoff,
+                    MediaAsset.display_key.is_not(None),
+                )
+                .order_by(MediaAsset.processed_at)
+                .limit(_UPLOAD_BATCH)
+                .with_for_update(skip_locked=True)
+            )
+            if settings.face_blur_enabled:
+                query = query.where(MediaAsset.faces_checked_at.is_not(None))
+            rows = (await db.execute(query)).all()
+            if not rows:
+                return removed
+            try:
+                await storage.delete([row[1] for row in rows])
+            except StorageError as exc:
+                logger.warning(
+                    "housekeeping: could not delete original media",
+                    extra=log_fields(error=str(exc)),
+                )
+                return removed
+            await db.execute(
+                update(MediaAsset)
+                .where(MediaAsset.id.in_([row[0] for row in rows]))
+                .values(original_purged_at=datetime.now(UTC), exif=None)
+            )
+            removed += len(rows)
+        if len(rows) < _UPLOAD_BATCH:
+            return removed
+
+
 async def cleanup(
     storage: ObjectStorage | None = None, *, now: datetime | None = None
 ) -> CleanupResult:
@@ -135,6 +183,12 @@ async def cleanup(
     result.outbox = await purge_dispatched(
         older_than_days=get_settings().outbox_retention_days, now=now
     )
+
+    retention_days = get_settings().media_original_retention_days
+    if retention_days > 0:
+        result.purged_originals = await _purge_original_media(
+            storage, now - timedelta(days=retention_days)
+        )
 
     async with system_session(reason="housekeeping: stuck media") as db:
         result.stuck_processing = [

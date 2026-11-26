@@ -159,7 +159,7 @@ A team belongs to a department and has members, a service area (jurisdictions), 
 
 All mutations return `200` with the field view. A stale `version` is `409 version_conflict` with the current field view in `details.work_order`; an action that doesn't fit the state is `409 invalid_work_order_action`. Retrying a request after a lost response therefore never applies it twice.
 
-**Evidence (FR-066).** Upload with `POST /media/uploads` and `{ "purpose": "work_evidence", "phase": "before|after", ... }` (`evidence:upload`); `phase` is required for `work_evidence` and forbidden otherwise. Attach by listing `media_ids` on `progress` or `request-closure`. Rules: the caller's own, `work_evidence`, completed, not attached elsewhere (Phase 1 `invalid_media` reasons). Capture time and GPS come from EXIF as for reports; the original stays staff-only. ML (C2.1) compares `after` photos with the report photos and its `scene_match` is advice for the supervisor only.
+**Evidence (FR-066).** Upload with `POST /media/uploads` and `{ "purpose": "work_evidence", "phase": "before|after", ... }` (`evidence:upload`); `phase` is required for `work_evidence` and forbidden otherwise. Attach by listing `media_ids` on `progress` or `request-closure`. Rules: the caller's own, `work_evidence`, completed, not attached elsewhere (Phase 1 `invalid_media` reasons). Capture time and GPS come from EXIF as for reports; the original stays staff-only. `after` photos are compared with the report photos (`scene_match`, §5), as advice for the supervisor only.
 
 ## 4. Notes (FR-067)
 
@@ -178,8 +178,10 @@ All mutations return `200` with the field view. A stale `version` is `409 versio
 ```json
 { "id": "uuid", "state": "pending|approved|rejected", "requested_by": { "id": "uuid", "display_name": "..." },
   "requested_at": "...", "reason_code": "...|null", "note": "...|null", "after_photos": [ /* media */ ],
-  "requires_approval": true, "confirmations": 1, "unresolved": 0 }
+  "requires_approval": true, "confirmations": 1, "unresolved": 0,
+  "scene_match": { "similarity": 0.87, "model_id": "..." } | null }
 ```
+`scene_match` (FR-066, C2.1) is the best cosine similarity between any after photo and any photo of the issue's non-withdrawn reports, embedded with the same model. It is computed when the request is read, from the embeddings the AI worker already makes for every photo, so it is `null` until both sides are analysed, with no after photo, or while the AI is down. It is advice for the supervisor only: a repaired spot rightly looks different, and nothing is decided from it (PRD §8.6).
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
@@ -203,7 +205,7 @@ Both return the issue detail. No pending closure request: `422 invalid_transitio
 
 | Method | Path | Permission | Body |
 |---|---|---|---|
-| GET/PUT | `/api/v1/admin/config/closure` | `config:read` / `config:manage` | `{ "resolution_window_hours": 168, "confirmations_required": 2 }` (window 1–2160 h, confirmations 1–10) |
+| GET/PUT | `/api/v1/admin/closure-config` | `config:read` / `config:manage` | `{ "resolution_window_hours": 168, "confirmations_required": 2 }` (window 1–2160 h, confirmations 1–10) |
 
 **Reopen:** `POST /api/v1/issues/{id}/reopen` `{ "reason": "required" }` from `resolved` or `closed` → `reopened`. Callers: an eligible citizen (`issue:verify`) or staff with `issue:update` in scope. Reopened issues go back to the assignment queue (assign from `reopened`).
 
@@ -246,5 +248,39 @@ All system-only (the status endpoint refuses them); installed for every tenant, 
 ## 10. Seed additions
 A "Roads North" team in ROADS with the seeded field worker (lead), covering Zone North, handling `pothole`.
 
+## 11. Bulk actions (FR-078)
+
+`POST /api/v1/issues/bulk` (`issue:read`; `assign` also needs `issue:assign`, else `404`):
+```json
+{ "action": "status|assign", "items": [ { "issue_id": "uuid", "version": 4 } ],
+  "to_status": "verified", "team_id": "uuid", "assignee_id": "uuid|null",
+  "reason": "...", "public_note": "...", "note": "..." }
+```
+- 1–50 items, each issue once (`422 validation_error` otherwise). `to_status` is required for `status`, `team_id` for `assign`.
+- Each item runs the single-issue action (§2 assignment, or the Phase 1 status change) with its own version, scope and workflow checks, in its own savepoint: a refused item doesn't undo the others.
+- `200` with `{ "succeeded": 1, "failed": 1, "results": [ { "issue_id": "uuid", "ok": false, "error": "version_conflict" } ] }`, one result per item in request order; `error` is the code the single action would have returned.
+- Every change is audited by its action; the batch adds `issue.bulk_action` with the ids that succeeded and the codes of those that failed.
+
+## 12. Comments and moderation (FR-017, FR-086)
+
+Citizens comment on an issue; nothing is public until a moderator approves it.
+
+```json
+{ "id": "uuid", "issue_id": "uuid", "body": "...", "state": "pending|approved|rejected",
+  "created_at": "...", "mine": true, "flagged_by_me": false,
+  "author_name": "staff only, else null", "flag_count": "staff only, else null",
+  "moderation_reason": "for the author and staff, else null" }
+```
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/v1/issues/{id}/comments` | signed in | `{ items }`, oldest first. Citizens: approved comments plus their own. Staff (`issue:read` in scope): all. |
+| POST | `/api/v1/issues/{id}/comments` | `issue:comment` | `{ body }` (1 to 1000 chars) → `201`, `pending`. 10 a day per citizen (`429 rate_limited`). Merged issue: `422 issue_merged`. |
+| POST | `/api/v1/comments/{id}/flag` | `issue:comment` | Approved comments of others only (own: `422 invalid_transition`). Once per citizen. 3 flags → back to `pending`. |
+| GET | `/api/v1/moderation/comments` | `issue:read` + `issue:update` | Page envelope of comments on issues in scope, filter `state` (default `pending`), most flagged then oldest first. Items add `issue: { id, reference }`. |
+| POST | `/api/v1/moderation/comments/{id}` | `issue:update` in scope | `{ decision: "approve"\|"reject", reason }`; `reason` required to reject. Approving clears the flags. Audit `comment.approved` / `comment.rejected`. |
+
+Tables `issue_comments` and `comment_flags` (migration 0013) are tenant-scoped with forced RLS.
+
 ## Out of scope for this contract
-- Recurrence on a new report near a closed issue (PRD §16), bulk actions (A4.4), follow / add evidence / moderation (P3-11), SLA and overdue (Phase 4), notification delivery (Phase 4 reads the outbox), suspicious-verification detection (C3.2), verification photos.
+- Recurrence on a new report near a closed issue (PRD §16), follow and photo evidence on an existing issue (P3-11; comments are §12), SLA and overdue (Phase 4), notification delivery (Phase 4 reads the outbox), suspicious-verification detection (C3.2), verification photos.

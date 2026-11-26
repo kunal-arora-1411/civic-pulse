@@ -3,15 +3,21 @@
 from app.core.db import Base
 from app.core.idempotency import IdempotencyKey
 from app.domains.ai.models import Classification, MediaEmbedding, ModelRegistryEntry
+from app.domains.analytics.models import AnalyticsView
+from app.domains.announcements.models import Announcement
 from app.domains.audit.models import AuditEvent
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.categories.models import Category
-from app.domains.community.models import IssueSupport
+from app.domains.community.models import CommentFlag, IssueComment, IssueSupport
 from app.domains.config.models import TenantConfig
 from app.domains.issues.models import CivicIssue, IssueEvent, IssueRelation, ReferenceCounter
 from app.domains.matching.models import MatchDecision, ReviewTask
 from app.domains.media.models import MediaAsset
-from app.domains.notifications.models import Notification
+from app.domains.notifications.models import (
+    Notification,
+    NotificationPreference,
+    PushSubscription,
+)
 from app.domains.operations.models import (
     ClosureRequest,
     IssueAssignment,
@@ -36,6 +42,8 @@ from app.domains.users.models import User
 from app.domains.workflow.models import StatusTransition
 
 __all__ = [
+    "AnalyticsView",
+    "Announcement",
     "AuditEvent",
     "AuthSession",
     "Base",
@@ -43,9 +51,11 @@ __all__ = [
     "CivicIssue",
     "Classification",
     "ClosureRequest",
+    "CommentFlag",
     "Department",
     "IdempotencyKey",
     "IssueAssignment",
+    "IssueComment",
     "IssueEvent",
     "IssueRelation",
     "IssueSupport",
@@ -56,10 +66,12 @@ __all__ = [
     "MediaEmbedding",
     "ModelRegistryEntry",
     "Notification",
+    "NotificationPreference",
     "OtpChallenge",
     "OutboxDelivery",
     "OutboxEvent",
     "PlaceOfInterest",
+    "PushSubscription",
     "ReferenceCounter",
     "Report",
     "ReviewTask",

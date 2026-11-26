@@ -36,6 +36,13 @@ const TRANSLATED = [
   "reason_required",
   "invalid_merge",
   "cannot_empty_issue",
+  "invalid_work_order_action",
+  "not_assignable",
+  "team_not_eligible",
+  "assignee_not_in_team",
+  "not_eligible",
+  "already_verified",
+  "team_has_open_work",
 ] as const;
 
 export type ErrorMessageKey =

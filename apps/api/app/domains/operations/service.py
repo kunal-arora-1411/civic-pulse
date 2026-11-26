@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -46,6 +46,7 @@ from app.domains.operations.schemas import (
     MemberLoad,
     NoteCreate,
     OperationsOut,
+    SceneMatch,
     TeamLoad,
     Workload,
     WorkOrderRef,
@@ -382,6 +383,39 @@ async def assignment_history(
     return await _assignment_views(db, issue.id)
 
 
+# Best cosine between the work order's after photos and the photos of the
+# issue's live reports, per model; both sides are embedded by analyze_media.
+_SCENE_MATCH = text(
+    """
+    SELECT a.model_id, max(1 - (a.embedding <=> b.embedding)) AS cosine
+    FROM media_assets ma
+    JOIN media_embeddings a ON a.media_id = ma.id
+    JOIN media_embeddings b ON b.model_id = a.model_id
+    JOIN media_assets mb ON mb.id = b.media_id
+    JOIN reports r ON r.id = mb.report_id
+    WHERE ma.work_order_id = :work_order_id
+      AND ma.phase = 'after'
+      AND r.issue_id = :issue_id
+      AND r.status <> 'withdrawn'
+    GROUP BY a.model_id
+    ORDER BY cosine DESC
+    LIMIT 1
+    """
+)
+
+
+async def scene_match(
+    db: AsyncSession, issue_id: uuid.UUID, work_order_id: uuid.UUID
+) -> SceneMatch | None:
+    """Advice for the supervisor (FR-066, C2.1); never decides anything."""
+    row = (
+        await db.execute(_SCENE_MATCH, {"work_order_id": work_order_id, "issue_id": issue_id})
+    ).first()
+    if row is None or row.cosine is None:
+        return None
+    return SceneMatch(similarity=min(1.0, max(0.0, float(row.cosine))), model_id=row.model_id)
+
+
 async def closure_view(
     db: AsyncSession, storage: ObjectStorage, issue: CivicIssue
 ) -> ClosureRequestOut | None:
@@ -433,6 +467,9 @@ async def closure_view(
         requires_approval=closure_policy(category).requires_approval,
         confirmations=counts.get(VerificationOutcome.RESOLVED, 0),
         unresolved=counts.get(VerificationOutcome.UNRESOLVED, 0),
+        scene_match=await scene_match(db, issue.id, request.work_order_id)
+        if photos and request.work_order_id is not None
+        else None,
     )
 
 

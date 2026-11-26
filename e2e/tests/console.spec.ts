@@ -1,5 +1,6 @@
-import { SEEDED } from "../support/env";
+import { expectAccessible } from "../support/a11y";
 import { expect, giveSession, test } from "../support/fixtures";
+import { staffPhone } from "../support/staff";
 
 /*
  * Every admin screen loads real data from the API without an error state.
@@ -11,6 +12,7 @@ import { expect, giveSession, test } from "../support/fixtures";
 const SCREENS = [
   { nav: "Work queue", heading: "Work queue", table: "Issues" },
   { nav: "Categories", heading: "Categories", table: "Categories" },
+  { nav: "Teams", heading: "Teams", table: "Teams" },
   { nav: "Users", heading: "Users", table: "Users" },
   { nav: "Audit log", heading: "Audit log", table: "Audit events" },
 ] as const;
@@ -20,7 +22,7 @@ test("each admin screen loads for a municipal admin", async ({
   context,
   api,
 }) => {
-  await giveSession(context, await api.login(SEEDED.municipalAdmin));
+  await giveSession(context, await api.login(staffPhone("consoleAdmin")));
   await page.goto("/admin");
   await expect(
     page.getByRole("heading", { level: 1, name: /^Welcome back/ }),
@@ -46,6 +48,19 @@ test("each admin screen loads for a municipal admin", async ({
       ).toHaveCount(0);
     });
   }
+
+  // The Phase 3 configuration pages pass the automated accessibility
+  // checks (a11y.spec.ts covers the rest; this account signs in here only).
+  await nav.getByRole("link", { name: "Teams" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Teams" }),
+  ).toBeVisible();
+  await expectAccessible(page, "admin-teams");
+  await nav.getByRole("link", { name: "Closure rules" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Closure rules" }),
+  ).toBeVisible();
+  await expectAccessible(page, "admin-closure");
 
   // The seeded categories come back with their Hindi names.
   await nav.getByRole("link", { name: "Categories" }).click();

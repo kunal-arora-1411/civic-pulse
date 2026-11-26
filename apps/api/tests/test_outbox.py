@@ -18,7 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from app.domains.outbox.channels import NO_CHANNEL, Delivery
 from app.domains.outbox.models import OutboxEvent
-from app.domains.outbox.service import MAX_DELIVERY_ATTEMPTS, dispatch, purge_dispatched
+from app.domains.outbox.service import (
+    MAX_DELIVERY_ATTEMPTS,
+    backoff,
+    dispatch,
+    purge_dispatched,
+)
 from app.worker import celery_app
 from tests.factories import create_tenant
 
@@ -71,11 +76,10 @@ async def _attempts(conn: AsyncConnection, event_id: uuid.UUID) -> tuple[int, An
 
 
 class RecordingChannel:
-    """A stand-in for the SMS/email/push adapters that providers will bring."""
-
-    name = "recording"
+    """A stand-in for the SMS/email/push adapters."""
 
     def __init__(self, *, handles: str = "issue.assigned", fail: bool = False) -> None:
+        self.name = "recording"
         self.handled = handles
         self.fail = fail
         self.seen: list[uuid.UUID] = []
@@ -120,26 +124,109 @@ async def test_a_configured_channel_receives_the_event(owner_engine: AsyncEngine
         assert await _deliveries(conn, other) == [("none", "skipped", NO_CHANNEL)]
 
 
-async def test_a_failing_channel_is_retried_then_given_up_on(owner_engine: AsyncEngine) -> None:
+async def test_a_failing_channel_is_retried_then_dead_lettered(owner_engine: AsyncEngine) -> None:
     async with owner_engine.begin() as conn:
         tenant = await create_tenant(conn)
         event_id = await _event(conn, tenant.id)
 
     channel = RecordingChannel(fail=True)
+    moment = NOW
     for _ in range(MAX_DELIVERY_ATTEMPTS):
-        await dispatch(channels=(channel,))
+        await dispatch(channels=(channel,), now=moment)
+        # Past any backoff, so each run is a real retry.
+        moment += timedelta(hours=2)
 
     # Every attempt was made, once per run, and then it stopped being retried.
-    assert len(channel.seen) == MAX_DELIVERY_ATTEMPTS
+    assert channel.seen.count(event_id) == MAX_DELIVERY_ATTEMPTS
     async with owner_engine.connect() as conn:
         attempts, dispatched_at = await _attempts(conn, event_id)
         assert attempts == MAX_DELIVERY_ATTEMPTS
-        assert dispatched_at is not None
+        # Parked, not marked sent: it never went out.
+        assert dispatched_at is None
+        dead, error = (
+            await conn.execute(
+                text("SELECT dead_lettered_at, last_error FROM outbox_events WHERE id = :e"),
+                {"e": event_id},
+            )
+        ).one()
+        assert dead is not None
+        assert error == "RuntimeError: provider is down"
         outcomes = [row[1] for row in await _deliveries(conn, event_id)]
         assert outcomes == ["failed"] * MAX_DELIVERY_ATTEMPTS
 
-    # A further run finds nothing to do, so a poison event cannot spin forever.
-    assert (await dispatch(channels=(channel,))).claimed == 0
+    # A further run leaves it alone, so a poison event cannot spin forever.
+    await dispatch(channels=(channel,), now=moment)
+    assert channel.seen.count(event_id) == MAX_DELIVERY_ATTEMPTS
+
+
+async def test_a_failure_backs_off_before_the_next_try(owner_engine: AsyncEngine) -> None:
+    async with owner_engine.begin() as conn:
+        tenant = await create_tenant(conn)
+        event_id = await _event(conn, tenant.id)
+
+    channel = RecordingChannel(fail=True)
+    start = datetime.now(UTC)
+    await dispatch(channels=(channel,), now=start)
+    async with owner_engine.connect() as conn:
+        next_at = (
+            await conn.execute(
+                text("SELECT next_attempt_at FROM outbox_events WHERE id = :e"), {"e": event_id}
+            )
+        ).scalar_one()
+    assert next_at == start + backoff(1)
+
+    # Not yet due: left alone.
+    await dispatch(channels=(channel,), now=start + backoff(1) - timedelta(seconds=1))
+    assert channel.seen.count(event_id) == 1
+    # Due: tried again.
+    await dispatch(channels=(channel,), now=start + backoff(1))
+    assert channel.seen.count(event_id) == 2
+
+
+def test_backoff_doubles_up_to_a_cap() -> None:
+    assert [backoff(n).total_seconds() for n in (1, 2, 3, 4)] == [30, 60, 120, 240]
+    assert backoff(30) == timedelta(hours=1)
+
+
+async def test_a_retry_only_asks_the_channels_that_failed(owner_engine: AsyncEngine) -> None:
+    async with owner_engine.begin() as conn:
+        tenant = await create_tenant(conn)
+        event_id = await _event(conn, tenant.id)
+
+    working = RecordingChannel()
+    broken = RecordingChannel(fail=True)
+    broken.name = "broken"
+    start = datetime.now(UTC)
+    await dispatch(channels=(working, broken), now=start)
+    broken.fail = False
+    await dispatch(channels=(working, broken), now=start + timedelta(hours=1))
+
+    # The working channel delivered once and was not asked again.
+    assert working.seen.count(event_id) == 1
+    assert broken.seen.count(event_id) == 2
+    async with owner_engine.connect() as conn:
+        _, dispatched_at = await _attempts(conn, event_id)
+        assert dispatched_at is not None
+
+
+async def test_retention_never_purges_a_dead_letter(owner_engine: AsyncEngine) -> None:
+    long_ago = NOW - timedelta(days=30)
+    async with owner_engine.begin() as conn:
+        tenant = await create_tenant(conn)
+        event_id = await _event(conn, tenant.id, created_at=long_ago)
+        await conn.execute(
+            text("UPDATE outbox_events SET dead_lettered_at = :d, attempts = 5 WHERE id = :e"),
+            {"d": long_ago, "e": event_id},
+        )
+
+    await purge_dispatched(older_than_days=7, now=NOW)
+
+    async with owner_engine.connect() as conn:
+        assert (
+            await conn.execute(
+                text("SELECT count(*) FROM outbox_events WHERE id = :e"), {"e": event_id}
+            )
+        ).scalar_one() == 1
 
 
 async def test_a_second_run_has_nothing_left_to_claim(owner_engine: AsyncEngine) -> None:
