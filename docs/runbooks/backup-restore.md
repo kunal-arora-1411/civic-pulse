@@ -24,9 +24,9 @@ infra/backup/backup.sh /var/backups/civicpulse
 It writes a timestamped folder with `civicpulse.dump` (pg_dump custom
 format), `media/` (a mirror of the bucket) and `SHA256SUMS`, and prunes
 folders older than `BACKUP_KEEP_DAYS`. Schedule it hourly (cron or a
-systemd timer) and copy each folder off the machine. The media mirror is
-incremental only in the sense that `mc mirror` skips nothing: for a large
-bucket, use the storage provider's replication instead and back up only
+systemd timer) and copy each folder off the machine. Each folder gets a
+full copy of the bucket, which is fine for a pilot. For a large bucket, use
+the storage provider's replication and versioning instead and back up only
 the database here.
 
 The dump contains personal data (phone numbers, report locations). Store
