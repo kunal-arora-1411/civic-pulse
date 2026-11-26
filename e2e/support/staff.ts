@@ -19,6 +19,7 @@ export const STAFF_ROLES = {
   ac08Operator: "operator",
   loadOperator: "operator",
   aiDownOperator: "operator",
+  a11yOperator: "operator",
 } as const;
 
 export type StaffKey = keyof typeof STAFF_ROLES;
