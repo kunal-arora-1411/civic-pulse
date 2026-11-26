@@ -29,8 +29,13 @@ from app.domains.workflow.statuses import sql_in
 class OutboxEvent(Base):
     """One event, written in the same transaction as the change it reports.
 
-    Phase 3 only writes rows; the Phase 4 dispatcher reads undispatched ones
-    and sets `dispatched_at`.
+    The dispatcher claims undispatched rows whose `next_attempt_at` has come,
+    and sets `dispatched_at` once every channel has had it. An event that
+    keeps failing is parked as a dead letter (`dead_lettered_at`) for an
+    administrator to inspect and send again.
+
+    `tenant_id` is NULL only for a platform administrator's sign-in code;
+    such rows are reachable through the RLS bypass alone.
     """
 
     __tablename__ = "outbox_events"
@@ -38,7 +43,12 @@ class OutboxEvent(Base):
         Index(
             "ix_outbox_events_undispatched",
             "created_at",
-            postgresql_where=text("dispatched_at IS NULL"),
+            postgresql_where=text("dispatched_at IS NULL AND dead_lettered_at IS NULL"),
+        ),
+        Index(
+            "ix_outbox_events_dead_lettered",
+            "dead_lettered_at",
+            postgresql_where=text("dead_lettered_at IS NOT NULL"),
         ),
         # Every tenant-scoped table carries this so a composite foreign key
         # can reference (tenant_id, id) and keep a row in one tenant.
@@ -48,7 +58,9 @@ class OutboxEvent(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid()
     )
-    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id", ondelete="RESTRICT"))
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="RESTRICT")
+    )
     event_type: Mapped[str] = mapped_column(String(64))
     aggregate_type: Mapped[str] = mapped_column(String(32))
     aggregate_id: Mapped[uuid.UUID] = mapped_column()
@@ -57,10 +69,13 @@ class OutboxEvent(Base):
         DateTime(timezone=True), server_default=func.clock_timestamp()
     )
     dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # A delivery that raised is retried on the next tick, until this reaches
-    # `MAX_DELIVERY_ATTEMPTS`; then the row is marked dispatched anyway so a
-    # poison event cannot be retried forever.
+    # A delivery that failed is retried with backoff until this reaches
+    # `MAX_DELIVERY_ATTEMPTS`; then the row becomes a dead letter, so a
+    # poison event cannot be retried forever but is not lost either.
     attempts: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dead_lettered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(300))
 
 
 class DeliveryOutcome(StrEnum):
@@ -94,8 +109,12 @@ class OutboxDelivery(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid()
     )
-    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id", ondelete="RESTRICT"))
-    event_id: Mapped[uuid.UUID] = mapped_column()
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="RESTRICT")
+    )
+    # The composite key above keeps a delivery in its event's tenant; this
+    # one carries the cascade for tenant-less (platform sign-in) events.
+    event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("outbox_events.id", ondelete="CASCADE"))
     channel: Mapped[str] = mapped_column(String(32))
     outcome: Mapped[str] = mapped_column(String(16))
     detail: Mapped[str | None] = mapped_column(String(300))
