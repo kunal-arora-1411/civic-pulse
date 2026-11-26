@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
 
 from app.core.db import DbSession
 from app.core.errors import error_responses
+from app.domains.auth.cookies import clear_refresh_cookie
 from app.domains.auth.dependencies import CurrentPrincipal
 from app.domains.users import service
+from app.domains.users.anonymize import anonymize_self
 from app.domains.users.schemas import UserMe, UserMeUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -31,3 +33,21 @@ async def get_me(principal: CurrentPrincipal, db: DbSession) -> UserMe:
 async def update_me(principal: CurrentPrincipal, db: DbSession, body: UserMeUpdate) -> UserMe:
     user = await service.update_self(db, principal.user_id, principal.tenant_id, body)
     return service.to_me(user)
+
+
+@router.post(
+    "/me/anonymize",
+    operation_id="users_anonymize_me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses=error_responses(401, 403),
+    summary="Delete my personal data and end every session (citizens)",
+)
+async def anonymize_me(principal: CurrentPrincipal, db: DbSession) -> Response:
+    """Wipes the caller's phone, email, name, preferences and photo metadata
+    and signs them out everywhere. Reports stay, without anything that
+    identifies the reporter. Irreversible; staff get 403."""
+    await anonymize_self(db, principal)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_refresh_cookie(response)
+    return response

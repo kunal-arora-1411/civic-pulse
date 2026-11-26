@@ -53,6 +53,10 @@ os.environ.update(
         "REFRESH_REUSE_GRACE_SECONDS": "0",
         # Every test request comes from 127.0.0.1.
         "OTP_MAX_PER_IP_PER_HOUR": "100000",
+        "OTP_VERIFY_MAX_PER_IP_PER_HOUR": "100000",
+        "MFA_VERIFY_MAX_PER_IP_PER_HOUR": "100000",
+        "REFRESH_MAX_PER_IP_PER_HOUR": "100000",
+        "TENANT_LOOKUP_MAX_PER_IP_PER_MINUTE": "100000",
         # Many tests file reports in bulk; tests/test_report_rate_limit.py
         # lowers these to exercise the limit itself.
         "REPORT_MAX_PER_HOUR": "100000",

@@ -1,0 +1,1489 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CivicPulse — system design, explained</title>
+    <meta
+      name="description"
+      content="How CivicPulse fits together: the moving parts, what happens to a pothole report from photo to closure, and why duplicate matching is built the way it is."
+    />
+    <link rel="stylesheet" href="/design-tokens.css" />
+    <style>
+      /* ---- page layout ---- */
+
+      .wrap {
+        max-width: var(--page);
+        margin: 0 auto;
+        padding: 0 var(--space-6);
+      }
+
+      .masthead {
+        border-bottom: 1px solid var(--border-strong);
+        padding: var(--space-12) 0 var(--space-8);
+        background: var(--surface-raised);
+      }
+
+      .masthead-grid {
+        display: grid;
+        grid-template-columns: 1.55fr 1fr;
+        gap: var(--space-8);
+        align-items: end;
+      }
+
+      .meta-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: var(--text-sm);
+        border-top: 1px solid var(--border);
+      }
+
+      .meta-list li {
+        display: grid;
+        grid-template-columns: 7.5rem 1fr;
+        gap: var(--space-3);
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .meta-list dt,
+      .meta-list .k {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        padding-top: 0.15em;
+      }
+
+      main {
+        padding-bottom: var(--space-16);
+      }
+
+      section {
+        padding-top: var(--space-12);
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: 3rem 1fr;
+        gap: var(--space-4);
+        align-items: baseline;
+        border-top: 2px solid var(--text);
+        padding-top: var(--space-4);
+        margin-bottom: var(--space-6);
+      }
+
+      .section-head .num {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        color: var(--accent);
+        letter-spacing: 0.04em;
+      }
+
+      .section-head h2 {
+        margin: 0;
+      }
+
+      .section-head p {
+        grid-column: 2;
+        margin: var(--space-2) 0 0;
+        color: var(--text-muted);
+      }
+
+      /* ---- contents ---- */
+
+      .contents {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: toc;
+        columns: 2;
+        column-gap: var(--space-8);
+        font-size: var(--text-sm);
+      }
+
+      .contents li {
+        counter-increment: toc;
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid var(--border);
+        break-inside: avoid;
+      }
+
+      .contents li::before {
+        content: counter(toc, decimal-leading-zero);
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        margin-right: var(--space-3);
+      }
+
+      .contents a {
+        text-decoration: none;
+        color: var(--text);
+      }
+
+      .contents a:hover {
+        color: var(--accent);
+        text-decoration: underline;
+      }
+
+      /* ---- the four-things list ---- */
+
+      .keypoints {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+        margin: var(--space-6) 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .keypoints li {
+        border: 1px solid var(--border);
+        border-top: 2px solid var(--accent);
+        background: var(--surface-raised);
+        padding: var(--space-4);
+      }
+
+      .keypoints strong {
+        display: block;
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        margin-bottom: var(--space-1);
+      }
+
+      .keypoints span {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+      }
+
+      /* ---- the layered diagram ---- */
+
+      .stack {
+        border: 1px solid var(--border-strong);
+        background: var(--surface-raised);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .band {
+        --band: var(--layer-data);
+        --tint: var(--tint-data);
+        display: grid;
+        grid-template-columns: 9.5rem 1fr;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .band:last-child {
+        border-bottom: 0;
+      }
+
+      .band-label {
+        background: var(--band);
+        color: var(--band-ink);
+        padding: var(--space-4) var(--space-3);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+
+      .band-label .role {
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        opacity: 0.85;
+      }
+
+      .band-label strong {
+        font-size: var(--text-sm);
+        line-height: 1.3;
+        font-weight: 600;
+      }
+
+      .band-body {
+        padding: var(--space-3);
+        display: grid;
+        gap: var(--space-3);
+      }
+
+      .cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .cols-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .node {
+        background: var(--tint);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: var(--space-3);
+        min-width: 0;
+      }
+
+      .node-name {
+        display: block;
+        font-weight: 600;
+        font-size: var(--text-sm);
+        line-height: 1.3;
+      }
+
+      .node-what {
+        display: block;
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin-top: var(--space-1);
+      }
+
+      .node .mono {
+        display: inline-block;
+        margin-top: var(--space-1);
+        font-size: 0.6875rem;
+        padding: 0.05em 0.3em;
+        background: transparent;
+        border-color: var(--border-strong);
+        color: var(--text-muted);
+      }
+
+      /* domain chips inside the API band */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-top: var(--space-2);
+        padding: 0;
+        list-style: none;
+      }
+
+      .chips li {
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.02em;
+        padding: 0.1rem 0.35rem;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-sm);
+        color: var(--text);
+        background: var(--surface-raised);
+      }
+
+      /* connector rows between bands */
+      .flow {
+        display: grid;
+        grid-template-columns: 9.5rem 1fr;
+        background: var(--surface-sunken);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .flow-rail {
+        border-right: 1px dashed var(--border-strong);
+        position: relative;
+      }
+
+      .flow-rail::after {
+        content: "";
+        position: absolute;
+        bottom: -1px;
+        right: -4px;
+        width: 7px;
+        height: 7px;
+        border-right: 1px solid var(--border-strong);
+        border-bottom: 1px solid var(--border-strong);
+        transform: rotate(45deg);
+        background: var(--surface-sunken);
+      }
+
+      .flow-note {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        padding: var(--space-2) var(--space-3);
+        align-self: center;
+      }
+
+      .band-client {
+        --band: var(--layer-client);
+        --tint: var(--tint-client);
+      }
+      .band-web {
+        --band: var(--layer-web);
+        --tint: var(--tint-web);
+      }
+      .band-api {
+        --band: var(--layer-api);
+        --tint: var(--tint-api);
+      }
+      .band-async {
+        --band: var(--layer-async);
+        --tint: var(--tint-async);
+      }
+      .band-data {
+        --band: var(--layer-data);
+        --tint: var(--tint-data);
+      }
+
+      .diagram-caption {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        margin: var(--space-3) 0 0;
+      }
+
+      /* ---- the journey ---- */
+
+      .journey {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: step;
+      }
+
+      .journey > li {
+        counter-increment: step;
+        position: relative;
+        padding: 0 0 var(--space-6) var(--space-12);
+        border-left: 1px solid var(--border-strong);
+        margin-left: 0.7rem;
+      }
+
+      .journey > li:last-child {
+        padding-bottom: 0;
+        border-left-color: transparent;
+      }
+
+      .journey > li::before {
+        content: counter(step, decimal-leading-zero);
+        position: absolute;
+        left: -0.72rem;
+        top: 0.05rem;
+        width: 1.44rem;
+        height: 1.44rem;
+        display: grid;
+        place-items: center;
+        background: var(--surface);
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        border-radius: 50%;
+        font-family: var(--font-mono);
+        font-size: 0.625rem;
+        font-weight: 600;
+      }
+
+      .journey h3 {
+        margin: 0 0 var(--space-1);
+        font-size: var(--text-lg);
+      }
+
+      .journey p {
+        margin: 0 0 var(--space-2);
+        max-width: 66ch;
+      }
+
+      .where {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        display: inline-block;
+        border-top: 1px solid var(--border);
+        padding-top: var(--space-1);
+      }
+
+      /* ---- matching explanation ---- */
+
+      .signals {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border: 1px solid var(--border);
+        background: var(--surface-raised);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .signals li {
+        display: grid;
+        grid-template-columns: 10rem 1fr 5rem;
+        gap: var(--space-4);
+        align-items: baseline;
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .signals li:last-child {
+        border-bottom: 0;
+      }
+
+      .signals .s-name {
+        font-weight: 600;
+        font-size: var(--text-sm);
+      }
+
+      .signals .s-what {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+      }
+
+      .signals .s-weight {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        text-align: right;
+        color: var(--text-muted);
+      }
+
+      .bar {
+        grid-column: 1 / -1;
+        height: 4px;
+        background: var(--surface-sunken);
+        border: 1px solid var(--border);
+        margin-top: var(--space-1);
+      }
+
+      .bar span {
+        display: block;
+        height: 100%;
+        background: var(--accent);
+      }
+
+      .outcomes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-3);
+        margin: var(--space-6) 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .outcomes li {
+        border: 1px solid var(--border);
+        border-top: 3px solid var(--layer-data);
+        background: var(--surface-raised);
+        border-radius: var(--radius-sm);
+        padding: var(--space-4);
+      }
+
+      .outcomes .o-link {
+        border-top-color: var(--success);
+      }
+      .outcomes .o-review {
+        border-top-color: var(--warning);
+      }
+      .outcomes .o-new {
+        border-top-color: var(--layer-client);
+      }
+
+      .outcomes strong {
+        display: block;
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        margin-bottom: var(--space-1);
+      }
+
+      .outcomes p {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        margin: 0;
+      }
+
+      .outcomes .rule {
+        display: block;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text);
+        margin-top: var(--space-2);
+      }
+
+      /* ---- glossary ---- */
+
+      .glossary {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0;
+        margin: 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .glossary div {
+        padding: var(--space-3) var(--space-4) var(--space-3) 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .glossary dt {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+      }
+
+      .glossary dd {
+        margin: var(--space-1) 0 0;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        max-width: 46ch;
+      }
+
+      /* ---- tables ---- */
+
+      .table-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface-raised);
+        padding: 0 var(--space-4);
+      }
+
+      .table-scroll td:first-child {
+        white-space: nowrap;
+      }
+
+      /* ---- status strip ---- */
+
+      .status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin: var(--space-6) 0 0;
+        padding: 0;
+        list-style: none;
+        font-size: var(--text-xs);
+        font-family: var(--font-mono);
+      }
+
+      .status li {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.15rem 0.5rem;
+        background: var(--surface-raised);
+      }
+
+      .status .done {
+        border-color: var(--success);
+        color: var(--success);
+      }
+
+      .status .wip {
+        border-color: var(--warning);
+        color: var(--warning);
+      }
+
+      .status .todo {
+        color: var(--text-muted);
+      }
+
+      footer {
+        border-top: 1px solid var(--border-strong);
+        padding: var(--space-6) 0 var(--space-12);
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+      }
+
+      /* ---- responsive ---- */
+
+      @media (max-width: 900px) {
+        .masthead-grid,
+        .keypoints,
+        .glossary,
+        .outcomes,
+        .contents {
+          grid-template-columns: 1fr;
+          columns: 1;
+        }
+
+        .cols-4,
+        .cols-3 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .section-head {
+          grid-template-columns: 2rem 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .wrap {
+          padding: 0 var(--space-4);
+        }
+
+        h1 {
+          font-size: var(--text-3xl);
+        }
+
+        .masthead {
+          padding-top: var(--space-8);
+        }
+
+        .band,
+        .flow {
+          grid-template-columns: 1fr;
+        }
+
+        .band-label {
+          flex-direction: row;
+          align-items: baseline;
+          gap: var(--space-2);
+        }
+
+        .flow-rail {
+          display: none;
+        }
+
+        .cols-4,
+        .cols-3,
+        .cols-2 {
+          grid-template-columns: 1fr;
+        }
+
+        .signals li {
+          grid-template-columns: 1fr;
+          gap: var(--space-1);
+        }
+
+        .signals .s-weight {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="wrap">
+        <div class="masthead-grid">
+          <div>
+            <p class="eyebrow">System design · read in 10 minutes</p>
+            <h1>CivicPulse, explained without the jargon</h1>
+            <p class="lede">
+              A citizen photographs a pothole. Some minutes later a municipal crew knows about it,
+              and every other citizen who reported the same pothole is told it is already being
+              fixed. This page shows every part that makes that happen, and why each one exists.
+            </p>
+          </div>
+          <ul class="meta-list">
+            <li><span class="k">Product</span><span>Civic issue reporting for Indian municipalities</span></li>
+            <li><span class="k">Shape</span><span>Modular monolith, one deployable API</span></li>
+            <li><span class="k">Built with</span><span>FastAPI · Next.js 16 · PostgreSQL · Redis · MinIO</span></li>
+            <li><span class="k">Lives in</span><span class="mono">apps/api · apps/web · infra</span></li>
+          </ul>
+        </div>
+        <ul class="status">
+          <li class="done">P0 foundations — done</li>
+          <li class="done">P1 reporting loop — done</li>
+          <li class="wip">P2 AI layer — integration pass</li>
+          <li class="todo">P3–P6 — not started</li>
+        </ul>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section id="contents">
+        <div class="section-head">
+          <span class="num">—</span>
+          <h2>On this page</h2>
+        </div>
+        <ol class="contents">
+          <li><a href="#shape">The whole system in one diagram</a></li>
+          <li><a href="#journey">A pothole's journey, step by step</a></li>
+          <li><a href="#matching">The clever bit: spotting duplicates</a></li>
+          <li><a href="#work">Who runs what, and when</a></li>
+          <li><a href="#data">What gets stored where</a></li>
+          <li><a href="#people">Tenants, roles and permissions</a></li>
+          <li><a href="#sharp">Sharp edges worth knowing</a></li>
+          <li><a href="#words">Plain-English glossary</a></li>
+        </ol>
+      </section>
+
+      <!-- 1 ------------------------------------------------------------------>
+      <section id="shape">
+        <div class="section-head">
+          <span class="num">01</span>
+          <h2>The whole system in one diagram</h2>
+          <p>
+            Read it top to bottom. Each band is a layer; the notes between bands are what travels
+            across them.
+          </p>
+        </div>
+
+        <div class="stack">
+          <!-- people -->
+          <div class="band band-client">
+            <div class="band-label">
+              <span class="role">Layer 1</span>
+              <strong>People and their screens</strong>
+            </div>
+            <div class="band-body cols-4">
+              <div class="node">
+                <span class="node-name">Citizen app</span>
+                <span class="node-what">Photo, location, tracking. English and Hindi.</span>
+              </div>
+              <div class="node">
+                <span class="node-name">Staff console</span>
+                <span class="node-what">Work queue, map, review queue, settings.</span>
+                <span class="mono">/admin</span>
+              </div>
+              <div class="node">
+                <span class="node-name">Field crew</span>
+                <span class="node-what">Assigned work orders, photos as evidence.</span>
+                <span class="mono">/field</span>
+              </div>
+              <div class="node">
+                <span class="node-name">Public pages</span>
+                <span class="node-what">Issue timeline and city scorecard.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow">
+            <div class="flow-rail"></div>
+            <div class="flow-note">
+              HTTPS · JSON · <code>Authorization: Bearer …</code> · <code>X-Tenant</code> before sign-in
+            </div>
+          </div>
+
+          <!-- web -->
+          <div class="band band-web">
+            <div class="band-label">
+              <span class="role">Layer 2</span>
+              <strong>Web tier</strong>
+            </div>
+            <div class="band-body cols-2">
+              <div class="node">
+                <span class="node-name">Next.js 16 app</span>
+                <span class="node-what">
+                  Server-rendered shell plus client interactivity. It resolves the locale in
+                  <span class="mono">proxy.ts</span> and does <em>no</em> auth checks.
+                </span>
+              </div>
+              <div class="node">
+                <span class="node-name">Talks to the API directly</span>
+                <span class="node-what">
+                  Browser calls FastAPI itself, with CORS and credentials allowed. There is no
+                  separate backend-for-frontend in between.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow">
+            <div class="flow-rail"></div>
+            <div class="flow-note">anonymous or authenticated REST calls to <code>/api/v1</code></div>
+          </div>
+
+          <!-- api -->
+          <div class="band band-api">
+            <div class="band-label">
+              <span class="role">Layer 3</span>
+              <strong>The API</strong>
+            </div>
+            <div class="band-body">
+              <div class="node">
+                <span class="node-name">FastAPI — one deployable, many domains</span>
+                <span class="node-what">
+                  A modular monolith. Every feature is a folder under
+                  <span class="mono">app/domains/</span> with its own router, service and models;
+                  they share one database session, one transaction per request, one deploy.
+                </span>
+                <ul class="chips">
+                  <li>auth</li>
+                  <li>users</li>
+                  <li>org</li>
+                  <li>reports</li>
+                  <li>media</li>
+                  <li>geo</li>
+                  <li>issues</li>
+                  <li>matching</li>
+                  <li>priority</li>
+                  <li>workflow</li>
+                  <li>operations</li>
+                  <li>notifications</li>
+                  <li>analytics</li>
+                  <li>community</li>
+                  <li>sla</li>
+                  <li>audit</li>
+                  <li>public</li>
+                </ul>
+              </div>
+              <div class="band-body" style="padding: 0">
+                <div class="node" style="background: var(--surface-raised)">
+                  <span class="node-name">Wrapped around every domain</span>
+                  <span class="node-what">
+                    Tenancy enforced by Postgres row-level security · role and jurisdiction checks ·
+                    request IDs · rate limits · idempotency keys · append-only audit · error
+                    envelopes · OpenAPI contract
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow">
+            <div class="flow-rail"></div>
+            <div class="flow-note">
+              work that must not block the request is handed to Celery by task name
+            </div>
+          </div>
+
+          <!-- async -->
+          <div class="band band-async">
+            <div class="band-label">
+              <span class="role">Layer 4</span>
+              <strong>Background workers</strong>
+            </div>
+            <div class="band-body cols-3">
+              <div class="node">
+                <span class="node-name">worker</span>
+                <span class="node-what">
+                  Media processing, housekeeping, priority recomputes, the matching watchdog.
+                </span>
+                <span class="mono">queue: default</span>
+              </div>
+              <div class="node">
+                <span class="node-name">ai-worker</span>
+                <span class="node-what">
+                  CLIP embeddings, category suggestions, duplicate matching, face blurring. The
+                  models are baked into this image.
+                </span>
+                <span class="mono">queue: ai — sole consumer</span>
+              </div>
+              <div class="node">
+                <span class="node-name">beat</span>
+                <span class="node-what">
+                  The clock: hourly housekeeping, watchdog every minute, nightly recompute, weekly
+                  quality check.
+                </span>
+                <span class="mono">exactly one per environment</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow">
+            <div class="flow-rail"></div>
+            <div class="flow-note">both read and write the same tools below, inside a tenant context</div>
+          </div>
+
+          <!-- data -->
+          <div class="band band-data">
+            <div class="band-label">
+              <span class="role">Layer 5</span>
+              <strong>Storage</strong>
+            </div>
+            <div class="band-body cols-3">
+              <div class="node">
+                <span class="node-name">PostgreSQL 16</span>
+                <span class="node-what">
+                  The source of truth. PostGIS for points and wards, pgvector for photo embeddings,
+                  h3 for area maths.
+                </span>
+              </div>
+              <div class="node">
+                <span class="node-name">Redis</span>
+                <span class="node-what">
+                  Rate-limit counters and the Celery broker. Nothing here is the only copy of
+                  anything.
+                </span>
+              </div>
+              <div class="node">
+                <span class="node-name">MinIO (S3)</span>
+                <span class="node-what">
+                  One private bucket of photos. Browsers upload and download through short-lived
+                  signed URLs.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow">
+            <div class="flow-rail"></div>
+            <div class="flow-note">the outside world, which can always be slow, wrong or down</div>
+          </div>
+
+          <!-- external -->
+          <div class="band band-data">
+            <div class="band-label">
+              <span class="role">Outside</span>
+              <strong>Services we don't own</strong>
+            </div>
+            <div class="band-body cols-3">
+              <div class="node">
+                <span class="node-name">SMS gateway</span>
+                <span class="node-what">
+                  Delivers the sign-in code. Not chosen yet; in development the code is
+                  <span class="mono">000000</span>.
+                </span>
+              </div>
+              <div class="node">
+                <span class="node-name">Nominatim geocoder</span>
+                <span class="node-what">
+                  Turns a map pin into an address. Optional: set
+                  <span class="mono">GEOCODER=none</span> offline.
+                </span>
+              </div>
+              <div class="node">
+                <span class="node-name">Model weights</span>
+                <span class="node-what">
+                  CLIP ViT-B/32 and YuNet, pinned in
+                  <span class="mono">models.lock.json</span> so every photo gets comparable
+                  vectors.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="diagram-caption">
+          Layers 1–2 are stateless and replaceable. Layer 3 holds all the rules. Layer 4 exists
+          purely so a slow AI model can never make a citizen wait.
+        </p>
+
+        <ul class="keypoints">
+          <li>
+            <strong>One database, many cities</strong>
+            <span>
+              Every table is tenant-scoped by row-level security inside Postgres, so "another city
+              sees my data" is blocked by the database, not by remembering to add a filter.
+            </span>
+          </li>
+          <li>
+            <strong>The API never touches photo bytes</strong>
+            <span>
+              Browsers upload straight into storage with a signed pass. The API only records that
+              the upload happened and verifies it afterwards.
+            </span>
+          </li>
+          <li>
+            <strong>Nothing important happens inline</strong>
+            <span>
+              Submitting a report returns in milliseconds. Embedding, matching, blurring and
+              notifying all happen on workers.
+            </span>
+          </li>
+          <li>
+            <strong>The AI is an advisor, not a judge</strong>
+            <span>
+              It may link a report to an existing issue on its own only when it is very sure;
+              everything else becomes a task for a human, and if the AI is down nothing is merged.
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- 2 ------------------------------------------------------------------>
+      <section id="journey">
+        <div class="section-head">
+          <span class="num">02</span>
+          <h2>A pothole's journey, step by step</h2>
+          <p>
+            The same path every report takes. The step number is also the order it really happens
+            in — except step 3, which is optional and happens before submission.
+          </p>
+        </div>
+
+        <ol class="journey">
+          <li>
+            <h3>The photo goes straight into storage</h3>
+            <p>
+              The phone asks the API for a one-time upload pass, then sends the file to storage
+              itself. The API checks the signature later, so a file that was never registered can
+              never become a report's photo. The bucket is private; every read is a signed link
+              that expires.
+            </p>
+            <span class="where">POST /media/uploads → PUT to MinIO</span>
+          </li>
+          <li>
+            <h3>An optional hint: what is this a photo of?</h3>
+            <p>
+              Before submitting, the citizen can ask the AI to guess the category. CLIP compares
+              the photo with the city's own categories. If the guess is confident it is used; if
+              not, the citizen picks from a short list. This is a convenience, not a gate.
+            </p>
+            <span class="where">classification, ai queue · threshold is per tenant</span>
+          </li>
+          <li>
+            <h3>The report is written down — and stops there</h3>
+            <p>
+              The API checks the category's photo rules, turns the pin into an address and a ward,
+              and refuses coordinates outside the city. It writes the report with
+              <span class="mono">matching_status = pending</span>, gives it a human reference, and
+              records an audit entry. It deliberately does <em>not</em> know yet whether this is a
+              new problem or a duplicate.
+            </p>
+            <span class="where">POST /reports · one transaction · returns immediately</span>
+          </li>
+          <li>
+            <h3>The photo is cleaned up</h3>
+            <p>
+              A worker decodes it, strips the EXIF metadata (a photo can carry the photographer's
+              GPS history), produces WebP sizes for the list and the detail view, and refuses
+              anything that will not decode or is absurdly large. A public copy exists only after
+              the face check in step 5 has passed.
+            </p>
+            <span class="where">worker · default queue</span>
+          </li>
+          <li>
+            <h3>The AI looks at the picture</h3>
+            <p>
+              CLIP turns the photo into a vector — a long list of numbers that captures "what this
+              scene looks like". YuNet finds faces and they get blurred. A perceptual hash is also
+              computed: a short fingerprint that says "this is literally the same picture", which
+              catches re-uploads and screenshots that a vector score alone would miss.
+            </p>
+            <span class="where">ai-worker · queue: ai</span>
+          </li>
+          <li>
+            <h3>Is this the same pothole someone already reported?</h3>
+            <p>
+              Nearby open issues from the last months are gathered, scored, and sorted. Three
+              things can happen: link silently, ask a human, or start a new issue. This is the most
+              interesting part of the system, so it gets its own section below.
+            </p>
+            <span class="where">ai queue · safety net: watchdog on the default queue</span>
+          </li>
+          <li>
+            <h3>How bad is it, and how soon?</h3>
+            <p>
+              Rules belonging to the city turn the category's fields into a severity and a
+              priority, and every level comes with its reason recorded ("near a school", "three
+              citizens reported it"). A supervisor can override either one, but only with a written
+              reason, and the override is audited.
+            </p>
+            <span class="where">priority rules · recomputed when links or statuses change</span>
+          </li>
+          <li>
+            <h3>Humans take over</h3>
+            <p>
+              Staff see the issue in a queue and on a map. They move it through the city's own
+              status workflow (which transitions are legal is configuration, not code), assign it
+              to the team that covers that category and ward, and the crew works the resulting
+              order and uploads evidence. Citizens following the issue are notified at each move.
+            </p>
+            <span class="where">operations · workflow · notifications</span>
+          </li>
+          <li>
+            <h3>Everyone can see what happened</h3>
+            <p>
+              The reporter gets a timeline; the public gets a page for the issue and a city
+              scorecard; managers get dashboards whose numbers are built from fixed definitions
+              rather than hand-written queries; and the audit trail keeps an append-only record of
+              who did what.
+            </p>
+            <span class="where">public · analytics · audit</span>
+          </li>
+        </ol>
+      </section>
+
+      <!-- 3 ------------------------------------------------------------------>
+      <section id="matching">
+        <div class="section-head">
+          <span class="num">03</span>
+          <h2>The clever bit: spotting duplicates</h2>
+          <p>
+            Ten people photograph the same broken drain from ten angles. The city should see one
+            issue with a count of ten, not ten tickets. That is what this does.
+          </p>
+        </div>
+
+        <p>
+          The system gathers every recent issue of a compatible category within a radius and scores
+          it on four signals. Each signal is a number between 0 and 1, and they are combined with
+          weights the city can change.
+        </p>
+
+        <ul class="signals">
+          <li>
+            <span class="s-name">How close</span>
+            <span class="s-what">
+              Distance falls off smoothly — a report ten metres away scores far higher than one
+              five hundred metres away.
+            </span>
+            <span class="s-weight">weight 0.40</span>
+            <span class="bar"><span style="width: 40%"></span></span>
+          </li>
+          <li>
+            <span class="s-name">What it looks like</span>
+            <span class="s-what">
+              The overlap between the two photos' vectors. An identical fingerprint (same file,
+              re-uploaded) counts as a perfect match outright.
+            </span>
+            <span class="s-weight">weight 0.40</span>
+            <span class="bar"><span style="width: 40%"></span></span>
+          </li>
+          <li>
+            <span class="s-name">Same kind of problem</span>
+            <span class="s-what">
+              Categories the city declared related score higher than unrelated ones — a pothole and
+              a broken footpath may be the same job.
+            </span>
+            <span class="s-weight">weight 0.10</span>
+            <span class="bar"><span style="width: 10%"></span></span>
+          </li>
+          <li>
+            <span class="s-name">How recent</span>
+            <span class="s-what">
+              Older issues score lower, so a drain fixed last spring does not swallow this
+              summer's report.
+            </span>
+            <span class="s-weight">weight 0.10</span>
+            <span class="bar"><span style="width: 10%"></span></span>
+          </li>
+        </ul>
+
+        <p style="margin-top: var(--space-6)">
+          The best-scoring candidate decides the outcome. Two thresholds do the work: a high score
+          means act alone, a middling one means ask a person.
+        </p>
+
+        <ul class="outcomes">
+          <li class="o-link">
+            <strong>Link it</strong>
+            <p>The report joins the existing issue and the reporter count goes up.</p>
+            <span class="rule">score ≥ 0.85 AND visual ≥ 0.92 AND inside the radius</span>
+          </li>
+          <li class="o-review">
+            <strong>Ask a human</strong>
+            <p>An operator sees both photos, the score and the signal breakdown, then decides.</p>
+            <span class="rule">score ≥ 0.60</span>
+          </li>
+          <li class="o-new">
+            <strong>New issue</strong>
+            <p>Nothing is close enough, so the report opens its own issue.</p>
+            <span class="rule">everything else</span>
+          </li>
+        </ul>
+
+        <div class="tint-note" style="margin-top: var(--space-6)">
+          <p>
+            <strong>Why not just trust the score?</strong> Because a photo alone can be wrong, and a
+            location alone is definitely wrong — two potholes on the same street corner are two
+            potholes. So an automatic link needs <em>both</em> a high overall score and strong
+            visual evidence. Distance by itself can never merge anything.
+          </p>
+          <p>
+            If the AI worker is down, the visual signal disappears, the score is re-normalised over
+            the remaining three, and the system refuses to auto-link at all — it only opens review
+            tasks above 0.40, or starts a new issue. A duplicate is a nuisance; a wrongly merged
+            report is a lost report.
+          </p>
+          <p>
+            Two more safeguards: an advisory lock on the location means ten simultaneous identical
+            reports still produce exactly one issue, and a watchdog re-queues any report whose
+            matching never finished, so a crashed worker leaves nothing stranded.
+          </p>
+        </div>
+      </section>
+
+      <!-- 4 ------------------------------------------------------------------>
+      <section id="work">
+        <div class="section-head">
+          <span class="num">04</span>
+          <h2>Who runs what, and when</h2>
+          <p>
+            Three processes, one clock, and a rule that exists because breaking it silently corrupts
+            data.
+          </p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Process</th>
+                <th scope="col">Queue</th>
+                <th scope="col">Does</th>
+                <th scope="col">Why it is separate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">worker</td>
+                <td>default</td>
+                <td>Photo variants, housekeeping, priority recomputes, matching watchdog</td>
+                <td>Cheap, frequent, must never wait behind a model</td>
+              </tr>
+              <tr>
+                <td class="mono">ai-worker</td>
+                <td>ai</td>
+                <td>Embeddings, classification, matching, face blur</td>
+                <td>
+                  Needs ~1.5 GB of RAM and the models. It is the only consumer of
+                  <span class="mono">ai</span>, so every vector in the database comes from the same
+                  model and scores stay comparable.
+                </td>
+              </tr>
+              <tr>
+                <td class="mono">beat</td>
+                <td>—</td>
+                <td>
+                  Hourly housekeeping · watchdog every minute · nightly priority recompute · weekly
+                  matching-quality check
+                </td>
+                <td>Only one may run, or every job fires twice</td>
+              </tr>
+              <tr>
+                <td class="mono">migrate</td>
+                <td>—</td>
+                <td>Applies database migrations, then exits</td>
+                <td>
+                  Runs as the owning role; the API deliberately connects as a lesser role that
+                  row-level security actually applies to
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="margin-top: var(--space-4)">
+          The API hands work over by task <em>name</em>, so it never imports the worker code, and a
+          broker that is down only logs an error — the request still succeeds. Every kind of
+          deferred work also has a sweeper, so nothing depends on the enqueue having worked.
+        </p>
+      </section>
+
+      <!-- 5 ------------------------------------------------------------------>
+      <section id="data">
+        <div class="section-head">
+          <span class="num">05</span>
+          <h2>What gets stored where</h2>
+          <p>Three stores, each doing one job, and one rule about what may be authoritative.</p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Store</th>
+                <th scope="col">Holds</th>
+                <th scope="col">Notes that matter</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>PostgreSQL</td>
+                <td>
+                  Cities, users, categories, reports, issues, photos' metadata, match decisions,
+                  work orders, notifications, audit
+                </td>
+                <td>
+                  The only authoritative copy. Row-level security on every tenant-scoped table;
+                  audit rows reject updates and deletes at the database level.
+                </td>
+              </tr>
+              <tr>
+                <td>Redis</td>
+                <td>Rate-limit counters, Celery queue</td>
+                <td>All of it is rebuildable; losing it slows things down, never loses a report.</td>
+              </tr>
+              <tr>
+                <td>MinIO</td>
+                <td>Original and processed photos</td>
+                <td>
+                  Private bucket. Signed URLs change on every request, so browsers cannot cache a
+                  photo — a known rough edge, not a bug.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6 ------------------------------------------------------------------>
+      <section id="people">
+        <div class="section-head">
+          <span class="num">06</span>
+          <h2>Tenants, roles and permissions</h2>
+          <p>
+            One deployment serves many municipalities. A tenant is a city; a role decides what one
+            person in it may do.
+          </p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Role</th>
+                <th scope="col">Can do</th>
+                <th scope="col">Cannot do</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Citizen</td>
+                <td>Report, support others' reports, track their own, read public pages</td>
+                <td>See any staff view, contact details, internal notes or the audit trail</td>
+              </tr>
+              <tr>
+                <td>Operator</td>
+                <td>Work the queue, resolve review tasks, assign and update work orders</td>
+                <td>Change city-wide configuration or manage users</td>
+              </tr>
+              <tr>
+                <td>Supervisor</td>
+                <td>Everything an operator can, plus overrides, within their department's scope</td>
+                <td>Reach outside their department's wards and categories</td>
+              </tr>
+              <tr>
+                <td>Municipal admin</td>
+                <td>Categories, matching and priority rules, SLA targets, staff accounts, audit</td>
+                <td>Touch another city</td>
+              </tr>
+              <tr>
+                <td>Platform admin</td>
+                <td>Create cities and their first accounts</td>
+                <td>
+                  Read any city's data — deliberately, so an operator of the platform is not also a
+                  reader of citizens' complaints
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="margin-top: var(--space-4)">
+          Under all of this: anonymous requests name their city in a header, signed-in requests get
+          it from their token, and the database re-checks it on every query. Staff accounts also
+          need a second factor; the bypass for that is explicit and scoped, never implicit.
+        </p>
+      </section>
+
+      <!-- 7 ------------------------------------------------------------------>
+      <section id="sharp">
+        <div class="section-head">
+          <span class="num">07</span>
+          <h2>Sharp edges worth knowing</h2>
+          <p>Things that look odd until you know why, taken straight from the project's own notes.</p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Edge</th>
+                <th scope="col">Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Coordinates are <span class="mono">&#91;lng, lat&#93;</span></td>
+                <td>
+                  GeoJSON order, everywhere in the API. Getting it backwards puts a Bengaluru
+                  pothole in the Arabian Sea.
+                </td>
+              </tr>
+              <tr>
+                <td>The <span class="mono">ai</span> queue has exactly one consumer</td>
+                <td>
+                  Let the ordinary worker drain it and fake and real embeddings get mixed, making
+                  every similarity score meaningless.
+                </td>
+              </tr>
+              <tr>
+                <td>Perceptual hashes flip sign at the boundary</td>
+                <td>
+                  They are unsigned 64-bit values, but Postgres stores them signed. The conversion
+                  happens exactly once, where the two meet.
+                </td>
+              </tr>
+              <tr>
+                <td>Token refresh must be single-flight</td>
+                <td>
+                  Refresh tokens rotate, and reusing one revokes the session. Two parallel refreshes
+                  log the user out.
+                </td>
+              </tr>
+              <tr>
+                <td>Reports are rate-limited globally, not per city</td>
+                <td>
+                  A known gap: the limits are settings, so they cannot be tuned per tenant without a
+                  new config key.
+                </td>
+              </tr>
+              <tr>
+                <td>SMS still goes out inside the request</td>
+                <td>
+                  Fine while volumes are low; a queued outbox is planned rather than built.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 8 ------------------------------------------------------------------>
+      <section id="words">
+        <div class="section-head">
+          <span class="num">08</span>
+          <h2>Plain-English glossary</h2>
+          <p>If you only take eight words away from this page, take these.</p>
+        </div>
+
+        <dl class="glossary">
+          <div>
+            <dt>Tenant</dt>
+            <dd>One city using the platform. Everything stored belongs to exactly one.</dd>
+          </div>
+          <div>
+            <dt>Row-level security</dt>
+            <dd>
+              A Postgres feature: the database itself refuses to return rows belonging to another
+              city, even if the query forgot to filter.
+            </dd>
+          </div>
+          <div>
+            <dt>Presigned URL</dt>
+            <dd>
+              A temporary link that grants one upload or download without exposing any credential.
+            </dd>
+          </div>
+          <div>
+            <dt>Embedding</dt>
+            <dd>
+              A list of numbers representing what a photo looks like, so two photos can be compared
+              by arithmetic.
+            </dd>
+          </div>
+          <div>
+            <dt>Perceptual hash</dt>
+            <dd>
+              A 64-bit fingerprint of an image. Two hashes that are nearly equal mean nearly the
+              same picture.
+            </dd>
+          </div>
+          <div>
+            <dt>Celery</dt>
+            <dd>
+              The job queue. The API drops a named task into Redis; a worker picks it up and runs
+              it.
+            </dd>
+          </div>
+          <div>
+            <dt>Idempotency key</dt>
+            <dd>
+              A client-supplied code that makes a repeated POST return the original answer instead
+              of creating a second report.
+            </dd>
+          </div>
+          <div>
+            <dt>Advisory lock</dt>
+            <dd>
+              A database-level "I am working on this spot right now" marker, so simultaneous
+              duplicate checks cannot both decide to create an issue.
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <p style="margin: 0">
+          Drawn from the repository itself: <span class="mono">CLAUDE.md</span>,
+          <span class="mono">docs/STATUS.md</span>, <span class="mono">infra/docker-compose.yml</span>,
+          the domain folders under <span class="mono">apps/api/app/domains/</span>, and the default
+          matching configuration in <span class="mono">apps/api/app/domains/config/schemas.py</span>.
+          Numbers shown for weights and thresholds are the shipped defaults, which each city can
+          override.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

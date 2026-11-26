@@ -72,6 +72,27 @@
 | D1.5 | PR template and contribution guide | Platform/QA | — |
 | D1.3 | Start SMS DLT registration | Platform/QA | **SMS provider decision** |
 
+## Phase 6 hardening (branch `feature/p6-hardening`)
+
+Built; see [`api/phase-6-contract.md`](api/phase-6-contract.md) and [ADR 0006](adr/0006-retention-and-anonymization.md).
+- **PWA (P6-01):** manifest and icons, hand-written `public/sw.js` (offline shell, cached pages, Background Sync), offline banner (`experimental.useOffline`), reports sent offline queued in IndexedDB and sent with the same Idempotency-Key and body.
+- **Voice (P6-02):** dictation into the description with the browser's speech recognition; editable transcript, no audio kept.
+- **Accessibility (P6-04):** axe-core checks of key pages in the e2e suite (serious and critical violations fail).
+- **Security (P6-07):** per-address limits on OTP verify, MFA verify, refresh and tenant lookup; CSP and security headers on the web app; optional ClamAV scan of uploads (fails closed); CI job with pip-audit, pnpm audit, Trivy (config and API image) and gitleaks.
+- **Load (P6-08):** `infra/load/reads.js` (k6, p95 < 500 ms thresholds).
+- **Observability (P6-10):** opt-in Sentry and OpenTelemetry (OTLP) for the API and worker, with PII scrubbing.
+- **Backups (P6-11):** `infra/backup/` backup, restore and drill scripts; RPO/RTO in [`runbooks/backup-restore.md`](runbooks/backup-restore.md).
+- **Retention (P6-12):** citizen self-service anonymization; original-photo purge after `MEDIA_ORIGINAL_RETENTION_DAYS` (off by default).
+
+Still to do for P6:
+- [ ] Run the API suite, the web unit tests and e2e on the merged branch (not run where it was built: see the branch report).
+- [ ] Offline photo capture: photos taken offline need their blobs handed to the queue (the queue already uploads queued photos; the photo step doesn't pass them yet). `/report` also still needs a session, which can't be restored offline.
+- [ ] Field-app offline queue with conflict handling (FR-069).
+- [ ] Guest reporting (P6-05): waiting on the decision (1 Feb). Needs nullable phones or guest users, CAPTCHA and a per-tenant switch (new config key and migration).
+- [ ] Abuse controls (P6-06), degradation drills (P6-09), AI-queue burst test (P6-08), web-side Sentry, production infrastructure (P6-10), external penetration test.
+- [ ] Record the first restore drill and the measured RTO; agree retention periods and set `MEDIA_ORIGINAL_RETENTION_DAYS`.
+- [ ] Bhashini or faster-whisper for languages the browsers' speech recognition doesn't cover.
+
 ## Decisions needed from the product owner
 
 | Decision | Needed by |

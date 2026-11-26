@@ -15,6 +15,7 @@ from app.core.db import get_engine
 from app.core.errors import error_responses, register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
+from app.core.observability import init_observability, instrument_app
 from app.core.redis import close_redis
 
 API_DESCRIPTION = """
@@ -33,6 +34,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level, settings.service_name)
+    init_observability(settings.service_name)
 
     app = FastAPI(
         title="CivicPulse API",
@@ -43,6 +45,7 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
     register_exception_handlers(app)
+    instrument_app(app)
 
     # Middleware added later wraps earlier ones, so CORS is outermost and
     # also decorates the 500 responses produced by RequestContextMiddleware.

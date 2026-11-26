@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState } from "react";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { isApiError, restoreSession, session } from "@/lib/api";
 
@@ -75,6 +76,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ToastProvider dismissLabel={t("dismissNotification")}>
         <SessionBootstrap />
+        <PwaProvider />
         {children}
       </ToastProvider>
     </QueryClientProvider>

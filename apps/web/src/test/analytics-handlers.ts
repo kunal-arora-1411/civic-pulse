@@ -217,10 +217,14 @@ const routes: [string, JsonBodyType][] = [
 ];
 
 export function analyticsHandlers(requests: URL[] = []) {
-  return routes.map(([path, body]) =>
-    http.get(`${API}/analytics/${path}`, ({ request }) => {
-      requests.push(new URL(request.url));
-      return HttpResponse.json(body);
-    }),
-  );
+  return [
+    ...routes.map(([path, body]) =>
+      http.get(`${API}/analytics/${path}`, ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json(body);
+      }),
+    ),
+    // No saved views unless a test adds some (docs/api/saved-views-announcements.md).
+    http.get(`${API}/analytics/views`, () => HttpResponse.json([])),
+  ];
 }

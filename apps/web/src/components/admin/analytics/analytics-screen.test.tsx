@@ -396,3 +396,129 @@ describe("AnalyticsScreen", () => {
     expect(saveFileSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("Saved views", () => {
+  const view = (overrides: Record<string, unknown> = {}) => ({
+    id: "v1",
+    name: "Ward 1, weekly",
+    filters: {
+      range: "90d",
+      from: null,
+      to: null,
+      category_id: null,
+      ward_id: "w1",
+      status: [],
+      interval: "week",
+    },
+    is_default: false,
+    created_at: "2026-11-20T10:00:00Z",
+    updated_at: "2026-11-20T10:00:00Z",
+    ...overrides,
+  });
+
+  it("opens on the default view when the URL has no filters", async () => {
+    server.use(
+      http.get(`${API}/analytics/views`, () =>
+        HttpResponse.json([view({ is_default: true })]),
+      ),
+    );
+    renderWithProviders(<AnalyticsScreen />);
+
+    await waitFor(() =>
+      expect(window.location.search).toBe("?range=90d&ward=w1&interval=week"),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Default view" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("applies a chosen view and leaves an explicit URL alone", async () => {
+    window.history.replaceState(null, "", "/admin/analytics?range=7d");
+    server.use(
+      http.get(`${API}/analytics/views`, () =>
+        HttpResponse.json([view({ is_default: true })]),
+      ),
+    );
+    const { user } = renderWithProviders(<AnalyticsScreen />);
+
+    const picker = await screen.findByRole("combobox", { name: "Saved view" });
+    await waitFor(() => expect(picker).toBeEnabled());
+    expect(window.location.search).toBe("?range=7d");
+
+    await user.selectOptions(picker, "v1");
+    expect(window.location.search).toBe("?range=90d&ward=w1&interval=week");
+  });
+
+  it("saves the filters on screen under a name", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/admin/analytics?range=custom&from=2026-10-01&to=2026-10-31&status=resolved",
+    );
+    let body: unknown = null;
+    server.use(
+      http.post(`${API}/analytics/views`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(view({ name: "October" }), { status: 201 });
+      }),
+    );
+    const { user } = renderWithProviders(<AnalyticsScreen />);
+
+    await user.click(await screen.findByRole("button", { name: "Save view" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Save this view",
+    });
+    await user.type(within(dialog).getByLabelText(/Name/), "October");
+    await user.click(
+      within(dialog).getByLabelText("Open the dashboard on this view"),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Save view" }));
+
+    await waitFor(() =>
+      expect(body).toEqual({
+        name: "October",
+        is_default: true,
+        filters: {
+          range: "custom",
+          from: "2026-10-01",
+          to: "2026-10-31",
+          category_id: null,
+          ward_id: null,
+          status: ["resolved"],
+          interval: "day",
+        },
+      }),
+    );
+  });
+
+  it("says when the name is already taken", async () => {
+    server.use(
+      http.post(`${API}/analytics/views`, () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "name_taken",
+              message: "Taken.",
+              request_id: "r1",
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    const { user } = renderWithProviders(<AnalyticsScreen />);
+
+    await user.click(await screen.findByRole("button", { name: "Save view" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Save this view",
+    });
+    await user.type(within(dialog).getByLabelText(/Name/), "Weekly");
+    await user.click(within(dialog).getByRole("button", { name: "Save view" }));
+
+    expect(
+      await within(dialog).findByText(
+        "You already have a view with this name.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

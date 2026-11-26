@@ -35,6 +35,12 @@ class Settings(BaseSettings):
 
     env: Environment = Environment.DEVELOPMENT
     log_level: str = "INFO"
+    # Error reporting and tracing (app/core/observability.py); off when empty.
+    sentry_dsn: SecretStr | None = None
+    sentry_traces_sample_rate: float = 0.0
+    otel_exporter_otlp_endpoint: str = ""
+    # The deployed version (a git SHA or tag), reported with errors and traces.
+    release: str = ""
     service_name: str = "civicpulse-api"
 
     # The API connects as the non-superuser app role so that RLS applies.
@@ -75,6 +81,17 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_max_per_hour: int = 5
     otp_max_per_ip_per_hour: int = 30
+    # Per client address on the other unauthenticated auth endpoints. Each
+    # challenge already allows only a few wrong codes; these stop one
+    # address from spraying guesses across many challenges or tokens.
+    otp_verify_max_per_ip_per_hour: int = 120
+    mfa_verify_max_per_ip_per_hour: int = 60
+    refresh_max_per_ip_per_hour: int = 600
+    # GET /tenants/current resolves any slug without a login.
+    tenant_lookup_max_per_ip_per_minute: int = 300
+    # The public tracker (/public/{tenant}/...), per client address. Raise
+    # it for load tests run from a single machine (infra/load).
+    public_max_per_ip_per_minute: int = 300
     dev_fixed_otp: bool = False
     dev_fixed_otp_code: str = "000000"
     sms_provider: str = "console"
@@ -126,6 +143,13 @@ class Settings(BaseSettings):
     media_upload_url_ttl_seconds: int = 600
     media_download_url_ttl_seconds: int = 600
     media_max_pending_uploads: int = 20
+    # Malware scanning of uploads with clamd (INSTREAM over TCP). Empty
+    # host means no scanning. When a host is set, an unreachable scanner
+    # blocks upload completion (503) rather than letting files through.
+    # clamd's StreamMaxLength must be at least media_max_bytes.
+    clamav_host: str = ""
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = 30.0
 
     # Reverse geocoding (address text only; wards and zones come from PostGIS).
     # Nominatim's usage policy allows one request per second per application
@@ -168,6 +192,11 @@ class Settings(BaseSettings):
     # Dispatched outbox events (and their delivery log, which cascades) are
     # kept this long for tracing, then deleted by housekeeping.
     outbox_retention_days: int = 7
+    # Original photos (full EXIF, GPS included, faces unblurred) are kept
+    # this many days after processing, then deleted by housekeeping; the
+    # stripped variants stay. 0 keeps originals indefinitely, which is the
+    # default until the retention periods are decided (P6-12).
+    media_original_retention_days: int = 0
 
     @field_validator("cors_origins", mode="before")
     @classmethod
