@@ -69,9 +69,7 @@ def candidates(rows: list[dict[str, str]], label: str) -> list[dict[str, str]]:
     usable = [
         row
         for row in rows
-        if row["label"] == label
-        and row["license"] not in {"", "unknown"}
-        and row["path_or_url"]
+        if row["label"] == label and row["license"] not in {"", "unknown"} and row["path_or_url"]
     ]
     usable.sort(key=lambda row: (rank(row["license"]), row["sha256"]))
     return usable
@@ -121,9 +119,7 @@ def attribution_markdown(kept: list[tuple[dict[str, str], str]]) -> str:
         licence = row["license"]
         if row["license_url"]:
             licence = f"[{licence}]({row['license_url']})"
-        lines.append(
-            f"| `{path}` | {row['label']} | {author} | {licence} | [source]({source}) |"
-        )
+        lines.append(f"| `{path}` | {row['label']} | {author} | {licence} | [source]({source}) |")
     lines += [
         "",
         "Re-run `uv run python scripts/fetch_seed_photos.py` to restore any file",

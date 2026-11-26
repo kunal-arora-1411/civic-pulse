@@ -52,9 +52,14 @@
   --tint-data: #ececee;
 
   /* ---- type ---- */
-  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
-  --font-body: "Avenir Next", Avenir, "Segoe UI", -apple-system, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --font-display:
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+    serif;
+  --font-body:
+    "Avenir Next", Avenir, "Segoe UI", -apple-system, ui-sans-serif, system-ui,
+    sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -281,7 +286,9 @@ tbody tr:last-child td {
 
 @media (prefers-reduced-motion: reduce) {
   * {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion has to win over every animation */
     animation-duration: 0.001ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: and every transition */
     transition-duration: 0.001ms !important;
   }
 }
