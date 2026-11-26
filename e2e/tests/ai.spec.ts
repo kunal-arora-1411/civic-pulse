@@ -121,7 +121,7 @@ test.describe("on a phone", () => {
     const mine = await api.myReports(session);
     const id = mine.items.find((item) => item.reference === reference)?.id;
     expect(id).toBeTruthy();
-    const operator = await api.login(staffPhone("ac04Operator"));
+    const operator = await api.login(staffPhone("ac02Operator"));
     const staffView = (await api.getReport(operator, id ?? "")) as {
       category_source?: string;
     };
@@ -234,7 +234,9 @@ test("an uncertain match waits for an operator, who links it in the review queue
     page.getByRole("heading", { name: "Review queue" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: new RegExp(second.report.reference) }),
+    page.getByRole("heading", {
+      name: `New report ${second.report.reference}`,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Why it was suggested" }),
