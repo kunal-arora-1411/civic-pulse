@@ -618,6 +618,29 @@ export const CategoryUpdate = zod.object({
 export type CategoryUpdate = zod.input<typeof CategoryUpdate>;
 export type CategoryUpdateOutput = zod.output<typeof CategoryUpdate>;
 
+export const ChannelAvailability = zod.object({
+  "email": zod.boolean(),
+  "sms": zod.boolean(),
+  "push": zod.boolean()
+}).describe('Whether a channel can reach this person at all right now: a relay\nand an email address; a mobile number; a configured push service.');
+
+export type ChannelAvailability = zod.input<typeof ChannelAvailability>;
+export type ChannelAvailabilityOutput = zod.output<typeof ChannelAvailability>;
+
+export const DeliveryChannel = zod.enum(['email', 'sms', 'push']).describe('External channels a notification can also go out on. The in-app inbox\nis not one of them: it always gets every notification.');
+
+export type DeliveryChannel = zod.input<typeof DeliveryChannel>;
+export type DeliveryChannelOutput = zod.output<typeof DeliveryChannel>;
+
+export const ChannelChoice = zod.object({
+  "channel": DeliveryChannel,
+  "enabled": zod.boolean(),
+  "default": zod.boolean()
+});
+
+export type ChannelChoice = zod.input<typeof ChannelChoice>;
+export type ChannelChoiceOutput = zod.output<typeof ChannelChoice>;
+
 export const MediaStatus = zod.enum(['pending', 'processing', 'ready', 'failed']);
 
 export type MediaStatus = zod.input<typeof MediaStatus>;
@@ -756,6 +779,41 @@ export const ClosureRequestOut = zod.object({
 
 export type ClosureRequestOut = zod.input<typeof ClosureRequestOut>;
 export type ClosureRequestOutOutput = zod.output<typeof ClosureRequestOut>;
+
+export const DeliveryAttempt = zod.object({
+  "channel": zod.string(),
+  "outcome": zod.string(),
+  "detail": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.string()
+});
+
+export type DeliveryAttempt = zod.input<typeof DeliveryAttempt>;
+export type DeliveryAttemptOutput = zod.output<typeof DeliveryAttempt>;
+
+export const DeadLetter = zod.object({
+  "id": zod.string(),
+  "event_type": zod.string(),
+  "aggregate_type": zod.string(),
+  "aggregate_id": zod.string(),
+  "attempts": zod.int(),
+  "last_error": zod.union([zod.string(),zod.null()]),
+  "created_at": zod.string(),
+  "dead_lettered_at": zod.union([zod.string(),zod.null()]),
+  "deliveries": zod.array(DeliveryAttempt)
+}).describe('An event the dispatcher gave up on. The payload is not shown: it can\nhold contact details and, for sign-in codes, an encrypted code.');
+
+export type DeadLetter = zod.input<typeof DeadLetter>;
+export type DeadLetterOutput = zod.output<typeof DeadLetter>;
+
+export const DeadLetterPage = zod.object({
+  "items": zod.array(DeadLetter),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+});
+
+export type DeadLetterPage = zod.input<typeof DeadLetterPage>;
+export type DeadLetterPageOutput = zod.output<typeof DeadLetterPage>;
 
 export const Decision = zod.enum(['auto_linked', 'sent_to_review', 'rejected_candidate', 'chosen_by_reviewer', 'not_chosen']);
 
@@ -1410,6 +1468,19 @@ export const JurisdictionPage = zod.object({
 export type JurisdictionPage = zod.input<typeof JurisdictionPage>;
 export type JurisdictionPageOutput = zod.output<typeof JurisdictionPage>;
 
+export const NotificationKind = zod.enum(['report_new_issue', 'report_linked', 'issue_status', 'review_task', 'assignment', 'sla_breach']);
+
+export type NotificationKind = zod.input<typeof NotificationKind>;
+export type NotificationKindOutput = zod.output<typeof NotificationKind>;
+
+export const KindPreferences = zod.object({
+  "kind": NotificationKind,
+  "channels": zod.array(ChannelChoice)
+});
+
+export type KindPreferences = zod.input<typeof KindPreferences>;
+export type KindPreferencesOutput = zod.output<typeof KindPreferences>;
+
 export const Point = zod.object({
   "bucket": zod.string(),
   "value": zod.union([zod.number(),zod.null()])
@@ -1737,11 +1808,6 @@ export const NoteCreate = zod.object({
 export type NoteCreate = zod.input<typeof NoteCreate>;
 export type NoteCreateOutput = zod.output<typeof NoteCreate>;
 
-export const NotificationKind = zod.enum(['report_new_issue', 'report_linked', 'issue_status', 'review_task', 'assignment', 'sla_breach']);
-
-export type NotificationKind = zod.input<typeof NotificationKind>;
-export type NotificationKindOutput = zod.output<typeof NotificationKind>;
-
 export const NotificationOut = zod.object({
   "id": zod.string(),
   "kind": NotificationKind,
@@ -1767,6 +1833,15 @@ export const NotificationPage = zod.object({
 
 export type NotificationPage = zod.input<typeof NotificationPage>;
 export type NotificationPageOutput = zod.output<typeof NotificationPage>;
+
+export const NotificationPreferences = zod.object({
+  "items": zod.array(KindPreferences),
+  "available": ChannelAvailability,
+  "push_public_key": zod.union([zod.string(),zod.null()])
+}).describe('Only the kinds this person can receive, each with the channels the\nPRD allows for it. The in-app inbox always gets everything.');
+
+export type NotificationPreferences = zod.input<typeof NotificationPreferences>;
+export type NotificationPreferencesOutput = zod.output<typeof NotificationPreferences>;
 
 export const otpRequestInPhoneMin = 7;
 export const otpRequestInPhoneMax = 24;
@@ -1834,6 +1909,26 @@ export const PlatformTenantPage = zod.object({
 
 export type PlatformTenantPage = zod.input<typeof PlatformTenantPage>;
 export type PlatformTenantPageOutput = zod.output<typeof PlatformTenantPage>;
+
+export const PreferenceChange = zod.object({
+  "kind": NotificationKind,
+  "channel": DeliveryChannel,
+  "enabled": zod.boolean()
+});
+
+export type PreferenceChange = zod.input<typeof PreferenceChange>;
+export type PreferenceChangeOutput = zod.output<typeof PreferenceChange>;
+
+export const preferencesUpdateItemsMax = 50;
+
+
+
+export const PreferencesUpdate = zod.object({
+  "items": zod.array(PreferenceChange).min(1).max(preferencesUpdateItemsMax)
+}).describe('Only the listed choices change; the rest keep their current value.');
+
+export type PreferencesUpdate = zod.input<typeof PreferencesUpdate>;
+export type PreferencesUpdateOutput = zod.output<typeof PreferencesUpdate>;
 
 export const priorityBandsCriticalDefault = 80;
 export const priorityBandsCriticalExclusiveMin = 0;
@@ -2096,6 +2191,41 @@ export const PublicIssuePage = zod.object({
 
 export type PublicIssuePage = zod.input<typeof PublicIssuePage>;
 export type PublicIssuePageOutput = zod.output<typeof PublicIssuePage>;
+
+export const pushKeysP256dhMax = 200;
+
+export const pushKeysAuthMax = 100;
+
+
+
+export const PushKeys = zod.object({
+  "p256dh": zod.string().min(1).max(pushKeysP256dhMax),
+  "auth": zod.string().min(1).max(pushKeysAuthMax)
+});
+
+export type PushKeys = zod.input<typeof PushKeys>;
+export type PushKeysOutput = zod.output<typeof PushKeys>;
+
+export const pushSubscriptionInEndpointMax = 1000;
+
+
+
+export const PushSubscriptionIn = zod.object({
+  "endpoint": zod.string().min(1).max(pushSubscriptionInEndpointMax),
+  "keys": PushKeys
+}).describe('`PushSubscription.toJSON()` from the browser, as is.');
+
+export type PushSubscriptionIn = zod.input<typeof PushSubscriptionIn>;
+export type PushSubscriptionInOutput = zod.output<typeof PushSubscriptionIn>;
+
+export const PushSubscriptionOut = zod.object({
+  "id": zod.string(),
+  "endpoint": zod.string(),
+  "created_at": zod.string()
+});
+
+export type PushSubscriptionOut = zod.input<typeof PushSubscriptionOut>;
+export type PushSubscriptionOutOutput = zod.output<typeof PushSubscriptionOut>;
 
 export const ReviewCounts = zod.object({
   "linked": zod.int(),
@@ -3945,6 +4075,91 @@ export const NotificationsReadHeaders = zod.object({
 
 export type NotificationsReadHeaders = zod.input<typeof NotificationsReadHeaders>;
 export type NotificationsReadHeadersOutput = zod.output<typeof NotificationsReadHeaders>;
+
+export const notificationsGetPreferencesHeadersXTenantOneMax = 63;
+
+
+export const NotificationsGetPreferencesHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(notificationsGetPreferencesHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type NotificationsGetPreferencesHeaders = zod.input<typeof NotificationsGetPreferencesHeaders>;
+export type NotificationsGetPreferencesHeadersOutput = zod.output<typeof NotificationsGetPreferencesHeaders>;
+
+export const notificationsUpdatePreferencesHeadersXTenantOneMax = 63;
+
+
+export const NotificationsUpdatePreferencesHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(notificationsUpdatePreferencesHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type NotificationsUpdatePreferencesHeaders = zod.input<typeof NotificationsUpdatePreferencesHeaders>;
+export type NotificationsUpdatePreferencesHeadersOutput = zod.output<typeof NotificationsUpdatePreferencesHeaders>;
+
+export const notificationsSubscribePushHeadersXTenantOneMax = 63;
+
+
+export const NotificationsSubscribePushHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(notificationsSubscribePushHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type NotificationsSubscribePushHeaders = zod.input<typeof NotificationsSubscribePushHeaders>;
+export type NotificationsSubscribePushHeadersOutput = zod.output<typeof NotificationsSubscribePushHeaders>;
+
+export const notificationsUnsubscribePushParamsEndpointMax = 1000;
+
+
+export const NotificationsUnsubscribePushParams = zod.object({
+  "endpoint": zod.string().min(1).max(notificationsUnsubscribePushParamsEndpointMax)
+})
+
+export type NotificationsUnsubscribePushParams = zod.input<typeof NotificationsUnsubscribePushParams>;
+export type NotificationsUnsubscribePushParamsOutput = zod.output<typeof NotificationsUnsubscribePushParams>;
+
+export const notificationsUnsubscribePushHeadersXTenantOneMax = 63;
+
+
+export const NotificationsUnsubscribePushHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(notificationsUnsubscribePushHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type NotificationsUnsubscribePushHeaders = zod.input<typeof NotificationsUnsubscribePushHeaders>;
+export type NotificationsUnsubscribePushHeadersOutput = zod.output<typeof NotificationsUnsubscribePushHeaders>;
+
+export const adminListDeadLettersParamsLimitDefault = 20;
+export const adminListDeadLettersParamsLimitMax = 100;
+
+export const adminListDeadLettersParamsOffsetDefault = 0;
+export const adminListDeadLettersParamsOffsetMin = 0;
+
+
+export const AdminListDeadLettersParams = zod.object({
+  "limit": zod.int().min(1).max(adminListDeadLettersParamsLimitMax).default(adminListDeadLettersParamsLimitDefault).describe('Page size (1-100).'),
+  "offset": zod.int().min(adminListDeadLettersParamsOffsetMin).default(adminListDeadLettersParamsOffsetDefault).describe('Number of items to skip.')
+})
+
+export type AdminListDeadLettersParams = zod.input<typeof AdminListDeadLettersParams>;
+export type AdminListDeadLettersParamsOutput = zod.output<typeof AdminListDeadLettersParams>;
+
+export const adminListDeadLettersHeadersXTenantOneMax = 63;
+
+
+export const AdminListDeadLettersHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminListDeadLettersHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminListDeadLettersHeaders = zod.input<typeof AdminListDeadLettersHeaders>;
+export type AdminListDeadLettersHeadersOutput = zod.output<typeof AdminListDeadLettersHeaders>;
+
+export const adminRetryDeadLetterHeadersXTenantOneMax = 63;
+
+
+export const AdminRetryDeadLetterHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminRetryDeadLetterHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminRetryDeadLetterHeaders = zod.input<typeof AdminRetryDeadLetterHeaders>;
+export type AdminRetryDeadLetterHeadersOutput = zod.output<typeof AdminRetryDeadLetterHeaders>;
 
 export const AnalyticsOverviewParams = zod.object({
   "from": zod.union([zod.string(),zod.null()]).optional().describe('First IST day, inclusive (default: 30 days ago).'),

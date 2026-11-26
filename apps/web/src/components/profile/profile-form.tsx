@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lock, Phone } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
@@ -37,6 +37,7 @@ export function ProfileForm({ user }: { user: CurrentUser }) {
   const currentLocale = useLocale();
   const errorMessage = useErrorMessage();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const schema = z.object({
     display_name: z
@@ -72,6 +73,10 @@ export function ProfileForm({ user }: { user: CurrentUser }) {
     mutationFn: (body: UpdateMeBody) => updateMe(body),
     onSuccess: (updated) => {
       session.setUser(updated);
+      // An added or removed email changes whether email can be delivered.
+      void queryClient.invalidateQueries({
+        queryKey: ["notification-preferences"],
+      });
       form.reset({
         display_name: updated.display_name ?? "",
         email: updated.email ?? "",
