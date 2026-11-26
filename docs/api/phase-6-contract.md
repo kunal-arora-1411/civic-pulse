@@ -47,7 +47,7 @@ IP and user agent), deletes pending OTP challenges for the old number and
 clears the private EXIF copy of the user's photos. Reports, issues, support
 and audit rows stay. Signing in again with the same number creates a new,
 empty account. Audited as `user.anonymized`, with no personal data in the
-event. See ADR 0005.
+event. See ADR 0006.
 
 ## 4. Original-photo retention (P6-12)
 

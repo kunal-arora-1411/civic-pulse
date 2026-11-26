@@ -73,7 +73,7 @@
 
 ## Phase 6 hardening (branch `feature/p6-hardening`)
 
-Built; see [`api/phase-6-contract.md`](api/phase-6-contract.md) and [ADR 0005](adr/0005-retention-and-anonymization.md).
+Built; see [`api/phase-6-contract.md`](api/phase-6-contract.md) and [ADR 0006](adr/0006-retention-and-anonymization.md).
 - **PWA (P6-01):** manifest and icons, hand-written `public/sw.js` (offline shell, cached pages, Background Sync), offline banner (`experimental.useOffline`), reports sent offline queued in IndexedDB and sent with the same Idempotency-Key and body.
 - **Voice (P6-02):** dictation into the description with the browser's speech recognition; editable transcript, no audio kept.
 - **Accessibility (P6-04):** axe-core checks of key pages in the e2e suite (serious and critical violations fail).

@@ -1,4 +1,4 @@
-# ADR 0005: Retention and account anonymization
+# ADR 0006: Retention and account anonymization
 
 **Status:** accepted (periods pending the product owner's decision, due 8 Feb)
 **Date:** 26 November 2026
