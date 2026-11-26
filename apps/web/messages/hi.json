@@ -732,7 +732,26 @@
           "related_added": "संबंधित मुद्दा जोड़ा गया",
           "related_removed": "संबंधित मुद्दा हटाया गया",
           "sla_breached": "SLA उल्लंघन: पर्यवेक्षकों को सूचित किया गया",
-          "sla_escalated": "SLA उल्लंघन नगर प्रशासकों तक एस्केलेट किया गया"
+          "sla_escalated": "SLA उल्लंघन नगर प्रशासकों तक एस्केलेट किया गया",
+          "assigned": "सौंपा गया",
+          "reassigned": "दोबारा सौंपा गया",
+          "work_order_accepted": "फ़ील्ड कर्मचारी ने काम स्वीकार किया",
+          "work_order_declined": "फ़ील्ड कर्मचारी ने काम अस्वीकार किया",
+          "work_started": "काम शुरू हुआ",
+          "progress": "प्रगति अपडेट",
+          "closure_requested": "ठीक हुआ चिह्नित: मंज़ूरी बाकी",
+          "closure_approved": "सुधार मंज़ूर",
+          "closure_rejected": "सुधार वापस भेजा गया",
+          "verification": "नागरिक पुष्टि",
+          "reopened": "फिर से खोला गया",
+          "closed": "समाधान अवधि के बाद बंद",
+          "report_withdrawn": "एक शिकायत वापस ली गई"
+        },
+        "assignedTo": "{team} · {assignee}",
+        "assignedToTeam": "{team} (अभी किसी को नहीं चुना गया)",
+        "verificationOutcome": {
+          "resolved": "एक शिकायतकर्ता ने पुष्टि की कि यह ठीक हो गया",
+          "unresolved": "एक शिकायतकर्ता ने कहा कि यह अभी भी खराब है"
         }
       },
       "match": {
@@ -768,7 +787,9 @@
       "actions": {
         "category": "श्रेणी बदलें",
         "merge": "इसमें मिलाएँ",
-        "split": "अलग करें"
+        "split": "अलग करें",
+        "note": "नोट जोड़ें",
+        "reopen": "फिर से खोलें"
       },
       "picker": {
         "help": "संदर्भ संख्या (जैसे CP-26-000123) या पते से खोजें।",
@@ -902,7 +923,88 @@
       },
       "slaDue": "SLA समय-सीमा",
       "slaEscalatedSupervisors": "उल्लंघन: पर्यवेक्षकों को सूचित किया गया",
-      "slaEscalatedAdmins": "उल्लंघन: नगर प्रशासकों तक एस्केलेट किया गया"
+      "slaEscalatedAdmins": "उल्लंघन: नगर प्रशासकों तक एस्केलेट किया गया",
+      "operations": {
+        "assignment": "ज़िम्मेदारी",
+        "team": "टीम",
+        "assignee": "ज़िम्मेदार व्यक्ति",
+        "teamOnly": "केवल टीम, अभी किसी को नहीं चुना",
+        "workOrder": "कार्य आदेश",
+        "assignedAt": "सौंपा गया",
+        "note": "नोट",
+        "unassigned": "अभी किसी को नहीं सौंपा गया।",
+        "assign": "सौंपें",
+        "reassign": "दोबारा सौंपें",
+        "closureRequest": "सुधार मंज़ूरी के इंतज़ार में",
+        "requestedBy": "{name} ने {when} को इसे ठीक हुआ चिह्नित किया।",
+        "someone": "एक फ़ील्ड कर्मचारी",
+        "afterPhotosOf": "{reference} की बाद की फ़ोटो",
+        "noPhoto": "बाद की कोई फ़ोटो नहीं।",
+        "reasonCode": "बिना फ़ोटो के बंद: {code}",
+        "needsApproval": "इस श्रेणी में सुपरवाइज़र की मंज़ूरी ज़रूरी है।",
+        "citizensConfirm": "इस श्रेणी में शिकायतकर्ता सुधार की पुष्टि कर सकते हैं।",
+        "answers": "पुष्टि: {confirmations}। अभी भी खराब: {unresolved}।",
+        "approve": "सुधार मंज़ूर करें",
+        "reject": "वापस भेजें"
+      },
+      "assignDialog": {
+        "title": "{reference} सौंपें",
+        "reassignTitle": "{reference} दोबारा सौंपें",
+        "description": "केवल वे टीमें दिख रही हैं जो यह श्रेणी संभालती हैं और इस वार्ड को कवर करती हैं।",
+        "currently": "अभी {team} के पास: {assignee}।",
+        "submit": "सौंपें",
+        "reassign": "दोबारा सौंपें",
+        "loadingTeams": "टीमें लोड हो रही हैं…",
+        "noTeamsTitle": "कोई टीम यह समस्या नहीं ले सकती",
+        "noTeamsBody": "इस वार्ड में कोई सक्रिय टीम यह श्रेणी नहीं संभालती। एडमिन 'टीमें' में एक टीम बना सकते हैं।",
+        "team": "टीम",
+        "chooseTeam": "एक टीम चुनें।",
+        "assignee": "व्यक्ति",
+        "assigneeHelp": "उन्हें फ़ील्ड ऐप में कार्य आदेश मिलेगा। बाद में चुनने के लिए टीम पर छोड़ दें।",
+        "teamOnly": "केवल टीम, अभी किसी को नहीं चुना",
+        "unnamed": "बिना नाम का सदस्य",
+        "lead": "लीड",
+        "note": "टीम के लिए नोट (वैकल्पिक)",
+        "noteHelp": "केवल कर्मचारियों के लिए।",
+        "reasonRequired": "दोबारा सौंपने के लिए कारण ज़रूरी है।",
+        "assigned": "{reference} {name} को सौंपा गया"
+      },
+      "approveDialog": {
+        "title": "{reference} का सुधार मंज़ूर करें",
+        "description": "समस्या हल मानी जाएगी और शिकायतकर्ताओं से पुष्टि माँगी जाएगी।",
+        "submit": "सुधार मंज़ूर करें",
+        "publicNote": "नागरिकों के लिए नोट (वैकल्पिक)",
+        "publicNoteHelp": "सार्वजनिक टाइमलाइन पर दिखेगा।",
+        "approved": "{reference} का सुधार मंज़ूर हुआ"
+      },
+      "rejectClosureDialog": {
+        "title": "{reference} वापस भेजें",
+        "description": "काम फ़ील्ड कर्मचारी के पास 'काम जारी' के रूप में वापस जाएगा।",
+        "submit": "वापस भेजें",
+        "reasonHelp": "यह फ़ील्ड कर्मचारी और स्टाफ़ को दिखेगा, नागरिकों को नहीं।",
+        "reasonRequired": "बताएँ कि अभी क्या करना बाकी है।",
+        "rejected": "{reference} फ़ील्ड कर्मचारी को वापस भेजा गया"
+      },
+      "noteDialog": {
+        "title": "{reference} में नोट जोड़ें",
+        "submit": "नोट जोड़ें",
+        "body": "नोट",
+        "bodyRequired": "नोट लिखें।",
+        "visibility": "इसे कौन देखेगा",
+        "internal": "केवल स्टाफ़",
+        "internalHint": "नागरिकों को कभी नहीं दिखेगा",
+        "public": "सभी",
+        "publicHint": "नागरिक टाइमलाइन पर दिखेगा",
+        "chooseVisibility": "चुनें कि नोट कौन देखेगा।",
+        "added": "नोट जोड़ा गया"
+      },
+      "reopenDialog": {
+        "title": "{reference} फिर से खोलें",
+        "description": "यह दोबारा सौंपे जाने की कतार में जाएगा।",
+        "submit": "फिर से खोलें",
+        "reasonRequired": "फिर से खोलने के लिए कारण ज़रूरी है।",
+        "reopened": "{reference} फिर से खोला गया"
+      }
     },
     "map": {
       "title": "मुद्दों का नक्शा",

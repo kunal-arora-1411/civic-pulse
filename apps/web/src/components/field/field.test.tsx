@@ -45,7 +45,9 @@ beforeEach(() => {
   session.setAuthenticated(
     "token",
     makeUser({
-      roles: ["field_worker"],
+      roles: [
+        { role: "field_worker", department_id: null, jurisdiction_id: null },
+      ],
       permissions: ["workorder:read_assigned", "workorder:update"],
     }),
   );

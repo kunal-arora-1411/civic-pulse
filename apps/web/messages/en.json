@@ -732,7 +732,26 @@
           "related_added": "Related issue linked",
           "related_removed": "Related issue unlinked",
           "sla_breached": "SLA breached: supervisors alerted",
-          "sla_escalated": "SLA breach escalated to municipal admins"
+          "sla_escalated": "SLA breach escalated to municipal admins",
+          "assigned": "Assigned",
+          "reassigned": "Reassigned",
+          "work_order_accepted": "Field worker accepted the job",
+          "work_order_declined": "Field worker declined the job",
+          "work_started": "Work started",
+          "progress": "Progress update",
+          "closure_requested": "Marked as fixed: awaiting approval",
+          "closure_approved": "Fix approved",
+          "closure_rejected": "Fix sent back",
+          "verification": "Citizen verification",
+          "reopened": "Reopened",
+          "closed": "Closed after the resolution window",
+          "report_withdrawn": "A report was withdrawn"
+        },
+        "assignedTo": "{team} · {assignee}",
+        "assignedToTeam": "{team} (no one picked yet)",
+        "verificationOutcome": {
+          "resolved": "A reporter confirmed it's fixed",
+          "unresolved": "A reporter said it's still broken"
         }
       },
       "match": {
@@ -768,7 +787,9 @@
       "actions": {
         "category": "Change category",
         "merge": "Merge into this",
-        "split": "Split"
+        "split": "Split",
+        "note": "Add note",
+        "reopen": "Reopen"
       },
       "picker": {
         "help": "Search by reference (like CP-26-000123) or address.",
@@ -902,7 +923,88 @@
       },
       "slaDue": "SLA due",
       "slaEscalatedSupervisors": "Breached: supervisors alerted",
-      "slaEscalatedAdmins": "Breached: escalated to municipal admins"
+      "slaEscalatedAdmins": "Breached: escalated to municipal admins",
+      "operations": {
+        "assignment": "Assignment",
+        "team": "Team",
+        "assignee": "Assignee",
+        "teamOnly": "Team only, no one picked yet",
+        "workOrder": "Work order",
+        "assignedAt": "Assigned",
+        "note": "Note",
+        "unassigned": "Not assigned yet.",
+        "assign": "Assign",
+        "reassign": "Reassign",
+        "closureRequest": "Fix awaiting approval",
+        "requestedBy": "{name} marked this as fixed on {when}.",
+        "someone": "A field worker",
+        "afterPhotosOf": "After photos for {reference}",
+        "noPhoto": "No after photo.",
+        "reasonCode": "Closed without a photo: {code}",
+        "needsApproval": "This category needs a supervisor's approval.",
+        "citizensConfirm": "Reporters can confirm the fix for this category.",
+        "answers": "Confirmed: {confirmations}. Still broken: {unresolved}.",
+        "approve": "Approve fix",
+        "reject": "Send back"
+      },
+      "assignDialog": {
+        "title": "Assign {reference}",
+        "reassignTitle": "Reassign {reference}",
+        "description": "Only teams that handle this category and cover its ward are shown.",
+        "currently": "Now with {team}: {assignee}.",
+        "submit": "Assign",
+        "reassign": "Reassign",
+        "loadingTeams": "Loading teams…",
+        "noTeamsTitle": "No team can take this issue",
+        "noTeamsBody": "No active team handles this category in this ward. An admin can set one up under Teams.",
+        "team": "Team",
+        "chooseTeam": "Choose a team.",
+        "assignee": "Person",
+        "assigneeHelp": "They get a work order in the field app. Leave it to the team to pick later.",
+        "teamOnly": "Team only, no one picked yet",
+        "unnamed": "Unnamed member",
+        "lead": "lead",
+        "note": "Note for the team (optional)",
+        "noteHelp": "Staff only.",
+        "reasonRequired": "Reassigning needs a reason.",
+        "assigned": "{reference} assigned to {name}"
+      },
+      "approveDialog": {
+        "title": "Approve the fix for {reference}",
+        "description": "The issue becomes resolved and the reporters are asked to confirm.",
+        "submit": "Approve fix",
+        "publicNote": "Note for the citizens (optional)",
+        "publicNoteHelp": "Shown on the public timeline.",
+        "approved": "Fix for {reference} approved"
+      },
+      "rejectClosureDialog": {
+        "title": "Send {reference} back",
+        "description": "The work goes back to the field worker as in progress.",
+        "submit": "Send back",
+        "reasonHelp": "The field worker and staff see this; citizens don't.",
+        "reasonRequired": "Say what still needs doing.",
+        "rejected": "{reference} sent back to the field worker"
+      },
+      "noteDialog": {
+        "title": "Add a note to {reference}",
+        "submit": "Add note",
+        "body": "Note",
+        "bodyRequired": "Write the note.",
+        "visibility": "Who sees it",
+        "internal": "Staff only",
+        "internalHint": "Never shown to citizens",
+        "public": "Everyone",
+        "publicHint": "Shown on the citizen timeline",
+        "chooseVisibility": "Choose who sees the note.",
+        "added": "Note added"
+      },
+      "reopenDialog": {
+        "title": "Reopen {reference}",
+        "description": "It goes back to the assignment queue.",
+        "submit": "Reopen",
+        "reasonRequired": "Reopening needs a reason.",
+        "reopened": "{reference} reopened"
+      }
     },
     "map": {
       "title": "Issue map",

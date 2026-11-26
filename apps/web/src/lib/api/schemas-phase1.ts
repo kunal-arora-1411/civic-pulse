@@ -334,6 +334,8 @@ export const issueTimelineEventSchema = z.object({
   actor: z
     .object({ id: z.string(), display_name: z.string().nullable() })
     .nullish(),
+  /** Staff-only details, e.g. the team on `assigned`, the note on `progress`. */
+  data: z.record(z.string(), z.unknown()).nullish(),
 });
 export type IssueTimelineEvent = z.infer<typeof issueTimelineEventSchema>;
 
