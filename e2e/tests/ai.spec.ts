@@ -273,13 +273,19 @@ test("an operator merges two issues through the UI (AC-07)", async ({
   context,
   api,
 }) => {
-  // Two reports of one problem that matching kept apart (200 m apart).
+  // Two reports of one problem that matching kept apart: 200 m apart,
+  // well beyond the 30 m radius. (Potholes need a photo.)
   const spot = freshSpot();
-  const a = await citizenReport(api, spot, undefined, `Broken road (AC-07 a)`);
+  const a = await citizenReport(
+    api,
+    spot,
+    await pothole(),
+    `Broken road (AC-07 a)`,
+  );
   const b = await citizenReport(
     api,
     eastOf(spot, 200),
-    undefined,
+    await otherPothole(),
     `Broken road further along (AC-07 b)`,
   );
   const survivor = (await api.waitForIssue(a.session, a.report.id)).issue;
