@@ -20,6 +20,7 @@ from celery.signals import setup_logging
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.core.observability import init_observability
 
 settings = get_settings()
 
@@ -114,6 +115,7 @@ celery_app.conf.update(
 @setup_logging.connect
 def _configure_logging(**_: Any) -> None:
     configure_logging(settings.log_level, "civicpulse-worker")
+    init_observability("civicpulse-worker")
 
 
 def run_async[T](coro: Coroutine[Any, Any, T]) -> T:

@@ -3190,6 +3190,16 @@ export const UsersUpdateMeHeaders = zod.object({
 export type UsersUpdateMeHeaders = zod.input<typeof UsersUpdateMeHeaders>;
 export type UsersUpdateMeHeadersOutput = zod.output<typeof UsersUpdateMeHeaders>;
 
+export const usersAnonymizeMeHeadersXTenantOneMax = 63;
+
+
+export const UsersAnonymizeMeHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(usersAnonymizeMeHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type UsersAnonymizeMeHeaders = zod.input<typeof UsersAnonymizeMeHeaders>;
+export type UsersAnonymizeMeHeadersOutput = zod.output<typeof UsersAnonymizeMeHeaders>;
+
 export const adminListUsersParamsQOneMax = 100;
 
 export const adminListUsersParamsLimitDefault = 20;

@@ -13,6 +13,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
+from app.core.config import get_settings
 from app.core.db import DbSession
 from app.core.errors import NotFound, ServiceUnavailable, error_responses
 from app.core.logging import log_fields
@@ -35,7 +36,6 @@ from app.domains.workflow.statuses import IssueStatus
 
 logger = logging.getLogger(__name__)
 
-PUBLIC_RATE_LIMIT = 300  # requests per client address per minute
 CACHE_CONTROL = "public, max-age=30, stale-while-revalidate=120"
 
 
@@ -47,7 +47,12 @@ async def _public_tenant(
 ) -> uuid.UUID:
     client = request.client.host if request.client else "unknown"
     try:
-        await enforce_window(get_redis(), f"ratelimit:public:{client}", PUBLIC_RATE_LIMIT, 60)
+        await enforce_window(
+            get_redis(),
+            f"ratelimit:public:{client}",
+            get_settings().public_max_per_ip_per_minute,
+            60,
+        )
     except ServiceUnavailable:
         # Read-only public data: an unreachable limiter must not take the
         # tracker down with it.

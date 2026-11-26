@@ -239,6 +239,8 @@ async def refresh_phashes(tenant_id: uuid.UUID, *, storage: ObjectStorage | None
                     MediaAsset.storage_key,
                 )
                 .join(MediaAsset, MediaAsset.id == MediaEmbedding.media_id)
+                # Originals deleted by retention can't be re-hashed.
+                .where(MediaAsset.original_purged_at.is_(None))
                 .order_by(MediaEmbedding.media_id, MediaEmbedding.model_id)
             )
         ).all()

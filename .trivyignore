@@ -1,0 +1,7 @@
+# Trivy findings accepted on purpose. Each needs a reason.
+
+# DS002 (image runs as root): only infra/db, built on postgis/postgis. The
+# official Postgres entrypoint starts as root to fix data-directory
+# ownership and then drops to the postgres user itself. The API and AI
+# worker images set USER civicpulse.
+DS002

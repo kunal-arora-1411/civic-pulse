@@ -19,6 +19,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -103,6 +104,11 @@ class MediaAsset(TimestampMixin, Base):
         Index("ix_media_assets_report_id", "report_id"),
         Index("ix_media_assets_work_order_id", "work_order_id"),
         Index("ix_media_assets_status_created_at", "status", "created_at"),
+        Index(
+            "ix_media_assets_retention",
+            "processed_at",
+            postgresql_where=text("original_purged_at IS NULL AND status = 'ready'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -141,3 +147,6 @@ class MediaAsset(TimestampMixin, Base):
     # attached on progress or a closure request.
     phase: Mapped[str | None] = mapped_column(String(8))
     work_order_id: Mapped[uuid.UUID | None] = mapped_column()
+    # Set when the retention job deleted the original object (P6-12). The
+    # key stays for the record; only the stripped variants remain.
+    original_purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
