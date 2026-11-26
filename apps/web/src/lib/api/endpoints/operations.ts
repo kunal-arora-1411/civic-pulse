@@ -4,10 +4,13 @@ import {
   adminListTeams,
   adminUpdateClosureConfig,
   adminUpdateTeam,
+  type BulkAction,
+  BulkResult,
   issuesAddNote,
   issuesApproveClosure,
   issuesAssign,
   issuesAssignmentHistory,
+  issuesBulk,
   issuesEligibleTeams,
   issuesRejectClosure,
   issuesReopen,
@@ -16,6 +19,7 @@ import {
   type TeamUpdate,
   workloadGet,
 } from "@civicpulse/api-client";
+import type { z } from "zod";
 import { call } from "../generated-client";
 import {
   assignmentsSchema,
@@ -171,4 +175,17 @@ export function getWorkload(signal?: AbortSignal): Promise<Workload> {
 /** The reporter withdraws their own report (§7). */
 export function withdrawReport(reportId: string): Promise<Report> {
   return call(reportSchema, (o) => reportsWithdraw(reportId, o));
+}
+
+// ------------------------------------------------------------------- bulk
+
+export type BulkBody = BulkAction;
+export type BulkOutcome = z.infer<typeof BulkResult>;
+
+/**
+ * Change the status of, or assign, up to 50 issues (FR-078). Each item
+ * carries the version the user saw; refusals come back per item.
+ */
+export function bulkIssueAction(body: BulkBody): Promise<BulkOutcome> {
+  return call(BulkResult, (o) => issuesBulk(body, o));
 }

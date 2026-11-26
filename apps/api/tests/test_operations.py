@@ -16,7 +16,7 @@ import app.models  # noqa: F401  (configure every mapper before using the servic
 from app.domains.ai.analysis import ensure_embeddings
 from app.domains.operations.closure import close_expired
 from tests.helpers import RecordingSms
-from tests.phase1 import SW, login_new
+from tests.phase1 import NW, SW, login_new
 from tests.phase2 import ISSUES, issue, report, view
 from tests.phase3 import (
     FIELD,
@@ -629,3 +629,128 @@ async def test_every_phase3_table_has_forced_rls(owner_engine: AsyncEngine) -> N
         ).all()
     assert {r[0] for r in rows} == set(tables)
     assert all(r[1] and r[2] for r in rows)
+
+
+# --- bulk actions (FR-078) -------------------------------------------------------------------
+
+BULK = "/api/v1/issues/bulk"
+
+
+async def test_bulk_assign_reports_each_item_and_audits(
+    client: httpx.AsyncClient, ops: Ops, owner_engine: AsyncEngine
+) -> None:
+    first = await verified_issue(client, ops, seed=1)
+    second = await verified_issue(client, ops, seed=9, point=NW)
+    response = await client.post(
+        BULK,
+        headers=ops.city.supervisor.headers,
+        json={
+            "action": "assign",
+            "team_id": ops.team_id,
+            "assignee_id": ops.worker.user["id"],
+            "items": [
+                {"issue_id": first["id"], "version": first["version"]},
+                # Stale: someone changed it since the queue was loaded.
+                {"issue_id": second["id"], "version": second["version"] - 1},
+            ],
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["succeeded"], body["failed"]) == (1, 1)
+    assert body["results"] == [
+        {"issue_id": first["id"], "ok": True, "error": None},
+        {"issue_id": second["id"], "ok": False, "error": "version_conflict"},
+    ]
+    assert (await issue(client, ops.city.supervisor, first["id"]))["status"] == "assigned"
+    assert (await issue(client, ops.city.supervisor, second["id"]))["status"] == "verified"
+    async with owner_engine.connect() as conn:
+        actions = (
+            (
+                await conn.execute(
+                    text(
+                        "SELECT action FROM audit_events "
+                        "WHERE action IN ('issue.assigned', 'issue.bulk_action') ORDER BY id"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert actions == ["issue.assigned", "issue.bulk_action"]
+
+
+async def _reported_issue(
+    client: httpx.AsyncClient, ops: Ops, seed: int, point: tuple[float, float]
+) -> dict[str, Any]:
+    from tests.phase2 import scene_photo
+
+    photo = await scene_photo(client, ops.city.citizen, seed)
+    own = await report(client, ops.city, ops.city.citizen, point=point, media_ids=[photo])
+    return await issue(client, ops.city.operator, own["issue"]["id"])
+
+
+async def test_bulk_status_change_uses_the_single_issue_rules(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    first = await _reported_issue(client, ops, 1, NW)
+    second = await _reported_issue(client, ops, 9, SW)
+    items = [
+        {"issue_id": first["id"], "version": first["version"]},
+        {"issue_id": second["id"], "version": second["version"]},
+    ]
+    # Rejecting needs a reason, exactly as for one issue.
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={"action": "status", "to_status": "rejected", "items": items},
+    )
+    assert response.status_code == 200, response.text
+    assert {r["error"] for r in response.json()["results"]} == {"reason_required"}
+
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={
+            "action": "status",
+            "to_status": "rejected",
+            "reason": "Private land, not a municipal road",
+            "items": items,
+        },
+    )
+    assert response.json()["succeeded"] == 2, response.text
+    assert (await issue(client, ops.city.operator, first["id"]))["status"] == "rejected"
+
+
+async def test_bulk_assign_needs_the_assign_permission(client: httpx.AsyncClient, ops: Ops) -> None:
+    detail = await verified_issue(client, ops)
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={
+            "action": "assign",
+            "team_id": ops.team_id,
+            "items": [{"issue_id": detail["id"], "version": detail["version"]}],
+        },
+    )
+    assert response.status_code == 404
+    assert (await issue(client, ops.city.supervisor, detail["id"]))["status"] == "verified"
+
+
+async def test_bulk_refuses_duplicates_and_oversized_batches(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    detail = await verified_issue(client, ops)
+    item = {"issue_id": detail["id"], "version": detail["version"]}
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={"action": "status", "to_status": "under_review", "items": [item, item]},
+    )
+    assert response.status_code == 422
+    response = await client.post(
+        BULK,
+        headers=ops.city.operator.headers,
+        json={"action": "status", "to_status": "under_review", "items": [item] * 51},
+    )
+    assert response.status_code == 422

@@ -384,6 +384,59 @@ export const Bin = zod.object({
 export type Bin = zod.input<typeof Bin>;
 export type BinOutput = zod.output<typeof Bin>;
 
+
+
+
+export const BulkItem = zod.object({
+  "issue_id": zod.string(),
+  "version": zod.int().min(1).describe('The issue\'s `version` you last saw.')
+});
+
+export type BulkItem = zod.input<typeof BulkItem>;
+export type BulkItemOutput = zod.output<typeof BulkItem>;
+
+export const bulkActionItemsMax = 50;
+
+export const bulkActionReasonOneMax = 2000;
+
+export const bulkActionPublicNoteOneMax = 2000;
+
+export const bulkActionNoteOneMax = 2000;
+
+
+
+export const BulkAction = zod.object({
+  "action": zod.enum(['status', 'assign']),
+  "items": zod.array(BulkItem).min(1).max(bulkActionItemsMax),
+  "to_status": zod.union([IssueStatus,zod.null()]).optional().describe('For `status`.'),
+  "team_id": zod.union([zod.string(),zod.null()]).optional().describe('For `assign`.'),
+  "assignee_id": zod.union([zod.string(),zod.null()]).optional().describe('For `assign`; optional.'),
+  "reason": zod.union([zod.string().max(bulkActionReasonOneMax),zod.null()]).optional().describe('Internal. Required where the single action needs one.'),
+  "public_note": zod.union([zod.string().max(bulkActionPublicNoteOneMax),zod.null()]).optional().describe('For `status`.'),
+  "note": zod.union([zod.string().max(bulkActionNoteOneMax),zod.null()]).optional().describe('For `assign`.')
+});
+
+export type BulkAction = zod.input<typeof BulkAction>;
+export type BulkActionOutput = zod.output<typeof BulkAction>;
+
+export const BulkItemResult = zod.object({
+  "issue_id": zod.string(),
+  "ok": zod.boolean(),
+  "error": zod.union([zod.string(),zod.null()]).optional().describe('The error code when `ok` is false.')
+});
+
+export type BulkItemResult = zod.input<typeof BulkItemResult>;
+export type BulkItemResultOutput = zod.output<typeof BulkItemResult>;
+
+export const BulkResult = zod.object({
+  "succeeded": zod.int(),
+  "failed": zod.int(),
+  "results": zod.array(BulkItemResult)
+});
+
+export type BulkResult = zod.input<typeof BulkResult>;
+export type BulkResultOutput = zod.output<typeof BulkResult>;
+
 export const StatusCount = zod.object({
   "status": IssueStatus,
   "count": zod.int()
@@ -3946,6 +3999,16 @@ export const WorkloadGetHeaders = zod.object({
 
 export type WorkloadGetHeaders = zod.input<typeof WorkloadGetHeaders>;
 export type WorkloadGetHeadersOutput = zod.output<typeof WorkloadGetHeaders>;
+
+export const issuesBulkHeadersXTenantOneMax = 63;
+
+
+export const IssuesBulkHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(issuesBulkHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type IssuesBulkHeaders = zod.input<typeof IssuesBulkHeaders>;
+export type IssuesBulkHeadersOutput = zod.output<typeof IssuesBulkHeaders>;
 
 export const fieldListWorkOrdersParamsLimitDefault = 20;
 export const fieldListWorkOrdersParamsLimitMax = 100;

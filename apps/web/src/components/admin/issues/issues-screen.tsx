@@ -9,7 +9,7 @@ import {
   Map as MapIcon,
 } from "lucide-react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Pagination } from "@/components/admin/pagination";
 import { useOpenReviewCount } from "@/components/admin/review/use-open-review-count";
@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/issues/status-badge";
 import { RemoteImage } from "@/components/media/remote-image";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,12 +36,15 @@ import { useErrorMessage } from "@/hooks/use-error-message";
 import { useLocalized } from "@/hooks/use-reference-data";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ISSUE_SORTS, type IssueSort, listIssues } from "@/lib/api";
+import { hasPermission } from "@/lib/auth/access";
+import { useSession } from "@/lib/auth/use-session";
 import {
   activeFilterCount,
   serializeIssueFilters,
   toListParams,
 } from "@/lib/issues/filters";
 import { cn } from "@/lib/utils";
+import { BulkDialog, type BulkSelection } from "./bulk-dialog";
 import { IssueFiltersBar } from "./issue-filters";
 import { useIssueFilters } from "./use-issue-filters";
 
@@ -130,6 +134,35 @@ export function IssuesScreen() {
     queryFn: ({ signal }) => listIssues(params, signal),
     placeholderData: keepPreviousData,
   });
+
+  // Bulk actions (FR-078): a selection on the current page only, cleared
+  // whenever the page or the filters change.
+  const { user } = useSession();
+  const canBulkStatus = hasPermission(user, "issue:update");
+  const canBulkAssign = hasPermission(user, "issue:assign");
+  const canBulk = canBulkStatus || canBulkAssign;
+  const [selected, setSelected] = useState<Map<string, BulkSelection>>(
+    () => new Map(),
+  );
+  const [bulk, setBulk] = useState<"status" | "assign" | null>(null);
+  const paramsKey = JSON.stringify(params);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: paramsKey stands for the page shown
+  useEffect(() => setSelected(new Map()), [paramsKey]);
+  const pageItems = issues.data?.items ?? [];
+  const allSelected =
+    pageItems.length > 0 && pageItems.every((item) => selected.has(item.id));
+  const toggle = (item: (typeof pageItems)[number]) =>
+    setSelected((current) => {
+      const next = new Map(current);
+      if (next.has(item.id)) next.delete(item.id);
+      else
+        next.set(item.id, {
+          id: item.id,
+          reference: item.reference,
+          version: item.version,
+        });
+      return next;
+    });
 
   const mapHref = (() => {
     const query = serializeIssueFilters({
@@ -222,6 +255,42 @@ export function IssuesScreen() {
         </Alert>
       ) : null}
 
+      {canBulk && selected.size > 0 ? (
+        <section
+          aria-label={t("bulk.barLabel")}
+          className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary-soft px-3 py-2"
+        >
+          <p className="me-auto text-sm font-semibold" aria-live="polite">
+            {t("bulk.selected", { count: selected.size })}
+          </p>
+          {canBulkStatus ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setBulk("status")}
+            >
+              {t("bulk.changeStatus")}
+            </Button>
+          ) : null}
+          {canBulkAssign ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setBulk("assign")}
+            >
+              {t("bulk.assign")}
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelected(new Map())}
+          >
+            {t("bulk.clear")}
+          </Button>
+        </section>
+      ) : null}
+
       <Table
         label={t("tableLabel")}
         aria-busy={issues.isFetching || undefined}
@@ -232,6 +301,28 @@ export function IssuesScreen() {
         <TableHeader className="max-md:hidden">
           <TableRow className="hover:bg-transparent">
             <TableHead className="w-16 pe-0">
+              {canBulk ? (
+                <Checkbox
+                  aria-label={t("bulk.selectPage")}
+                  checked={allSelected}
+                  onChange={() =>
+                    setSelected(
+                      allSelected
+                        ? new Map()
+                        : new Map(
+                            pageItems.map((item) => [
+                              item.id,
+                              {
+                                id: item.id,
+                                reference: item.reference,
+                                version: item.version,
+                              },
+                            ]),
+                          ),
+                    )
+                  }
+                />
+              ) : null}
               <span className="sr-only">{t("colPhoto")}</span>
             </TableHead>
             <SortHeader
@@ -286,11 +377,21 @@ export function IssuesScreen() {
                 onClick={(event) => {
                   // The reference link is the keyboard and screen reader
                   // path; the whole row is a larger mouse target.
-                  if ((event.target as HTMLElement).closest("a")) return;
+                  if ((event.target as HTMLElement).closest("a, input")) return;
                   router.push(`/admin/issues/${issue.id}`);
                 }}
               >
                 <TableCell className={cn("pe-0", MOBILE.photo)}>
+                  {canBulk ? (
+                    <Checkbox
+                      aria-label={t("bulk.selectOne", {
+                        reference: issue.reference,
+                      })}
+                      checked={selected.has(issue.id)}
+                      onChange={() => toggle(issue)}
+                      className="mb-1 block"
+                    />
+                  ) : null}
                   <RemoteImage
                     src={issue.thumb_url}
                     alt=""
@@ -400,6 +501,14 @@ export function IssuesScreen() {
           }
         />
       ) : null}
+      <BulkDialog
+        action={bulk}
+        selection={[...selected.values()]}
+        onOpenChange={(open) => {
+          if (!open) setBulk(null);
+        }}
+        onDone={() => setSelected(new Map())}
+      />
     </div>
   );
 }

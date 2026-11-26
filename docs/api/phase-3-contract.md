@@ -248,5 +248,18 @@ All system-only (the status endpoint refuses them); installed for every tenant, 
 ## 10. Seed additions
 A "Roads North" team in ROADS with the seeded field worker (lead), covering Zone North, handling `pothole`.
 
+## 11. Bulk actions (FR-078)
+
+`POST /api/v1/issues/bulk` (`issue:read`; `assign` also needs `issue:assign`, else `404`):
+```json
+{ "action": "status|assign", "items": [ { "issue_id": "uuid", "version": 4 } ],
+  "to_status": "verified", "team_id": "uuid", "assignee_id": "uuid|null",
+  "reason": "...", "public_note": "...", "note": "..." }
+```
+- 1–50 items, each issue once (`422 validation_error` otherwise). `to_status` is required for `status`, `team_id` for `assign`.
+- Each item runs the single-issue action (§2 assignment, or the Phase 1 status change) with its own version, scope and workflow checks, in its own savepoint: a refused item doesn't undo the others.
+- `200` with `{ "succeeded": 1, "failed": 1, "results": [ { "issue_id": "uuid", "ok": false, "error": "version_conflict" } ] }`, one result per item in request order; `error` is the code the single action would have returned.
+- Every change is audited by its action; the batch adds `issue.bulk_action` with the ids that succeeded and the codes of those that failed.
+
 ## Out of scope for this contract
-- Recurrence on a new report near a closed issue (PRD §16), bulk actions (A4.4), follow / add evidence / moderation (P3-11), SLA and overdue (Phase 4), notification delivery (Phase 4 reads the outbox), suspicious-verification detection (C3.2), verification photos.
+- Recurrence on a new report near a closed issue (PRD §16), follow / add evidence / moderation (P3-11), SLA and overdue (Phase 4), notification delivery (Phase 4 reads the outbox), suspicious-verification detection (C3.2), verification photos.

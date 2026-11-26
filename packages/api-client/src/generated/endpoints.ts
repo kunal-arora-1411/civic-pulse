@@ -43,6 +43,8 @@ import type {
   AssignmentCreate,
   AssignmentOut,
   AuditEventPage,
+  BulkAction,
+  BulkResult,
   ByCategory,
   ByStatus,
   ByWard,
@@ -1277,6 +1279,24 @@ export const workloadGet = (
     }
 
 /**
+ * Change the status of, or assign, up to 50 issues at once (FR-078).
+ * Each item carries the version the user saw and runs the single-issue
+ * action with its own checks; refused items are reported per item and
+ * don't undo the rest. Each change is audited, plus one summary event.
+ * @summary Bulk Action
+ */
+export const issuesBulk = (
+    bulkAction: BulkAction,
+ options?: SecondParameter<typeof customInstance<BulkResult>>,) => {
+      return customInstance<BulkResult>(
+      {url: `/api/v1/issues/bulk`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: bulkAction
+    },
+      options);
+    }
+
+/**
  * The caller's work orders, newest first.
  * @summary List Work Orders
  */
@@ -1909,6 +1929,7 @@ export type IssuesRejectClosureResult = NonNullable<Awaited<ReturnType<typeof is
 export type IssuesVerifyResult = NonNullable<Awaited<ReturnType<typeof issuesVerify>>>
 export type IssuesReopenResult = NonNullable<Awaited<ReturnType<typeof issuesReopen>>>
 export type WorkloadGetResult = NonNullable<Awaited<ReturnType<typeof workloadGet>>>
+export type IssuesBulkResult = NonNullable<Awaited<ReturnType<typeof issuesBulk>>>
 export type FieldListWorkOrdersResult = NonNullable<Awaited<ReturnType<typeof fieldListWorkOrders>>>
 export type FieldGetWorkOrderResult = NonNullable<Awaited<ReturnType<typeof fieldGetWorkOrder>>>
 export type FieldAcceptResult = NonNullable<Awaited<ReturnType<typeof fieldAccept>>>
