@@ -14643,6 +14643,17 @@
           "unresolved": {
             "type": "integer",
             "title": "Unresolved"
+          },
+          "scene_match": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SceneMatch"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until the photos are analysed, with no after photo, or when the AI is unavailable."
           }
         },
         "type": "object",
@@ -19894,6 +19905,29 @@
           "roles"
         ],
         "title": "RolesUpdate"
+      },
+      "SceneMatch": {
+        "properties": {
+          "similarity": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Similarity",
+            "description": "Best cosine similarity between any after photo and any report photo."
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "description": "The vision model both photos were embedded with."
+          }
+        },
+        "type": "object",
+        "required": [
+          "similarity",
+          "model_id"
+        ],
+        "title": "SceneMatch",
+        "description": "How alike the after photos and the citizens' photos look (FR-066).\n\nAdvice for the supervisor only: a fixed pothole rightly looks different\nfrom the reported one, so nothing is decided from it (PRD §8.6)."
       },
       "Schedule": {
         "properties": {

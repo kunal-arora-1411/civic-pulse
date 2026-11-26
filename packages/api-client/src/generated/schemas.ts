@@ -741,6 +741,19 @@ export const ClosureState = zod.enum(['pending', 'approved', 'rejected']);
 export type ClosureState = zod.input<typeof ClosureState>;
 export type ClosureStateOutput = zod.output<typeof ClosureState>;
 
+export const sceneMatchSimilarityMin = 0;
+export const sceneMatchSimilarityMax = 1;
+
+
+
+export const SceneMatch = zod.object({
+  "similarity": zod.number().min(sceneMatchSimilarityMin).max(sceneMatchSimilarityMax).describe('Best cosine similarity between any after photo and any report photo.'),
+  "model_id": zod.string().describe('The vision model both photos were embedded with.')
+}).describe('How alike the after photos and the citizens\' photos look (FR-066).\n\nAdvice for the supervisor only: a fixed pothole rightly looks different\nfrom the reported one, so nothing is decided from it (PRD §8.6).');
+
+export type SceneMatch = zod.input<typeof SceneMatch>;
+export type SceneMatchOutput = zod.output<typeof SceneMatch>;
+
 export const ClosureRequestOut = zod.object({
   "id": zod.string(),
   "state": ClosureState,
@@ -751,7 +764,8 @@ export const ClosureRequestOut = zod.object({
   "after_photos": zod.array(MediaOut),
   "requires_approval": zod.boolean(),
   "confirmations": zod.int(),
-  "unresolved": zod.int()
+  "unresolved": zod.int(),
+  "scene_match": zod.union([SceneMatch,zod.null()]).optional().describe('Null until the photos are analysed, with no after photo, or when the AI is unavailable.')
 });
 
 export type ClosureRequestOut = zod.input<typeof ClosureRequestOut>;

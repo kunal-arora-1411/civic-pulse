@@ -159,7 +159,7 @@ A team belongs to a department and has members, a service area (jurisdictions), 
 
 All mutations return `200` with the field view. A stale `version` is `409 version_conflict` with the current field view in `details.work_order`; an action that doesn't fit the state is `409 invalid_work_order_action`. Retrying a request after a lost response therefore never applies it twice.
 
-**Evidence (FR-066).** Upload with `POST /media/uploads` and `{ "purpose": "work_evidence", "phase": "before|after", ... }` (`evidence:upload`); `phase` is required for `work_evidence` and forbidden otherwise. Attach by listing `media_ids` on `progress` or `request-closure`. Rules: the caller's own, `work_evidence`, completed, not attached elsewhere (Phase 1 `invalid_media` reasons). Capture time and GPS come from EXIF as for reports; the original stays staff-only. ML (C2.1) compares `after` photos with the report photos and its `scene_match` is advice for the supervisor only.
+**Evidence (FR-066).** Upload with `POST /media/uploads` and `{ "purpose": "work_evidence", "phase": "before|after", ... }` (`evidence:upload`); `phase` is required for `work_evidence` and forbidden otherwise. Attach by listing `media_ids` on `progress` or `request-closure`. Rules: the caller's own, `work_evidence`, completed, not attached elsewhere (Phase 1 `invalid_media` reasons). Capture time and GPS come from EXIF as for reports; the original stays staff-only. `after` photos are compared with the report photos (`scene_match`, §5), as advice for the supervisor only.
 
 ## 4. Notes (FR-067)
 
@@ -178,8 +178,10 @@ All mutations return `200` with the field view. A stale `version` is `409 versio
 ```json
 { "id": "uuid", "state": "pending|approved|rejected", "requested_by": { "id": "uuid", "display_name": "..." },
   "requested_at": "...", "reason_code": "...|null", "note": "...|null", "after_photos": [ /* media */ ],
-  "requires_approval": true, "confirmations": 1, "unresolved": 0 }
+  "requires_approval": true, "confirmations": 1, "unresolved": 0,
+  "scene_match": { "similarity": 0.87, "model_id": "..." } | null }
 ```
+`scene_match` (FR-066, C2.1) is the best cosine similarity between any after photo and any photo of the issue's non-withdrawn reports, embedded with the same model. It is computed when the request is read, from the embeddings the AI worker already makes for every photo, so it is `null` until both sides are analysed, with no after photo, or while the AI is down. It is advice for the supervisor only: a repaired spot rightly looks different, and nothing is decided from it (PRD §8.6).
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|

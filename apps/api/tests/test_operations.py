@@ -3,6 +3,7 @@ verification, reopen, withdraw and workload (docs/api/phase-3-contract.md)."""
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -12,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 import app.models  # noqa: F401  (configure every mapper before using the service)
+from app.domains.ai.analysis import ensure_embeddings
 from app.domains.operations.closure import close_expired
 from tests.helpers import RecordingSms
 from tests.phase1 import SW, login_new
@@ -364,6 +366,57 @@ async def test_closure_request_then_supervisor_approval(
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "resolved"
     assert (await work_order(client, ops.worker))["state"] == "done"
+
+
+async def _closure_with_after_photo(
+    client: httpx.AsyncClient, ops: Ops, *, after_seed: int
+) -> tuple[dict[str, Any], str]:
+    """A pothole reported with scene 1, closed with an after photo of
+    `after_seed`. Returns the supervisor's issue detail and the photo id."""
+    detail = await verified_issue(client, ops, seed=1)
+    assert (await assign(client, ops, detail, ops.worker)).status_code == 201
+    wo = await work_order(client, ops.worker)
+    wo = (await act(client, ops.worker, wo, "accept")).json()
+    wo = (await act(client, ops.worker, wo, "start")).json()
+    photo = await evidence(client, ops.worker, "after", seed=after_seed)
+    response = await act(client, ops.worker, wo, "request-closure", media_ids=[photo])
+    assert response.status_code == 200, response.text
+    return await issue(client, ops.city.supervisor, detail["id"]), photo
+
+
+async def _embed_all(ops: Ops, detail: dict[str, Any], after_photo: str) -> None:
+    report_photos = [m["id"] for r in detail["reports"] for m in r["media"]]
+    await ensure_embeddings(
+        ops.city.tenant.id, [uuid.UUID(m) for m in [*report_photos, after_photo]]
+    )
+
+
+async def test_scene_match_compares_after_photos_with_the_reports(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    detail, photo = await _closure_with_after_photo(client, ops, after_seed=1)
+    # Nothing to compare until both sides are analysed.
+    assert detail["operations"]["closure_request"]["scene_match"] is None
+
+    await _embed_all(ops, detail, photo)
+    detail = await issue(client, ops.city.supervisor, detail["id"])
+    match = detail["operations"]["closure_request"]["scene_match"]
+    assert match is not None
+    assert match["similarity"] > 0.9
+    assert match["model_id"]
+
+
+async def test_scene_match_is_low_for_a_different_place(
+    client: httpx.AsyncClient, ops: Ops
+) -> None:
+    detail, photo = await _closure_with_after_photo(client, ops, after_seed=7)
+    await _embed_all(ops, detail, photo)
+    detail = await issue(client, ops.city.supervisor, detail["id"])
+    match = detail["operations"]["closure_request"]["scene_match"]
+    assert match is not None
+    assert match["similarity"] < 0.6
+    # Advice only: the closure is still pending the supervisor's decision.
+    assert detail["status"] == "pending_verification"
 
 
 async def test_closure_rejection_sends_work_back(client: httpx.AsyncClient, ops: Ops) -> None:
