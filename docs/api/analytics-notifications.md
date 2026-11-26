@@ -167,3 +167,46 @@ example are illustrative.
 | `POST /notifications/{id}/read` | | The notification. Idempotent; another user's id: `404`. |
 
 Errors: `401` without a session, `422` for a malformed id or page.
+
+### Email (the outbox's `email` channel)
+
+The same events also leave the building by email, once a relay is configured.
+`issue.assigned` is the only event emailed today: it is the one that asks a
+person to act. The in-app inbox above remains the record of everything.
+
+The channel runs inside the outbox dispatcher
+([§15 of the PRD](../../CivicPulse_Product_Requirements_Document_v1.0.md),
+[ADR 0004](../adr/0004-outbox.md)), so it is retried on the same schedule and
+recorded in `outbox_deliveries` the same way. Nothing about it is on the
+request path: an assignment is committed first and emailed after.
+
+| | |
+|---|---|
+| Recipient | The assignee (`assignee_id` on the event), if their account is active |
+| Address | `users.email`; a user without one is not emailed |
+| Language | The recipient's `users.locale` — English or Hindi, falling back to English |
+| Subject | `[CP-26-000042] Assigned to you: Pothole` |
+| Contents | The issue reference, category, address, priority, and a link to `/field` |
+| Headers | `Auto-Submitted: auto-generated`, so autoresponders don't answer it |
+
+**Configuration.** `SMTP_HOST` is the switch: unset means the channel is not
+registered at all and every event is still recorded as `skipped` with
+`no external channel is configured`, exactly as before. Compose points it at
+Mailpit, which collects mail at <http://localhost:8025>. A real relay needs
+`SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` and `SMTP_STARTTLS=true`;
+`WEB_URL` sets the link inside the message and `SMTP_FROM` the sender.
+
+**What the delivery log shows.** Every outcome is one row per event per
+channel, so a missing email can be told apart from an unsent one:
+
+| Outcome | `detail` | Meaning |
+|---|---|---|
+| `delivered` | the subject | The relay accepted it |
+| `skipped` | `the assignment names nobody to email` | Assigned to a team with no individual named |
+| `skipped` | `the assignee has no email address` | An account without one |
+| `skipped` | `no SMTP relay is configured` | `SMTP_HOST` is empty |
+| `failed` | the error | The relay refused; the next tick retries, and after 5 attempts the event is abandoned and left `failed` |
+
+Email text is rendered server-side rather than as a message key, because a mail
+program cannot resolve one. That is the one place the "text is an i18n key"
+rule does not apply.

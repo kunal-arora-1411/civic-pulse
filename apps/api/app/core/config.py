@@ -79,6 +79,21 @@ class Settings(BaseSettings):
     dev_fixed_otp_code: str = "000000"
     sms_provider: str = "console"
 
+    # Outgoing email (the outbox's `email` channel, and later the scheduled
+    # summaries). No SMTP_HOST means no email is attempted at all and the
+    # channel records a skip, so a deployment without a relay behaves exactly
+    # as it did before the channel existed. Compose points this at Mailpit.
+    smtp_host: str = ""
+    smtp_port: int = 1025
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    # STARTTLS for a real relay on 587. Mailpit in development speaks plain
+    # SMTP on the compose network, so this defaults off.
+    smtp_starttls: bool = False
+    smtp_from: str = "CivicPulse <no-reply@civicpulse.local>"
+    # Links in email go to the web app, not to the API.
+    web_url: str = "http://localhost:3000"
+
     # MFA
     totp_encryption_key: SecretStr
     totp_issuer: str = "CivicPulse"
@@ -193,6 +208,11 @@ class Settings(BaseSettings):
         # The fixed code is a development convenience and is never honoured
         # in production, whatever DEV_FIXED_OTP says.
         return self.dev_fixed_otp and not self.is_production
+
+    @property
+    def mail_enabled(self) -> bool:
+        """Whether email can be attempted at all: a relay, or nothing."""
+        return bool(self.smtp_host.strip())
 
     @property
     def staff_mfa_required(self) -> bool:
