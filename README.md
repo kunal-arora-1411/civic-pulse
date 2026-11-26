@@ -208,7 +208,27 @@ isn't. Tests create their own data and use fresh citizen numbers, so they can ru
 database. The compose stack's OTP limits are set for this; if you run the API with production limits,
 sign-ins will start failing with `rate_limited` after a few runs.
 
-CI runs all three suites on every pull request (`.github/workflows/ci.yml`).
+The suite runs in three Playwright projects, one after the other. `chromium` has the everyday flows and the
+Phase 2 acceptance criteria on the real model (`tests/ai.spec.ts`: suggestions, auto-linking, review, merge
+and split); `load` sends 50 simultaneous reports of one pothole and prints the matching latency
+(`E2E_LOAD_REPORTS` changes the size); `ai-down` stops the AI worker to check that reporting survives it
+(AC-03) and starts it again. That last one runs `docker compose` itself, from the repo root, as
+`E2E_COMPOSE` says (default `docker compose -f infra/docker-compose.yml`). The tests that need the real model
+skip themselves on a stack running the fake one.
+
+To run against a second stack next to your usual one, give it its own project, image tag and ports, and tell
+the suite where it is:
+
+```sh
+export COMPOSE_PROJECT_NAME=cp-e2e IMAGE_TAG=e2e API_PORT=18000 DB_PORT=15432 REDIS_PORT=16379   MINIO_PORT=19000 MINIO_CONSOLE_PORT=19001 MAILPIT_PORT=18025 MAILPIT_SMTP_PORT=11025   S3_PUBLIC_ENDPOINT=http://localhost:19000 CORS_ORIGINS=http://localhost:13000   S3_CORS_ORIGINS=http://localhost:13000 WEB_URL=http://localhost:13000
+docker compose -f infra/docker-compose.yml up -d --build --wait
+docker compose -f infra/docker-compose.yml exec -T ai-worker python scripts/seed.py
+NEXT_PUBLIC_API_URL=http://localhost:18000 E2E_API_URL=http://localhost:18000   E2E_WEB_URL=http://localhost:13000 pnpm --filter @civicpulse/e2e test   # builds the web app for that API
+docker compose -f infra/docker-compose.yml down -v
+```
+
+CI runs all three suites on every pull request (`.github/workflows/ci.yml`), the e2e suite with the real AI
+worker; how it keeps that affordable is in [ADR 0005](docs/adr/0005-ci-real-model-image-cache.md).
 
 ### Refreshing the screenshots
 
