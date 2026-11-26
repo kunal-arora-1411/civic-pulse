@@ -11,6 +11,7 @@ import {
   TENANT,
 } from "./env";
 import { type GeneratedStaff, STAFF_ROLES, type StaffKey } from "./staff";
+
 const START_HINT = `Start it from the repo root with:\n  ${COMPOSE} up -d --build --wait`;
 const SEED_HINT = `Seed it with:\n  ${COMPOSE} exec -T ai-worker python scripts/seed.py`;
 

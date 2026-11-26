@@ -191,8 +191,11 @@ export class Api {
     return (await response.json()) as Category[];
   }
 
+  private categoryList?: Promise<Category[]>;
+
   async categoryId(code: string): Promise<string> {
-    const category = (await this.categories()).find((c) => c.code === code);
+    this.categoryList ??= this.categories();
+    const category = (await this.categoryList).find((c) => c.code === code);
     if (!category) throw new Error(`No category "${code}"`);
     return category.id;
   }
@@ -246,6 +249,14 @@ export class Api {
     const mediaIds = input.photo
       ? [await this.uploadPhoto(session, input.photo)]
       : [];
+    return this.postReport(session, { ...input, mediaIds });
+  }
+
+  /** `POST /reports` with photos that are already uploaded. */
+  async postReport(
+    session: Session,
+    input: Omit<ReportInput, "photo"> & { mediaIds: string[] },
+  ): Promise<PendingReport> {
     const response = await expectOk(
       await this.request.post(url("/reports"), {
         headers: { ...this.bearer(session), "Idempotency-Key": randomUUID() },
@@ -259,7 +270,7 @@ export class Api {
             source: "gps",
           },
           details: {},
-          media_ids: mediaIds,
+          media_ids: input.mediaIds,
           client_created_at: new Date().toISOString(),
         },
       }),
@@ -282,7 +293,9 @@ export class Api {
       const report = await this.getReport(session, id);
       if (report.matching_status !== "pending") return report;
       if (Date.now() > deadline) {
-        throw new Error(`Report ${id} was still being matched after ${timeoutMs} ms`);
+        throw new Error(
+          `Report ${id} was still being matched after ${timeoutMs} ms`,
+        );
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
     }

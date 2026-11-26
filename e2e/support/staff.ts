@@ -11,6 +11,7 @@ import { STAFF_PATH } from "./env";
  */
 export const STAFF_ROLES = {
   consoleAdmin: "municipal_admin",
+  ac04Operator: "operator",
   ac05Operator: "operator",
   ac06Operator: "operator",
   ac07Operator: "operator",
