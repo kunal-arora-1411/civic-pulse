@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /*
- * In-app notifications (docs/api/notifications-contract.md). Text arrives
+ * In-app notifications (docs/api/analytics-notifications.md). Text arrives
  * as message keys plus parameters; the client renders them in the
  * reader's language under `notifications.messages`.
  */

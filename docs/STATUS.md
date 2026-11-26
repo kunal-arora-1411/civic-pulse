@@ -88,6 +88,7 @@
 ## Known gaps carried forward
 - **Report rate limit is global:** the per-citizen submission limits are settings, not per-tenant configuration (tenant configs would need a new key, a migration and admin UI).
 - **Evaluation data:** small (187 images), mostly Flickr via Openverse (Commons rate-limited downloads), with few Indian scenes for some classes. Duplicate pairs are synthetic augmentations. These are baseline numbers, not real-world performance.
-- **SMS:** still sent inside the request; moves to an outbox in Phase 4 (A4.3).
+- **SMS provider:** sign-in codes and notification texts now go through the outbox (A4.3, [notification-delivery.md](api/notification-delivery.md)), but only the `console` provider exists until MSG91/Gupshup is chosen and DLT templates are registered.
+- **Web Push:** needs a VAPID key pair in production (`scripts/vapid_keys.py`); without one the browser option says it is unavailable.
 - **Audit:** not hash-chained yet (A6.3).
 - **Signed URLs:** they change on every request, so browsers can't cache photos.
