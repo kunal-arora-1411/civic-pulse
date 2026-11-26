@@ -57,6 +57,9 @@ import type {
   ClassificationOut,
   ClosureConfig,
   ClosureRequestBody,
+  CommentCreate,
+  CommentList,
+  CommentOut,
   DeclineBody,
   DepartmentCreate,
   DepartmentOut,
@@ -85,6 +88,10 @@ import type {
   MfaSetupOut,
   MfaVerifyIn,
   ModelList,
+  ModerationCommentsListParams,
+  ModerationDecision,
+  ModerationItem,
+  ModerationPage,
   MyReportPage,
   NoteCreate,
   NotificationOut,
@@ -1780,6 +1787,86 @@ export const issuesSupportRemove = (
     }
 
 /**
+ * Comments on the issue, oldest first. Citizens see approved comments
+ * and their own (with the moderator's reason if it was removed), never
+ * who wrote the others. Staff in scope see every comment and its flags.
+ * @summary List Comments
+ */
+export const issuesCommentsList = (
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<CommentList>>,) => {
+      return customInstance<CommentList>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/comments`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Add a comment (1 to 1000 characters). It is `pending` and visible to its
+ * author only until a moderator approves it. At most 10 a day per citizen
+ * (`429 rate_limited`); a merged issue is `422 issue_merged`.
+ * @summary Create Comment
+ */
+export const issuesCommentsCreate = (
+    issueId: string,
+    commentCreate: CommentCreate,
+ options?: SecondParameter<typeof customInstance<CommentOut>>,) => {
+      return customInstance<CommentOut>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/comments`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: commentCreate
+    },
+      options);
+    }
+
+/**
+ * Report an approved comment as abusive or misleading. Once per
+ * citizen; three flags take it back to the moderation queue. Your own
+ * comment: `422 invalid_transition`.
+ * @summary Flag Comment
+ */
+export const commentsFlag = (
+    commentId: string,
+ options?: SecondParameter<typeof customInstance<CommentOut>>,) => {
+      return customInstance<CommentOut>(
+      {url: `/api/v1/comments/${encodeURIComponent(String(commentId))}/flag`, method: 'POST'
+    },
+      options);
+    }
+
+/**
+ * The moderation queue for issues in the caller's scope: most flagged,
+ * then oldest, first.
+ * @summary Moderation Queue
+ */
+export const moderationCommentsList = (
+    params?: ModerationCommentsListParams,
+ options?: SecondParameter<typeof customInstance<ModerationPage>>,) => {
+      return customInstance<ModerationPage>(
+      {url: `/api/v1/moderation/comments`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Approve a comment (it becomes public and its flags are cleared) or
+ * reject it with a reason its author sees. Audited.
+ * @summary Moderate Comment
+ */
+export const moderationCommentsDecide = (
+    commentId: string,
+    moderationDecision: ModerationDecision,
+ options?: SecondParameter<typeof customInstance<ModerationItem>>,) => {
+      return customInstance<ModerationItem>(
+      {url: `/api/v1/moderation/comments/${encodeURIComponent(String(commentId))}`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: moderationDecision
+    },
+      options);
+    }
+
+/**
  * Issues with generalised locations, newest first by default.
  * @summary List Issues
  */
@@ -1963,6 +2050,11 @@ export type AdminAnnouncementsWithdrawResult = NonNullable<Awaited<ReturnType<ty
 export type IssuesSupportGetResult = NonNullable<Awaited<ReturnType<typeof issuesSupportGet>>>
 export type IssuesSupportAddResult = NonNullable<Awaited<ReturnType<typeof issuesSupportAdd>>>
 export type IssuesSupportRemoveResult = NonNullable<Awaited<ReturnType<typeof issuesSupportRemove>>>
+export type IssuesCommentsListResult = NonNullable<Awaited<ReturnType<typeof issuesCommentsList>>>
+export type IssuesCommentsCreateResult = NonNullable<Awaited<ReturnType<typeof issuesCommentsCreate>>>
+export type CommentsFlagResult = NonNullable<Awaited<ReturnType<typeof commentsFlag>>>
+export type ModerationCommentsListResult = NonNullable<Awaited<ReturnType<typeof moderationCommentsList>>>
+export type ModerationCommentsDecideResult = NonNullable<Awaited<ReturnType<typeof moderationCommentsDecide>>>
 export type PublicIssuesListResult = NonNullable<Awaited<ReturnType<typeof publicIssuesList>>>
 export type PublicIssuesGeojsonResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGeojson>>>
 export type PublicIssuesGetResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGet>>>

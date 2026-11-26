@@ -261,5 +261,26 @@ A "Roads North" team in ROADS with the seeded field worker (lead), covering Zone
 - `200` with `{ "succeeded": 1, "failed": 1, "results": [ { "issue_id": "uuid", "ok": false, "error": "version_conflict" } ] }`, one result per item in request order; `error` is the code the single action would have returned.
 - Every change is audited by its action; the batch adds `issue.bulk_action` with the ids that succeeded and the codes of those that failed.
 
+## 12. Comments and moderation (FR-017, FR-086)
+
+Citizens comment on an issue; nothing is public until a moderator approves it.
+
+```json
+{ "id": "uuid", "issue_id": "uuid", "body": "...", "state": "pending|approved|rejected",
+  "created_at": "...", "mine": true, "flagged_by_me": false,
+  "author_name": "staff only, else null", "flag_count": "staff only, else null",
+  "moderation_reason": "for the author and staff, else null" }
+```
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/v1/issues/{id}/comments` | signed in | `{ items }`, oldest first. Citizens: approved comments plus their own. Staff (`issue:read` in scope): all. |
+| POST | `/api/v1/issues/{id}/comments` | `issue:comment` | `{ body }` (1 to 1000 chars) → `201`, `pending`. 10 a day per citizen (`429 rate_limited`). Merged issue: `422 issue_merged`. |
+| POST | `/api/v1/comments/{id}/flag` | `issue:comment` | Approved comments of others only (own: `422 invalid_transition`). Once per citizen. 3 flags → back to `pending`. |
+| GET | `/api/v1/moderation/comments` | `issue:read` + `issue:update` | Page envelope of comments on issues in scope, filter `state` (default `pending`), most flagged then oldest first. Items add `issue: { id, reference }`. |
+| POST | `/api/v1/moderation/comments/{id}` | `issue:update` in scope | `{ decision: "approve"\|"reject", reason }`; `reason` required to reject. Approving clears the flags. Audit `comment.approved` / `comment.rejected`. |
+
+Tables `issue_comments` and `comment_flags` (migration 0013) are tenant-scoped with forced RLS.
+
 ## Out of scope for this contract
-- Recurrence on a new report near a closed issue (PRD §16), follow / add evidence / moderation (P3-11), SLA and overdue (Phase 4), notification delivery (Phase 4 reads the outbox), suspicious-verification detection (C3.2), verification photos.
+- Recurrence on a new report near a closed issue (PRD §16), follow and photo evidence on an existing issue (P3-11; comments are §12), SLA and overdue (Phase 4), notification delivery (Phase 4 reads the outbox), suspicious-verification detection (C3.2), verification photos.
