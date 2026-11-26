@@ -665,19 +665,30 @@ async def test_bulk_assign_reports_each_item_and_audits(
     assert (await issue(client, ops.city.supervisor, first["id"]))["status"] == "assigned"
     assert (await issue(client, ops.city.supervisor, second["id"]))["status"] == "verified"
     async with owner_engine.connect() as conn:
-        actions = (
+        assigned = (
             (
                 await conn.execute(
                     text(
-                        "SELECT action FROM audit_events "
-                        "WHERE action IN ('issue.assigned', 'issue.bulk_action') ORDER BY id"
-                    )
+                        "SELECT entity_id::text FROM audit_events "
+                        "WHERE action = 'issue.assigned' AND entity_id::text IN (:a, :b)"
+                    ),
+                    {"a": first["id"], "b": second["id"]},
                 )
             )
             .scalars()
             .all()
         )
-    assert actions == ["issue.assigned", "issue.bulk_action"]
+        summary = (
+            await conn.execute(
+                text(
+                    "SELECT after FROM audit_events WHERE action = 'issue.bulk_action' "
+                    "AND jsonb_exists(CAST(after AS jsonb) -> 'succeeded', :a)"
+                ),
+                {"a": first["id"]},
+            )
+        ).scalar_one()
+    assert assigned == [first["id"]]
+    assert summary["failed"] == {second["id"]: "version_conflict"}
 
 
 async def _reported_issue(
