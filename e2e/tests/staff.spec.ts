@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { freshCitizenPhone } from "../support/api";
-import { INSIDE, SEEDED } from "../support/env";
+import { freshSpot, SEEDED } from "../support/env";
 import { expect, giveSession, test } from "../support/fixtures";
 import { signInThroughUi } from "../support/ui";
 
@@ -38,8 +38,8 @@ test("an operator reviews and rejects a report; the citizen sees only the public
   const description = `Drain cover missing outside the school (e2e ${Date.now()})`;
   const report = await api.createReport(citizen, {
     categoryCode: "drainage",
-    lat: INSIDE.latitude,
-    lng: INSIDE.longitude,
+    // Somewhere no other report is, so matching opens a new issue for it.
+    ...freshSpot(),
     description,
     photo,
   });

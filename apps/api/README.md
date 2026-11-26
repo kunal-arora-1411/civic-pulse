@@ -19,7 +19,8 @@ docker compose -f infra/docker-compose.yml exec ai-worker python scripts/seed.py
 | minio | 9000 / 9001 | Private bucket `civicpulse-media`; CORS for `localhost:3000`/`3100` |
 | minio-init | – | One-shot: creates the bucket and the `civicpulse-app` user (that bucket only) |
 | mailpit | 8025 / 1025 | Collects the outbox's notification email; nothing leaves the machine. SMTP on 1025 |
-| worker | – | Celery: queues `default` (media processing, housekeeping, watchdog) and, until the AI worker exists, `ai` (embeddings, classification, matching) with `AI_PROVIDER=fake` |
+| worker | – | Celery, queue `default`: media processing, housekeeping, priority recomputes and the matching watchdog. Never the `ai` queue |
+| ai-worker | – | Celery, queue `ai` (its only consumer): embeddings, classification, face blurring and matching with the real CLIP and YuNet models on CPU. See [the AI worker](#the-ai-worker) |
 | beat | – | Celery Beat: hourly housekeeping, the matching watchdog every minute, the nightly priority recompute, and a weekly matching quality check that logs a `matching_quality_alert` warning when a category's correction or false-merge rate exceeds `QUALITY_ALERT_RATIO` times its 4-week baseline (run exactly one) |
 | migrate | – | One-shot `alembic upgrade head`, run as the owner role |
 
@@ -77,17 +78,64 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright
 
 ## Vision models
 
-The AI layer (`app/ai/`) runs CLIP ViT-B/32 and YuNet on ONNX Runtime, CPU only. `AI_PROVIDER=fake` (the default) needs nothing extra; for the real models:
+The AI layer (`app/ai/`) runs CLIP ViT-B/32 (`Xenova/clip-vit-base-patch32`, MIT) and YuNet face detection (MIT) on ONNX Runtime, CPU only, with no torch. Domain code reaches the models only through `app/ai/registry.py`, which picks them by `AI_PROVIDER`:
+
+| `AI_PROVIDER` | Where | What runs |
+|---|---|---|
+| `fake` (default) | tests, the API container, the `worker` | `app/ai/fake.py`: deterministic embeddings from the pixels and a classifier steered by a `CP_TEST_LABEL` tag. Needs nothing extra. |
+| `onnx` | the `ai-worker` | The real models from `AI_MODEL_DIR` (default `/models`). Needs `uv sync --extra ai` and the weights. |
+
+### The AI worker
+
+The `ai-worker` compose service is the only consumer of the Celery queue `ai`: `analyze_media` (embedding, pHash and face blurring of each photo), `classify` (category suggestions) and `match_report` (duplicate matching). Keeping it the only consumer means every embedding in the database comes from one model; never add `ai` to the regular worker's queues. Its image (`infra/ai-worker/Dockerfile`, ~1.4 GB) is the API code plus the `ai` extra and the weights, which are baked in at build time and verified against `models.lock.json` again at start-up. On start-up it records the models in `model_registry`, which is what `GET /admin/ai/models` shows and what decides the active model's auto-link visual floor (0.92 for CLIP).
+
+It runs one task at a time (each process holds both CLIP towers, about 1 GB) and needs ~1.5 GB of RAM. Throughput and latency are in [`docs/eval/phase-2-baseline.md`](../../docs/eval/phase-2-baseline.md#latency-and-footprint) and [`docs/eval/phase-2-matching-load.md`](../../docs/eval/phase-2-matching-load.md).
+
+When it is down, nothing breaks for the citizen: classification answers `failed` and the web app asks for a manual choice; photos wait at `processing` (with `AI_FACE_BLUR` on, only the face check publishes them); and the matching watchdog on the regular worker matches reports older than two minutes without the visual signal, never auto-linking (contract D.1). To try it: `docker compose -f infra/docker-compose.yml stop ai-worker`.
+
+Running the `ai` queue with the fake models instead, for quick local work without the 600 MB of weights:
+
+```sh
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.fake-ai.yml up -d --build --wait
+```
+
+Start from a fresh database (`down -v`) when switching between the two; embeddings from different models are never compared.
+
+### Downloading the models
 
 ```sh
 uv sync --extra ai
-uv run python scripts/download_models.py --model-dir .models     # ~600 MB, checked against models.lock.json
-AI_MODEL_DIR=.models uv run pytest tests/ai --confcutdir=tests/ai  # no database needed
+uv run python scripts/download_models.py --model-dir .models      # ~600 MB, hashes checked against models.lock.json
+uv run python scripts/download_models.py --model-dir .models --verify-only
+AI_MODEL_DIR=.models uv run pytest tests/ai --confcutdir=tests/ai  # model tests; no database needed
 ```
 
-`models.lock.json` pins each model to a Hub commit and records its licence and file hashes; change a pin in `scripts/download_models.py`, then run it with `--update-lock`. The `ai-worker` compose service bakes the weights into its image (`infra/ai-worker/Dockerfile`). The evaluation harness lives in `scripts/eval/` and its results in [`docs/eval/phase-2-baseline.md`](../../docs/eval/phase-2-baseline.md).
+`models.lock.json` pins each model to a Hugging Face Hub commit and records its licence and the sha256 of every file. To change a model, edit its pin in `scripts/download_models.py` and run it with `--update-lock`; the image's weight layer is keyed on the lock, so the next build fetches the new files. Without weights the model tests skip; CI sets `AI_REQUIRE_MODELS=1` so that they fail instead. `--candidate clip-int8|clip-laion2b` installs an evaluated alternative into another `--model-dir`.
 
-To move to another vision model, re-embed every photo with `scripts/reindex_embeddings.py --model-id <id>` (resumable, rate-limited, `--dry-run`); the steps are in [`docs/runbooks/switch-vision-model.md`](../../docs/runbooks/switch-vision-model.md).
+To move to another vision model in a running system, re-embed every photo with `scripts/reindex_embeddings.py --model-id <id>` (resumable, rate-limited, `--dry-run`); the steps are in [`docs/runbooks/switch-vision-model.md`](../../docs/runbooks/switch-vision-model.md).
+
+### Evaluation scripts
+
+`scripts/eval/` measures the models on a small openly licensed image set. `manifest.csv` lists every image with its source page, author, licence and sha256, and its calib/test split; the images themselves aren't committed and download into `.eval-cache/`. Results and how to read them: [`docs/eval/phase-2-baseline.md`](../../docs/eval/phase-2-baseline.md).
+
+| Script | What it does |
+|---|---|
+| `fetch_commons.py download` | Downloads the manifest's images and checks their hashes. Commons throttles hard (one file every ~20 s), so the first fetch is slow. `search` and `finalize` rebuild the candidate list and the manifest. |
+| `fetch_openverse.py` | Finds more openly licensed candidates on Flickr through Openverse, for thin classes |
+| `review_sheet.py` | Contact sheets of the candidates, for looking at every image before it is kept |
+| `eval_classification.py` | Zero-shot accuracy, per-class precision/recall/F1, confusion matrix, threshold sweep and temperature fit (`--json` for the raw results) |
+| `eval_dedup.py` | Visual similarity of augmented same-photo pairs against different photos of one category: ROC/PR and false-merge rate per floor, and the pHash rule |
+| `tune_prompts.py` | Greedy prompt search, cross-fitted within calib |
+| `bench_latency.py` | Embedding, prompt, face and pHash timings on this machine |
+
+```sh
+uv run python scripts/eval/fetch_commons.py download
+AI_MODEL_DIR=.models uv run python scripts/eval/eval_classification.py --json out/classification.json
+AI_MODEL_DIR=.models uv run python scripts/eval/eval_dedup.py --json out/dedup.json
+AI_MODEL_DIR=.models uv run python scripts/eval/bench_latency.py
+```
+
+Rerun the evaluation, and refit the temperature, whenever the prompts or the model change, and update the baseline document with the date and model id.
 
 ## Migrations
 

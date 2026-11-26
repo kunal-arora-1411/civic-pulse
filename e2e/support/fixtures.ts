@@ -8,13 +8,22 @@ import { API_URL, PHOTO_PATH } from "./env";
  * Give a browser context the session's refresh cookie, exactly as the API
  * sets it after sign-in. The web app keeps the access token in memory and
  * restores it from this cookie on load, so pages open signed in.
+ *
+ * The path must be the API's own (`/api/v1/auth`). Given only a URL,
+ * Playwright derives the default path, `/api/v1`, so the rotated cookie
+ * the API sets on the first refresh would sit next to this one instead of
+ * replacing it. The next page load would then send both, the server would
+ * read the stale token, and reuse detection would end the session.
  */
 export async function giveSession(context: BrowserContext, session: Session) {
+  const api = new URL(API_URL);
   await context.addCookies([
     {
       name: "cp_refresh",
       value: session.refreshToken,
-      url: `${API_URL}/api/v1/auth`,
+      domain: api.hostname,
+      path: "/api/v1/auth",
+      secure: api.protocol === "https:",
       httpOnly: true,
       sameSite: "Strict",
     },

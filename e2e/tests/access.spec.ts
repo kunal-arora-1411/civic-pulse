@@ -1,5 +1,5 @@
 import { freshCitizenPhone } from "../support/api";
-import { INSIDE } from "../support/env";
+import { freshSpot } from "../support/env";
 import { expect, giveSession, test } from "../support/fixtures";
 
 /*
@@ -16,8 +16,8 @@ test("a citizen gets the not-authorised page and the API refuses issue access (A
   // A report of their own, so there's a real issue id to ask about.
   const report = await api.createReport(citizen, {
     categoryCode: "streetlight",
-    lat: INSIDE.latitude,
-    lng: INSIDE.longitude,
+    // Somewhere no other report is, so matching opens a new issue for it.
+    ...freshSpot(),
     description: "Three streetlights out along the park road.",
   });
   await giveSession(context, citizen);

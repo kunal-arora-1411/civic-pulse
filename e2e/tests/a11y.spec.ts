@@ -1,7 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { SEEDED } from "../support/env";
+import { freshCitizenPhone } from "../support/api";
 import { expect, giveSession, test } from "../support/fixtures";
+import { staffPhone } from "../support/staff";
 
 /*
  * Automated accessibility checks on the key flows (P6-04, WCAG 2.2 AA).
@@ -56,7 +57,7 @@ test("the citizen's report flow and report list are accessible", async ({
   context,
   api,
 }) => {
-  await giveSession(context, await api.login(SEEDED.citizen));
+  await giveSession(context, await api.login(freshCitizenPhone()));
   await page.goto("/report");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.waitForLoadState("networkidle");
@@ -69,7 +70,7 @@ test("the citizen's report flow and report list are accessible", async ({
 });
 
 test("the operator's console is accessible", async ({ page, context, api }) => {
-  await giveSession(context, await api.login(SEEDED.operator));
+  await giveSession(context, await api.login(staffPhone("a11yOperator")));
   await page.goto("/admin/issues");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.waitForLoadState("networkidle");
