@@ -41,6 +41,12 @@ x-api-env: &api-env
   # whole team and the e2e suite. The 30-second resend cooldown stays.
   OTP_MAX_PER_HOUR: ${OTP_MAX_PER_HOUR:-60}
   OTP_MAX_PER_IP_PER_HOUR: ${OTP_MAX_PER_IP_PER_HOUR:-1000}
+  # The other per-address limits, loosened for the same shared address.
+  OTP_VERIFY_MAX_PER_IP_PER_HOUR: ${OTP_VERIFY_MAX_PER_IP_PER_HOUR:-5000}
+  MFA_VERIFY_MAX_PER_IP_PER_HOUR: ${MFA_VERIFY_MAX_PER_IP_PER_HOUR:-1000}
+  REFRESH_MAX_PER_IP_PER_HOUR: ${REFRESH_MAX_PER_IP_PER_HOUR:-20000}
+  TENANT_LOOKUP_MAX_PER_IP_PER_MINUTE: ${TENANT_LOOKUP_MAX_PER_IP_PER_MINUTE:-3000}
+  PUBLIC_MAX_PER_IP_PER_MINUTE: ${PUBLIC_MAX_PER_IP_PER_MINUTE:-3000}
   # Report submissions per citizen, looser than production's 10 an hour
   # and 30 a day for the same reason: the seeded citizen is shared by the
   # team and by e2e runs repeated back to back.
@@ -67,6 +73,13 @@ x-api-env: &api-env
   SMTP_PORT: ${SMTP_PORT:-1025}
   SMTP_FROM: ${SMTP_FROM:-CivicPulse <no-reply@civicpulse.local>}
   WEB_URL: ${WEB_URL:-http://localhost:3000}
+  # Malware scanning, error reporting and tracing: all off unless set.
+  CLAMAV_HOST: ${CLAMAV_HOST:-}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  RELEASE: ${RELEASE:-}
+  MEDIA_ORIGINAL_RETENTION_DAYS: ${MEDIA_ORIGINAL_RETENTION_DAYS:-0}
 
 services:
   db:
@@ -296,6 +309,24 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+
+  # Upload malware scanning (P6-07). Opt-in, because the image and its
+  # signature database are large: `docker compose --profile scan up -d
+  # clamav`, then set CLAMAV_HOST=clamav for the api. With CLAMAV_HOST set
+  # and clamd down, upload completion answers 503 instead of skipping the
+  # scan. clamd's StreamMaxLength must cover MEDIA_MAX_BYTES (10 MB by
+  # default); a larger stream is reported as a scanner error, not a pass.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["scan"]
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
 
 volumes:
   db-data:

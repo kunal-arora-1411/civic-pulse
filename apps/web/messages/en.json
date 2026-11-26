@@ -1192,7 +1192,17 @@
     "languageHelp": "Used for this site and for SMS updates about your reports.",
     "save": "Save changes",
     "discard": "Discard",
-    "saved": "Profile saved"
+    "saved": "Profile saved",
+    "delete": {
+      "title": "Delete my personal data",
+      "body": "Removes your mobile number, email, name and the location data in your photos, and signs you out everywhere. Your reports stay, so the issues can still be fixed, but nothing in them identifies you any more. This can't be undone.",
+      "open": "Delete my data…",
+      "confirmTitle": "Delete your personal data?",
+      "confirmBody": "You'll be signed out on every device. If you sign in again with the same number, you'll start with a new, empty account and won't see your old reports.",
+      "cancel": "Keep my account",
+      "confirm": "Delete my data",
+      "deleting": "Deleting…"
+    }
   },
   "pagination": {
     "range": "{from}–{to} of {total}",
@@ -1463,6 +1473,18 @@
       "view": "View your report",
       "another": "Report another issue",
       "home": "Back to home"
+    },
+    "voice": {
+      "start": "Speak instead",
+      "stop": "Stop",
+      "listening": "Listening…",
+      "privacy": "Your browser turns speech into text, which you can edit before sending. CivicPulse doesn't keep any audio.",
+      "error": {
+        "not-allowed": "Microphone access was blocked. Allow it in your browser settings, or type instead.",
+        "no-speech": "We didn't hear anything. Try again closer to the microphone.",
+        "network": "Speech needs a connection. Type instead while you're offline.",
+        "other": "Speech input stopped. You can type instead."
+      }
     }
   },
   "gallery": {
@@ -1923,6 +1945,19 @@
     "overdue": "Overdue",
     "dueSoon": "Due soon",
     "dueAt": "SLA due {date}"
+  },
+  "offline": {
+    "banner": "You're offline. Reports you send are saved and go out when you're back online.",
+    "sentTitle": "{count, plural, one {Your saved report was sent} other {# saved reports were sent}}",
+    "sentDescription": "You'll find them under My reports.",
+    "failedTitle": "{count, plural, one {A saved report couldn't be sent} other {# saved reports couldn't be sent}}",
+    "failedDescription": "Open the report page to check it and try again.",
+    "queuedTitle": "Saved. We'll send it when you're online",
+    "queuedBody": "Your report is stored on this device and will be sent automatically once you have a connection. Keep the app signed in.",
+    "queuedPending": "{count, plural, one {# report waiting to be sent} other {# reports waiting to be sent}}",
+    "queuedFailed": "Not sent: the report needs changes",
+    "discard": "Discard",
+    "sendNow": "Send now"
   },
   "announcementKind": {
     "planned_works": "Planned works",

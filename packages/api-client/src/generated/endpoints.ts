@@ -327,6 +327,21 @@ export const usersUpdateMe = (
     }
 
 /**
+ * Wipes the caller's phone, email, name, preferences and photo metadata
+ * and signs them out everywhere. Reports stay, without anything that
+ * identifies the reporter. Irreversible; staff get 403.
+ * @summary Delete my personal data and end every session (citizens)
+ */
+export const usersAnonymizeMe = (
+
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/users/me/anonymize`, method: 'POST'
+    },
+      options);
+    }
+
+/**
  * @summary List Users
  */
 export const adminListUsers = (
@@ -620,7 +635,8 @@ export const mediaCreateUpload = (
     }
 
 /**
- * Step 3: verify the uploaded bytes (size, checksum, real image type).
+ * Step 3: verify the uploaded bytes (size, checksum, real image type),
+ * and scan them for malware when a scanner is configured.
  *
  * On failure the object is deleted and the upload can't be retried; start
  * a new one. On success the asset is `processing` until the worker has
@@ -1846,6 +1862,7 @@ export type AuthSetupMfaResult = NonNullable<Awaited<ReturnType<typeof authSetup
 export type AuthEnableMfaResult = NonNullable<Awaited<ReturnType<typeof authEnableMfa>>>
 export type UsersGetMeResult = NonNullable<Awaited<ReturnType<typeof usersGetMe>>>
 export type UsersUpdateMeResult = NonNullable<Awaited<ReturnType<typeof usersUpdateMe>>>
+export type UsersAnonymizeMeResult = NonNullable<Awaited<ReturnType<typeof usersAnonymizeMe>>>
 export type AdminListUsersResult = NonNullable<Awaited<ReturnType<typeof adminListUsers>>>
 export type AdminCreateUserResult = NonNullable<Awaited<ReturnType<typeof adminCreateUser>>>
 export type AdminGetUserResult = NonNullable<Awaited<ReturnType<typeof adminGetUser>>>

@@ -119,6 +119,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -341,6 +351,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -402,6 +422,26 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -633,6 +673,16 @@
           },
           "429": {
             "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -1042,6 +1092,87 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/anonymize": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Delete my personal data and end every session (citizens)",
+        "description": "Wipes the caller's phone, email, name, preferences and photo metadata\nand signs them out everywhere. Reports stay, without anything that\nidentifies the reporter. Irreversible; staff get 403.",
+        "operationId": "users_anonymize_me",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -3845,7 +3976,7 @@
           "media"
         ],
         "summary": "Complete Upload",
-        "description": "Step 3: verify the uploaded bytes (size, checksum, real image type).\n\nOn failure the object is deleted and the upload can't be retried; start\na new one. On success the asset is `processing` until the worker has\nmade its variants.",
+        "description": "Step 3: verify the uploaded bytes (size, checksum, real image type),\nand scan them for malware when a scanner is configured.\n\nOn failure the object is deleted and the upload can't be retried; start\na new one. On success the asset is `processing` until the worker has\nmade its variants.",
         "operationId": "media_complete_upload",
         "security": [
           {
@@ -3936,6 +4067,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {

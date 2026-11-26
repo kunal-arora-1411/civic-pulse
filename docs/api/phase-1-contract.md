@@ -108,7 +108,8 @@ Returns `201`:
     "variants": { "thumb": null, "display": null }, "captured_at": "2026-11-24T02:42:00Z" }
   ```
   The asset's `id` is what a report lists in `media_ids`. `captured_at` comes from EXIF when present. `width`/`height` are as displayed (EXIF orientation applied).
-- On failure, `422 upload_verification_failed` with `details.reason`: `object_missing`, `size_mismatch`, `checksum_mismatch`, `content_type_mismatch`, `not_an_image` or `image_too_large` (over 50 megapixels). The object is deleted and the upload stays failed: the client starts a new one.
+- On failure, `422 upload_verification_failed` with `details.reason`: `object_missing`, `size_mismatch`, `checksum_mismatch`, `content_type_mismatch`, `not_an_image` `image_too_large` (over 50 megapixels) or `malware_detected` (the ClamAV scan, when one is configured, found a signature). The object is deleted and the upload stays failed: the client starts a new one.
+- When a scanner is configured but can't be reached, `503 service_unavailable`. The upload stays `pending` and completing it again later works.
 - Completing an already verified upload is safe and returns it again.
 
 **Processing.** A background job reads the EXIF capture time and GPS (stored privately) and makes `display` (max 1600 px, WebP) and `thumb` (max 400 px, WebP) copies with **all metadata removed**. The asset becomes `ready`, or `failed` with the reason recorded. The original keeps its metadata and is visible to staff only. Processing usually finishes within seconds; an asset stuck in `processing` for 15 minutes is queued again by housekeeping.
