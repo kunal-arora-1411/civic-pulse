@@ -150,6 +150,9 @@ class Settings(BaseSettings):
     # A report whose photos still have no embeddings after this long is
     # matched without the visual signal (never linked automatically).
     matching_fallback_after_seconds: int = 120
+    # Dispatched outbox events (and their delivery log, which cascades) are
+    # kept this long for tracing, then deleted by housekeeping.
+    outbox_retention_days: int = 7
 
     @field_validator("cors_origins", mode="before")
     @classmethod
