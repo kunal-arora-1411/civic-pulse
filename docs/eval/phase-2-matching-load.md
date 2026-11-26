@@ -30,6 +30,7 @@ pnpm --filter @civicpulse/e2e exec playwright test --project=load --no-deps
 | Date | Machine | Reports | All submitted | All decided | p50 | p90 | p95 | max | Outcome |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---|
 | 2026-11-26 | GitHub Actions `ubuntu-latest`, CI run 45847767612 | 50 | 1.6 s | 37.0 s | 34.0 s | 35.1 s | 35.3 s | 35.4 s | 1 issue, 50 reports, 50 reporters; 1 `new_issue`, 49 `linked` |
+| 2026-11-26 | GitHub Actions `ubuntu-latest`, CI run 45852115536 | 50 | 1.8 s | 33.9 s | 29.6 s | 31.6 s | 31.9 s | 32.1 s | same |
 
 ## Reading it
 
