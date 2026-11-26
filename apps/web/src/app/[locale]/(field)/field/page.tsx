@@ -1,10 +1,9 @@
-import { ClipboardList } from "lucide-react";
 import type { Metadata } from "next";
 import { useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { RequireFieldAccess } from "@/components/auth/guards";
+import { WorkOrderList } from "@/components/field/work-order-list";
 import { Alert } from "@/components/ui/alert";
-import { Card } from "@/components/ui/card";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("field");
@@ -26,21 +25,7 @@ export default function FieldHomePage() {
           <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
 
-        <Card className="relative grid justify-items-center gap-3 overflow-hidden px-6 py-14 text-center">
-          <div
-            aria-hidden="true"
-            className="bg-survey-grid absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]"
-          />
-          <span className="bg-brand-gradient relative grid size-16 place-items-center rounded-2xl text-white shadow-raised">
-            <ClipboardList aria-hidden="true" className="size-7" />
-          </span>
-          <h2 className="relative text-xl font-semibold tracking-tight">
-            {t("emptyTitle")}
-          </h2>
-          <p className="relative max-w-sm text-muted-foreground">
-            {t("emptyBody")}
-          </p>
-        </Card>
+        <WorkOrderList />
 
         <Alert variant="info" title={t("offlineTitle")}>
           {t("offlineBody")}

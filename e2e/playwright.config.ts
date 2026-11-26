@@ -37,10 +37,29 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
+  /*
+   * Two scenarios can't share the stack with anything else, so they run
+   * after the main project, one at a time: the burst of simultaneous
+   * reports (load.spec.ts), whose timings would otherwise include other
+   * tests' work, and AC-03 (ai-down.spec.ts), which stops the AI worker.
+   */
   projects: [
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: [/load\.spec\.ts/, /ai-down\.spec\.ts/],
+    },
+    {
+      name: "load",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: /load\.spec\.ts/,
+      dependencies: ["chromium"],
+    },
+    {
+      name: "ai-down",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: /ai-down\.spec\.ts/,
+      dependencies: ["load"],
     },
   ],
   webServer: {
@@ -49,6 +68,8 @@ export default defineConfig({
       : "pnpm --filter @civicpulse/web build && pnpm --filter @civicpulse/web start",
     cwd: "..",
     url: WEB_URL,
+    // `next start` serves on $PORT; match it to E2E_WEB_URL's port.
+    env: { PORT: new URL(WEB_URL).port || "3000" },
     reuseExistingServer: !CI,
     timeout: 300_000,
     stdout: "ignore",

@@ -8,7 +8,7 @@ from app.domains.announcements.models import Announcement
 from app.domains.audit.models import AuditEvent
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.categories.models import Category
-from app.domains.community.models import IssueSupport
+from app.domains.community.models import CommentFlag, IssueComment, IssueSupport
 from app.domains.config.models import TenantConfig
 from app.domains.issues.models import CivicIssue, IssueEvent, IssueRelation, ReferenceCounter
 from app.domains.matching.models import MatchDecision, ReviewTask
@@ -51,9 +51,11 @@ __all__ = [
     "CivicIssue",
     "Classification",
     "ClosureRequest",
+    "CommentFlag",
     "Department",
     "IdempotencyKey",
     "IssueAssignment",
+    "IssueComment",
     "IssueEvent",
     "IssueRelation",
     "IssueSupport",

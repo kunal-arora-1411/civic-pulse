@@ -76,4 +76,15 @@ describe("matchingIsSlow", () => {
       ),
     ).toBe(false);
   });
+
+  it("is never slow while a member of staff is reviewing it", () => {
+    const inReview = makeReport({
+      matching_status: "review",
+      issue: null,
+      created_at: "2026-11-24T08:00:00Z",
+    });
+    expect(matchingIsSlow(inReview, new Date("2026-11-25T08:00:00Z"))).toBe(
+      false,
+    );
+  });
 });

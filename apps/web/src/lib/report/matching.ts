@@ -83,14 +83,16 @@ export function matchingRefetchInterval(
 export const MATCHING_SLOW_MS = 3 * 60_000;
 
 /**
- * True when the report has waited unusually long, measured from when it
- * was sent, so a page opened hours later says the same thing.
+ * True when automatic matching has taken unusually long, measured from
+ * when the report was sent, so a page opened hours later says the same
+ * thing. A report waiting for a member of staff (review) is never "late":
+ * that can take hours, and the page says who it is waiting for.
  */
 export function matchingIsSlow(
   report: Pick<Report, "matching_status" | "issue" | "created_at"> | undefined,
   now: Date,
 ): boolean {
-  if (!report || !isAwaitingMatch(report)) return false;
+  if (!report || matchingView(report).state !== "pending") return false;
   return now.getTime() - Date.parse(report.created_at) > MATCHING_SLOW_MS;
 }
 

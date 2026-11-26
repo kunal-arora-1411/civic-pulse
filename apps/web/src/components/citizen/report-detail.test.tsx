@@ -41,6 +41,9 @@ beforeEach(() => {
   session.setAuthenticated("token", makeUser());
   server.use(
     http.get(`${API}/categories`, () => HttpResponse.json([])),
+    http.get(`${API}/issues/:id/comments`, () =>
+      HttpResponse.json({ items: [] }),
+    ),
     ...supportHandlers({ count: 2, supported: false }),
   );
 });

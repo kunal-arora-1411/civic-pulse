@@ -17,7 +17,7 @@ export const DEV_OTP = "000000";
  * race for it. Everything else signs in with a fresh citizen number.
  */
 export const SEEDED = {
-  municipalAdmin: "+919000000001", // console.spec.ts
+  municipalAdmin: "+919000000001", // global setup (makes the run's staff)
   operator: "+919000000002", // staff.spec.ts
   supervisor: "+919000000003", // map.spec.ts
   citizen: "+919000000005", // report.spec.ts (AC-01)
@@ -33,3 +33,52 @@ export const INSIDE_WARD = "Synthetic Ward 2";
 
 /** Where global setup writes the generated photo. */
 export const PHOTO_PATH = new URL("../.generated/street.jpg", import.meta.url);
+
+/**
+ * A random point in the tenant's second, West Delhi area, which the seed
+ * leaves empty. Matching compares a report with every issue within the
+ * category's radius (30 m), so tests that care what a report matches put
+ * it somewhere nothing else is: an earlier run's issue at the same spot
+ * would otherwise be a candidate. The box is ~8 × 6 km, so two random
+ * spots land within 30 m of each other about once in 20 000 tries.
+ */
+export function freshSpot(): { lat: number; lng: number } {
+  // 77.10–77.16 E, 28.63–28.67 N: inside the area with a margin.
+  return {
+    lat: 28.63 + Math.random() * 0.04,
+    lng: 77.1 + Math.random() * 0.06,
+  };
+}
+
+/** A point `metres` east of `spot` (good enough at these distances). */
+export function eastOf(
+  spot: { lat: number; lng: number },
+  metres: number,
+): { lat: number; lng: number } {
+  const perDegree = 111_320 * Math.cos((spot.lat * Math.PI) / 180);
+  return { lat: spot.lat, lng: spot.lng + metres / perDegree };
+}
+
+/**
+ * Openly licensed photos of real potholes (see fixtures/README.md), for
+ * the tests that run the real vision model.
+ */
+export const POTHOLE_PHOTO = new URL(
+  "../fixtures/pothole-villeray.jpg",
+  import.meta.url,
+);
+export const OTHER_POTHOLE_PHOTO = new URL(
+  "../fixtures/pothole-monaghan.jpg",
+  import.meta.url,
+);
+
+/** Staff accounts made for this run by global setup (see staff.ts). */
+export const STAFF_PATH = new URL("../.generated/staff.json", import.meta.url);
+
+/**
+ * How to reach the compose stack from the repo root, for the test that
+ * stops the AI worker. Point it at another project or env file when the
+ * stack runs under a different name.
+ */
+export const COMPOSE =
+  process.env.E2E_COMPOSE ?? "docker compose -f infra/docker-compose.yml";

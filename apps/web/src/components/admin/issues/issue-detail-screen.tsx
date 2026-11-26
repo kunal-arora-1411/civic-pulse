@@ -6,6 +6,8 @@ import {
   ArrowRightLeft,
   Combine,
   MapPin,
+  MessageSquarePlus,
+  RotateCcw,
   Split,
   Tags,
   UserRound,
@@ -39,6 +41,14 @@ import { useSession } from "@/lib/auth/use-session";
 import { processingRefetchInterval } from "@/lib/media/processing";
 import { IssueTimeline } from "./issue-timeline";
 import { MatchInfo } from "./match-info";
+import { OperationsCard } from "./operations-card";
+import {
+  ApproveClosureDialog,
+  AssignDialog,
+  NoteDialog,
+  RejectClosureDialog,
+  ReopenDialog,
+} from "./operations-dialogs";
 import { PriorityDialog, SeverityDialog } from "./override-dialogs";
 import { PriorityCard } from "./priority-card";
 import { RelatedIssues } from "./related-issues";
@@ -126,7 +136,17 @@ function Body({
   const can = (permission: string) => hasPermission(user, permission);
   const [changing, setChanging] = useState(false);
   const [dialog, setDialog] = useState<
-    "priority" | "severity" | "category" | "merge" | "split" | null
+    | "priority"
+    | "severity"
+    | "category"
+    | "merge"
+    | "split"
+    | "assign"
+    | "approve"
+    | "rejectClosure"
+    | "note"
+    | "reopen"
+    | null
   >(null);
   const closeDialog = (open: boolean) => {
     if (!open) setDialog(null);
@@ -173,6 +193,19 @@ function Body({
               {t("actions.split")}
             </Button>
           ) : null}
+          {can("issue:update") ? (
+            <Button variant="outline" onClick={() => setDialog("note")}>
+              <MessageSquarePlus aria-hidden="true" />
+              {t("actions.note")}
+            </Button>
+          ) : null}
+          {can("issue:update") &&
+          (issue.status === "resolved" || issue.status === "closed") ? (
+            <Button variant="outline" onClick={() => setDialog("reopen")}>
+              <RotateCcw aria-hidden="true" />
+              {t("actions.reopen")}
+            </Button>
+          ) : null}
           {issue.allowed_transitions.length > 0 ? (
             <Button variant="ink" onClick={() => setChanging(true)}>
               <ArrowRightLeft aria-hidden="true" />
@@ -216,6 +249,14 @@ function Body({
         </div>
 
         <div className="grid content-start gap-6">
+          <OperationsCard
+            issue={issue}
+            canAssign={can("issue:assign")}
+            canApprove={can("issue:approve_closure")}
+            onAssign={() => setDialog("assign")}
+            onApprove={() => setDialog("approve")}
+            onReject={() => setDialog("rejectClosure")}
+          />
           <PriorityCard
             issue={issue}
             canSetPriority={can("issue:set_priority")}
@@ -324,6 +365,36 @@ function Body({
       <SplitDialog
         issue={issue}
         open={dialog === "split"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <AssignDialog
+        issue={issue}
+        open={dialog === "assign"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <ApproveClosureDialog
+        issue={issue}
+        open={dialog === "approve"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <RejectClosureDialog
+        issue={issue}
+        open={dialog === "rejectClosure"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <NoteDialog
+        issue={issue}
+        open={dialog === "note"}
+        onOpenChange={closeDialog}
+        onReload={onReload}
+      />
+      <ReopenDialog
+        issue={issue}
+        open={dialog === "reopen"}
         onOpenChange={closeDialog}
         onReload={onReload}
       />

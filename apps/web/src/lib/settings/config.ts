@@ -1,4 +1,5 @@
 import type {
+  ClosureConfig,
   MatchingConfig,
   ModelRegistry,
   PriorityBand,
@@ -314,4 +315,53 @@ export function computePriority(
           ? "medium"
           : "low";
   return { score, band, factors };
+}
+
+// ------------------------------------------------------------- closure
+
+/** Phase 3 §6: the API's defaults and limits. */
+export const DEFAULT_CLOSURE_CONFIG: ClosureConfig = {
+  resolution_window_hours: 168,
+  confirmations_required: 2,
+};
+export const CLOSURE_WINDOW_MAX_HOURS = 2160;
+export const CLOSURE_CONFIRMATIONS_MAX = 10;
+
+function checkWhole(
+  values: FormValues,
+  errors: FormErrors,
+  path: string,
+  max: number,
+  rangeKey: string,
+) {
+  const value = num(values, path);
+  if (!Number.isFinite(value)) errors[path] = "number";
+  else if (!Number.isInteger(value)) errors[path] = "integer";
+  else if (value < 1 || value > max) errors[path] = rangeKey;
+}
+
+export function validateClosure(values: FormValues): FormErrors {
+  const errors: FormErrors = {};
+  checkWhole(
+    values,
+    errors,
+    "resolution_window_hours",
+    CLOSURE_WINDOW_MAX_HOURS,
+    "hoursRange",
+  );
+  checkWhole(
+    values,
+    errors,
+    "confirmations_required",
+    CLOSURE_CONFIRMATIONS_MAX,
+    "confirmationsRange",
+  );
+  return errors;
+}
+
+export function fromClosureForm(values: FormValues): ClosureConfig {
+  return {
+    resolution_window_hours: num(values, "resolution_window_hours"),
+    confirmations_required: num(values, "confirmations_required"),
+  };
 }
