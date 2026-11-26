@@ -7,7 +7,8 @@
 # The ai-worker becomes a second container of the API image with
 # AI_PROVIDER=fake (apps/api/app/ai/fake.py): no weights to build or
 # download, and embeddings, classification, matching and the face check all
-# still run, deterministically. It is what CI's main e2e job uses; the
+# still run, deterministically. Handy for quick local work; CI runs the
+# real worker (docs/adr/0005-ci-real-model-image-cache.md), and the e2e
 # tests that need the real model notice the fake one and skip.
 #
 # Start from a fresh database (`down -v`) when switching between the two:
