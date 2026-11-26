@@ -301,12 +301,11 @@ services:
   # signature database are large: `docker compose --profile scan up -d
   # clamav`, then set CLAMAV_HOST=clamav for the api. With CLAMAV_HOST set
   # and clamd down, upload completion answers 503 instead of skipping the
-  # scan. StreamMaxLength must cover MEDIA_MAX_BYTES (10 MB by default).
+  # scan. clamd's StreamMaxLength must cover MEDIA_MAX_BYTES (10 MB by
+  # default); a larger stream is reported as a scanner error, not a pass.
   clamav:
     image: clamav/clamav:1.4
     profiles: ["scan"]
-    environment:
-      CLAMD_CONF_StreamMaxLength: 25M
     ports:
       - "3310:3310"
     healthcheck:
