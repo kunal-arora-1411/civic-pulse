@@ -141,9 +141,12 @@ export function PhotosStep({
   onAdd,
   onRemove,
   onRetry,
+  hint,
 }: {
   photos: LivePhoto[];
   limits: PhotoLimits;
+  /** Replaces the citizen-facing hint, e.g. in the field app. */
+  hint?: string;
   /** Shown once the citizen has tried to continue. */
   issue: PhotoIssue | null;
   onAdd: (files: File[]) => void;
@@ -183,7 +186,9 @@ export function PhotosStep({
 
   return (
     <div className="grid gap-5">
-      <p className="text-muted-foreground">{t("hint", { max: limits.max })}</p>
+      <p className="text-muted-foreground">
+        {hint ?? t("hint", { max: limits.max })}
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <input

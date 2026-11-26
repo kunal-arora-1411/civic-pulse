@@ -44,11 +44,128 @@
   "field": {
     "badge": "Field",
     "title": "My work orders",
-    "subtitle": "Jobs assigned to you will appear here.",
+    "subtitle": "Jobs assigned to you. New ones are at the top.",
     "emptyTitle": "No work orders yet",
     "emptyBody": "When a supervisor assigns you a job, you'll see the location, details and photos here.",
     "offlineTitle": "Working without signal",
-    "offlineBody": "Offline updates will be supported in a later release. For now, keep this page open on a connection."
+    "offlineBody": "Offline updates will be supported in a later release. For now, keep this page open on a connection.",
+    "list": {
+      "tabsLabel": "Show work orders",
+      "tabs": {
+        "active": "Active",
+        "done": "Done"
+      },
+      "loading": "Loading your work orders…",
+      "error": "Couldn't load your work orders",
+      "retry": "Try again",
+      "noneDone": "No finished jobs yet",
+      "noAddress": "No address; use the map pin",
+      "assignedAt": "Assigned {when}"
+    },
+    "detail": {
+      "metaTitle": "Work order",
+      "back": "My work orders",
+      "loadError": "Couldn't load this work order",
+      "retry": "Try again",
+      "notFoundTitle": "Work order not found",
+      "notFoundBody": "It may have been reassigned to someone else.",
+      "accept": "Accept job",
+      "decline": "Decline",
+      "start": "Start work",
+      "addUpdate": "Add update",
+      "requestClosure": "Mark as fixed",
+      "accepted": "Job accepted",
+      "started": "Work started",
+      "ended": {
+        "completion_requested": {
+          "title": "Waiting for approval",
+          "body": "You've marked this as fixed. A supervisor or the citizens who reported it will confirm."
+        },
+        "done": {
+          "title": "Job closed",
+          "body": "The fix was approved. Nothing more to do here."
+        },
+        "declined": {
+          "title": "You declined this job",
+          "body": "A supervisor will assign it to someone else."
+        },
+        "cancelled": {
+          "title": "Job reassigned",
+          "body": "This job was given to someone else. You don't need to do anything."
+        }
+      },
+      "conflictTitle": "This job changed while you had it open",
+      "conflictBody": "It's now “{state}”. Check the details below before you carry on.",
+      "location": "Location",
+      "mapLabel": "Map showing where {reference} is",
+      "noAddress": "No address; use the map pin",
+      "directions": "Get directions",
+      "opensInNewTab": "(opens your maps app)",
+      "whatWasReported": "What was reported",
+      "noDescription": "The reporters didn't add a description.",
+      "photosOf": "Reported photos of {reference}",
+      "evidence": "Your photos",
+      "noEvidence": "No photos yet. Add before and after photos with an update.",
+      "before": "Before",
+      "after": "After",
+      "beforeOf": "Before photos of {reference}",
+      "afterOf": "After photos of {reference}",
+      "updates": "Updates",
+      "noUpdates": "No updates yet.",
+      "withLocation": "with location",
+      "photosOnly": "Photos added"
+    },
+    "decline": {
+      "title": "Decline {reference}",
+      "description": "The job goes back to your supervisor to reassign.",
+      "close": "Close",
+      "cancel": "Keep the job",
+      "submit": "Decline job",
+      "done": "Job declined",
+      "reason": "Why are you declining?",
+      "reasonHelp": "Your supervisor sees this.",
+      "reasonRequired": "Tell your supervisor why."
+    },
+    "progress": {
+      "title": "Update on {reference}",
+      "description": "Add a note, photos or both. Your supervisor sees updates; citizens don't.",
+      "close": "Close",
+      "cancel": "Cancel",
+      "submit": "Post update",
+      "waitingForPhotos": "Uploading photos…",
+      "done": "Update posted",
+      "note": "Note",
+      "noteHelp": "What you found or did.",
+      "phaseLegend": "These photos are from",
+      "phase": {
+        "before": "Before the work",
+        "after": "After the work"
+      },
+      "photosHint": "Optional. Up to {max} photos.",
+      "shareLocation": "Attach my current location",
+      "locationFailed": "Couldn't get your location. The update was sent without it.",
+      "empty": "Add a note or at least one photo."
+    },
+    "closure": {
+      "title": "Mark {reference} as fixed",
+      "description": "Add a photo of the finished work. A supervisor or the reporters confirm before it's resolved.",
+      "close": "Close",
+      "cancel": "Cancel",
+      "submit": "Send for approval",
+      "waitingForPhotos": "Uploading photos…",
+      "done": "Sent for approval",
+      "hasAfter": "You've already added an after photo, so another one is optional.",
+      "photosHint": "After photos. Up to {max}.",
+      "photoRequired": "Add at least one photo of the finished work.",
+      "reasonLegend": "No photo? Choose a reason",
+      "reasonHelp": "This category can be closed without a photo for these reasons only.",
+      "note": "Note",
+      "noteHelp": "Optional. What was done.",
+      "reasonCodes": {
+        "no_issue_found": "No problem found on site",
+        "handled_by_other_agency": "Handled by another agency"
+      }
+    }
   },
   "notFound": {
     "title": "We couldn't find that page",
@@ -122,7 +239,11 @@
       "priority": "Priority rules",
       "ai": "AI models",
       "sla": "SLA targets",
-      "announcements": "Announcements"
+      "announcements": "Announcements",
+      "workload": "Workload",
+      "teams": "Teams",
+      "closure": "Closure rules",
+      "moderation": "Moderation"
     },
     "overview": {
       "title": "Welcome back",
@@ -309,6 +430,39 @@
         "severity": "Severity",
         "allSeverities": "All severities",
         "overdueOnly": "Overdue only"
+      },
+      "bulk": {
+        "barLabel": "Bulk actions",
+        "selected": "{count, plural, one {# issue selected} other {# issues selected}}",
+        "selectPage": "Select every issue on this page",
+        "selectOne": "Select {reference}",
+        "changeStatus": "Change status",
+        "assign": "Assign",
+        "clear": "Clear selection",
+        "statusTitle": "Change the status of {count, plural, one {# issue} other {# issues}}",
+        "assignTitle": "Assign {count, plural, one {# issue} other {# issues}}",
+        "close": "Close",
+        "cancel": "Cancel",
+        "next": "Review",
+        "back": "Back",
+        "done": "Done",
+        "status": "New status",
+        "chooseStatusOption": "Choose a status",
+        "chooseStatus": "Choose a status.",
+        "team": "Team",
+        "chooseTeamOption": "Choose a team",
+        "chooseTeam": "Choose a team.",
+        "assignee": "Person (optional)",
+        "teamOnly": "Team only, no one picked yet",
+        "reason": "Reason",
+        "reasonHelp": "Staff only. Needed where the change needs one, such as rejecting or reassigning.",
+        "confirm": "Apply to {count, plural, one {# issue} other {# issues}}",
+        "confirmStatus": "Move {count, plural, one {# issue} other {# issues}} to “{target}”?",
+        "confirmAssign": "Assign {count, plural, one {# issue} other {# issues}} to {target}?",
+        "confirmHelp": "Each issue is checked on its own. Any that can't change, or that someone changed since you loaded the list, are left as they are and listed afterwards.",
+        "summary": "{succeeded} changed, {failed} not changed.",
+        "resultsLabel": "Result for each issue",
+        "itemDone": "Done"
       }
     },
     "settings": {
@@ -333,7 +487,8 @@
         "pointsIncreasing": "Must be at least as high as the level below.",
         "bandsDescending": "Must be lower than the band above.",
         "hoursRange": "Enter whole hours from 1 to {max}.",
-        "escalateRequired": "Enter when to escalate: this category has a target."
+        "escalateRequired": "Enter when to escalate: this category has a target.",
+        "confirmationsRange": "Enter a whole number from 1 to {max}."
       },
       "matching": {
         "title": "Matching",
@@ -431,6 +586,17 @@
         "escalationTitle": "Escalation",
         "escalationStep1": "When an issue passes its target, the supervisors of the category's department (and supervisors without a department) are notified and the breach is recorded on the issue.",
         "escalationStep2": "If it is still open after the Escalate after hours, the municipal admins are notified."
+      },
+      "closure": {
+        "title": "Closure rules",
+        "description": "What happens after a fix is approved or confirmed.",
+        "saved": "Closure rules saved",
+        "sectionTitle": "Resolution and confirmation",
+        "window": "Resolution window",
+        "windowHelp": "A resolved issue closes on its own after this long. Until then, reporters can say it's still broken and reopen it.",
+        "hours": "hours",
+        "confirmations": "Confirmations needed",
+        "confirmationsHelp": "For categories that don't need a supervisor's approval: how many different reporters must confirm the fix before the issue is resolved."
       }
     },
     "ai": {
@@ -616,7 +782,26 @@
           "related_added": "Related issue linked",
           "related_removed": "Related issue unlinked",
           "sla_breached": "SLA breached: supervisors alerted",
-          "sla_escalated": "SLA breach escalated to municipal admins"
+          "sla_escalated": "SLA breach escalated to municipal admins",
+          "assigned": "Assigned",
+          "reassigned": "Reassigned",
+          "work_order_accepted": "Field worker accepted the job",
+          "work_order_declined": "Field worker declined the job",
+          "work_started": "Work started",
+          "progress": "Progress update",
+          "closure_requested": "Marked as fixed: awaiting approval",
+          "closure_approved": "Fix approved",
+          "closure_rejected": "Fix sent back",
+          "verification": "Citizen verification",
+          "reopened": "Reopened",
+          "closed": "Closed after the resolution window",
+          "report_withdrawn": "A report was withdrawn"
+        },
+        "assignedTo": "{team} · {assignee}",
+        "assignedToTeam": "{team} (no one picked yet)",
+        "verificationOutcome": {
+          "resolved": "A reporter confirmed it's fixed",
+          "unresolved": "A reporter said it's still broken"
         }
       },
       "match": {
@@ -652,7 +837,9 @@
       "actions": {
         "category": "Change category",
         "merge": "Merge into this",
-        "split": "Split"
+        "split": "Split",
+        "note": "Add note",
+        "reopen": "Reopen"
       },
       "picker": {
         "help": "Search by reference (like CP-26-000123) or address.",
@@ -786,7 +973,91 @@
       },
       "slaDue": "SLA due",
       "slaEscalatedSupervisors": "Breached: supervisors alerted",
-      "slaEscalatedAdmins": "Breached: escalated to municipal admins"
+      "slaEscalatedAdmins": "Breached: escalated to municipal admins",
+      "operations": {
+        "assignment": "Assignment",
+        "team": "Team",
+        "assignee": "Assignee",
+        "teamOnly": "Team only, no one picked yet",
+        "workOrder": "Work order",
+        "assignedAt": "Assigned",
+        "note": "Note",
+        "unassigned": "Not assigned yet.",
+        "assign": "Assign",
+        "reassign": "Reassign",
+        "closureRequest": "Fix awaiting approval",
+        "requestedBy": "{name} marked this as fixed on {when}.",
+        "someone": "A field worker",
+        "afterPhotosOf": "After photos for {reference}",
+        "noPhoto": "No after photo.",
+        "reasonCode": "Closed without a photo: {code}",
+        "needsApproval": "This category needs a supervisor's approval.",
+        "citizensConfirm": "Reporters can confirm the fix for this category.",
+        "answers": "Confirmed: {confirmations}. Still broken: {unresolved}.",
+        "approve": "Approve fix",
+        "reject": "Send back",
+        "sceneMatch": "The after photos look {percent}% like the reported photos.",
+        "sceneMatchPending": "The photos haven't been compared yet.",
+        "sceneMatchAdvice": "A repaired spot can look different, so check the photos yourself."
+      },
+      "assignDialog": {
+        "title": "Assign {reference}",
+        "reassignTitle": "Reassign {reference}",
+        "description": "Only teams that handle this category and cover its ward are shown.",
+        "currently": "Now with {team}: {assignee}.",
+        "submit": "Assign",
+        "reassign": "Reassign",
+        "loadingTeams": "Loading teams…",
+        "noTeamsTitle": "No team can take this issue",
+        "noTeamsBody": "No active team handles this category in this ward. An admin can set one up under Teams.",
+        "team": "Team",
+        "chooseTeam": "Choose a team.",
+        "assignee": "Person",
+        "assigneeHelp": "They get a work order in the field app. Leave it to the team to pick later.",
+        "teamOnly": "Team only, no one picked yet",
+        "unnamed": "Unnamed member",
+        "lead": "lead",
+        "note": "Note for the team (optional)",
+        "noteHelp": "Staff only.",
+        "reasonRequired": "Reassigning needs a reason.",
+        "assigned": "{reference} assigned to {name}"
+      },
+      "approveDialog": {
+        "title": "Approve the fix for {reference}",
+        "description": "The issue becomes resolved and the reporters are asked to confirm.",
+        "submit": "Approve fix",
+        "publicNote": "Note for the citizens (optional)",
+        "publicNoteHelp": "Shown on the public timeline.",
+        "approved": "Fix for {reference} approved"
+      },
+      "rejectClosureDialog": {
+        "title": "Send {reference} back",
+        "description": "The work goes back to the field worker as in progress.",
+        "submit": "Send back",
+        "reasonHelp": "The field worker and staff see this; citizens don't.",
+        "reasonRequired": "Say what still needs doing.",
+        "rejected": "{reference} sent back to the field worker"
+      },
+      "noteDialog": {
+        "title": "Add a note to {reference}",
+        "submit": "Add note",
+        "body": "Note",
+        "bodyRequired": "Write the note.",
+        "visibility": "Who sees it",
+        "internal": "Staff only",
+        "internalHint": "Never shown to citizens",
+        "public": "Everyone",
+        "publicHint": "Shown on the citizen timeline",
+        "chooseVisibility": "Choose who sees the note.",
+        "added": "Note added"
+      },
+      "reopenDialog": {
+        "title": "Reopen {reference}",
+        "description": "It goes back to the assignment queue.",
+        "submit": "Reopen",
+        "reasonRequired": "Reopening needs a reason.",
+        "reopened": "{reference} reopened"
+      }
     },
     "map": {
       "title": "Issue map",
@@ -1173,6 +1444,93 @@
         "timeRequired": "Enter a date and time.",
         "endBeforeStart": "The end must be after the start."
       }
+    },
+    "workload": {
+      "title": "Workload",
+      "description": "Open work orders per team and person, so you can see who has room before assigning.",
+      "loadError": "Couldn't load the workload",
+      "retry": "Try again",
+      "empty": "No teams in your area yet.",
+      "summary": "{open} open · {pending} waiting to be accepted · {inProgress} in progress",
+      "overdue": "{count} overdue",
+      "membersOf": "Members of {team}",
+      "member": "Person",
+      "open": "Open",
+      "inProgress": "In progress",
+      "noMembers": "This team has no members.",
+      "unnamed": "Unnamed member"
+    },
+    "teams": {
+      "title": "Teams",
+      "description": "The crews issues are assigned to: who's in them, the area they cover and the categories they handle.",
+      "new": "New team",
+      "loadError": "Couldn't load the teams",
+      "empty": "No teams yet.",
+      "name": "Name",
+      "department": "Department",
+      "members": "Members",
+      "status": "Status",
+      "actions": "Actions",
+      "active": "Active",
+      "inactive": "Inactive",
+      "leadShort": "lead",
+      "edit": "Edit {name}",
+      "dialog": {
+        "createTitle": "New team",
+        "editTitle": "Edit {name}",
+        "description": "A team only receives issues in categories it handles and wards its area covers.",
+        "close": "Close",
+        "cancel": "Cancel",
+        "create": "Create team",
+        "save": "Save team",
+        "created": "Team {name} created",
+        "updated": "Team {name} saved",
+        "name": "Name",
+        "nameRequired": "Give the team a name.",
+        "department": "Department",
+        "chooseDepartment": "Choose a department",
+        "departmentRequired": "Choose a department.",
+        "members": "Members",
+        "noMembers": "No members",
+        "selected": "{count} selected",
+        "lead": "Team lead",
+        "noLead": "No lead",
+        "area": "Service area",
+        "noArea": "No area: covers nothing",
+        "categories": "Categories handled",
+        "noCategories": "No categories",
+        "active": "Active: can be assigned new work"
+      }
+    },
+    "moderation": {
+      "title": "Moderation",
+      "description": "Citizens' comments on issues. Nothing is public until you approve it; flagged comments come back here first.",
+      "tabsLabel": "Show comments",
+      "tabs": {
+        "pending": "To review",
+        "rejected": "Removed",
+        "approved": "Published"
+      },
+      "empty": {
+        "pending": "Nothing to review.",
+        "rejected": "No removed comments.",
+        "approved": "No published comments."
+      },
+      "loadError": "Couldn't load the moderation queue",
+      "unnamed": "Unnamed citizen",
+      "flags": "{count, plural, one {# flag} other {# flags}}",
+      "reasonShown": "Removed: {reason}",
+      "approve": "Publish",
+      "reject": "Remove",
+      "approved": "Comment published",
+      "rejected": "Comment removed",
+      "rejectTitle": "Remove this comment",
+      "rejectDescription": "Its author sees the reason. Everyone else stops seeing the comment.",
+      "reason": "Reason",
+      "reasonHelp": "Shown to the person who wrote it, and kept in the audit log.",
+      "reasonRequired": "Say why it's removed.",
+      "close": "Close",
+      "cancel": "Cancel"
     }
   },
   "profile": {
@@ -1246,7 +1604,14 @@
     "invalid_transition": "That status change isn't allowed from the current status.",
     "reason_required": "This change needs a reason.",
     "invalid_merge": "These issues can't be merged. One of them may already have been merged.",
-    "cannot_empty_issue": "At least one report has to stay on the issue."
+    "cannot_empty_issue": "At least one report has to stay on the issue.",
+    "invalid_work_order_action": "That step doesn't fit where this job is now. The page shows its current state.",
+    "not_assignable": "This issue can't be assigned in its current status.",
+    "team_not_eligible": "That team can't take this issue: it's inactive, doesn't handle the category, or doesn't cover the ward.",
+    "assignee_not_in_team": "That person isn't a member of the chosen team.",
+    "not_eligible": "Only people who reported this issue can do that.",
+    "already_verified": "You've already answered for this fix.",
+    "team_has_open_work": "This team still has open work orders. Reassign them before deactivating it."
   },
   "priorityFactors": {
     "severity": "Severity is {level}",
@@ -1549,6 +1914,17 @@
       "placedTitle": "Tracked as issue {reference}",
       "badgeChecking": "Checking for similar reports",
       "badgeReview": "Being checked by staff"
+    },
+    "withdraw": {
+      "button": "Withdraw my report",
+      "title": "Withdraw {reference}?",
+      "description": "Your report stays on record but no longer counts towards the issue. Other people's reports aren't affected.",
+      "close": "Close",
+      "cancel": "Keep my report",
+      "submit": "Withdraw",
+      "done": "Report withdrawn",
+      "withdrawn": "You withdrew this report. It no longer counts towards the issue.",
+      "refused": "This report can't be withdrawn now: the issue is already fixed, or it's still being matched."
     }
   },
   "landing": {
@@ -1863,6 +2239,25 @@
       "done": "Issue reopened",
       "not_eligible": "Only people who reported this issue can reopen it.",
       "invalid_transition": "This issue can't be reopened right now. Reload to see where it is."
+    },
+    "comments": {
+      "title": "Comments",
+      "none": "No comments yet.",
+      "you": "You",
+      "resident": "A resident",
+      "state": {
+        "pending": "Waiting for review",
+        "rejected": "Removed",
+        "approved": "Published"
+      },
+      "rejectedBecause": "Removed by a moderator: {reason}",
+      "flag": "Report",
+      "flagged": "You reported this",
+      "add": "Add a comment",
+      "addHelp": "A moderator checks comments before others see them. Don't include phone numbers or other personal details.",
+      "required": "Write your comment.",
+      "submit": "Send comment",
+      "sent": "Thanks. Your comment will appear once a moderator has checked it."
     }
   },
   "track": {
@@ -1963,5 +2358,14 @@
     "planned_works": "Planned works",
     "outage": "Service outage",
     "advisory": "Advisory"
+  },
+  "workOrderState": {
+    "pending_acceptance": "New",
+    "accepted": "Accepted",
+    "in_progress": "In progress",
+    "completion_requested": "Awaiting approval",
+    "done": "Done",
+    "declined": "Declined",
+    "cancelled": "Cancelled"
   }
 }

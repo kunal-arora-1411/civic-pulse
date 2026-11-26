@@ -49,6 +49,8 @@ describe("visibleNavItems", () => {
       "matching",
       "priority",
       "sla",
+      "closure",
+      "teams",
       "ai",
       "users",
       "audit",
@@ -88,6 +90,23 @@ describe("visibleNavItems", () => {
     );
   });
 
+  it("shows workload only to staff who can assign", () => {
+    const supervisor = makeUser({
+      is_staff: true,
+      roles: [
+        { role: "supervisor", department_id: "roads", jurisdiction_id: null },
+      ],
+      permissions: ["issue:assign"],
+    });
+    expect(visibleNavItems(supervisor).map((item) => item.key)).toEqual([
+      "overview",
+      "workload",
+    ]);
+    expect(visibleNavItems(operator).map((item) => item.key)).not.toContain(
+      "workload",
+    );
+  });
+
   it("filters each entry by its own permission", () => {
     expect(visibleNavItems(auditor).map((item) => item.key)).toEqual([
       "overview",
@@ -111,6 +130,8 @@ describe("AdminNav", () => {
       "Matching",
       "Priority rules",
       "SLA targets",
+      "Closure rules",
+      "Teams",
       "AI models",
       "Users",
       "Audit log",

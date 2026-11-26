@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { use } from "react";
+import { IssueComments } from "@/components/community/issue-comments";
 import { SupportButton } from "@/components/community/support-button";
 import {
   ReopenButton,
@@ -35,6 +36,7 @@ import {
   soonest,
 } from "@/lib/report/matching";
 import { MatchingBadge, MatchingStatus } from "./matching-status";
+import { WithdrawReport } from "./withdraw-report";
 
 /** Issues nobody can support any more (the API refuses with 422). */
 const CLOSED = new Set<IssueStatus>(["closed", "rejected"]);
@@ -182,6 +184,9 @@ function Body({ report }: { report: Report }) {
               )}
             </p>
           </Card>
+          {report.issue && report.status !== "withdrawn" ? (
+            <IssueComments issueId={report.issue.id} />
+          ) : null}
         </div>
 
         <Card className="grid content-start gap-4 self-start p-5 lg:sticky lg:top-24">
@@ -210,6 +215,7 @@ function Body({ report }: { report: Report }) {
               <PublicTimeline events={report.issue.timeline} />
             </>
           ) : null}
+          <WithdrawReport report={report} />
         </Card>
       </div>
     </div>

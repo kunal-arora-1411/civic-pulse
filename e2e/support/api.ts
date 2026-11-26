@@ -136,9 +136,13 @@ export class Api {
       data: { phone },
     });
     // The per-phone resend cooldown (30 s) can still be running when a
-    // seeded account signs in again straight after a previous run. Wait
-    // exactly as long as the API says, once.
-    if (challenge.status() === 429) {
+    // seeded account signed in moments ago, here or in a parallel test.
+    // Wait exactly as long as the API says, a few times at most.
+    for (
+      let attempt = 0;
+      attempt < 3 && challenge.status() === 429;
+      attempt++
+    ) {
       const body = (await challenge.json()) as ApiErrorBody;
       const wait = Number(body.error.details.retry_after ?? 0);
       if (body.error.code !== "rate_limited" || wait > 35) {
@@ -392,7 +396,7 @@ export class Api {
   /** Municipal admin: a new staff account in the tenant. */
   async createStaff(
     session: Session,
-    role: "operator" | "municipal_admin",
+    role: "operator" | "municipal_admin" | "supervisor" | "field_worker",
     displayName: string,
   ): Promise<string> {
     const phone = freshCitizenPhone().replace(/^\+9198/, "+9197");
@@ -420,10 +424,24 @@ export class Api {
     };
   }
 
+  /** A JSON call that must succeed, for arranging staff-side steps. */
+  async send<T>(
+    session: Session,
+    method: "GET" | "POST" | "PATCH",
+    path: string,
+    data?: unknown,
+  ): Promise<T> {
+    const response = await expectOk(
+      await this.raw(session, method, path, data),
+      `${method} ${path}`,
+    );
+    return (await response.json()) as T;
+  }
+
   /** A raw call, for asserting on refusals. */
   raw(
     session: Session,
-    method: "GET" | "PATCH",
+    method: "GET" | "POST" | "PATCH",
     path: string,
     data?: unknown,
   ): Promise<APIResponse> {

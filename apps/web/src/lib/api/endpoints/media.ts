@@ -9,11 +9,18 @@ import {
 } from "../schemas-phase1";
 
 export type CreateUploadBody = {
-  purpose: "report_evidence";
   content_type: UploadContentType;
   size_bytes: number;
   checksum_sha256: string;
-};
+} & UploadPurpose;
+
+/**
+ * Report photos, or a field worker's evidence (Phase 3 §3), which must
+ * say whether it was taken before or after the work.
+ */
+export type UploadPurpose =
+  | { purpose: "report_evidence" }
+  | { purpose: "work_evidence"; phase: "before" | "after" };
 
 /**
  * Step 1 of an upload: ask for a pre-signed URL. The bytes then go straight

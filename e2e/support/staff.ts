@@ -20,6 +20,11 @@ export const STAFF_ROLES = {
   loadOperator: "operator",
   aiDownOperator: "operator",
   a11yOperator: "operator",
+  // operations.spec.ts: its own team, supervisor and field workers.
+  opsAdmin: "municipal_admin",
+  opsSupervisor: "supervisor",
+  opsFieldWorker: "field_worker",
+  opsOtherWorker: "field_worker",
 } as const;
 
 export type StaffKey = keyof typeof STAFF_ROLES;

@@ -1,6 +1,8 @@
 import {
+  AssignmentOut,
   CategoryOut,
   CategoryRef,
+  ClosureRequestOut,
   FieldOption,
   CategoryField as GenCategoryField,
   IssueStatus as GenIssueStatus,
@@ -332,6 +334,8 @@ export const issueTimelineEventSchema = z.object({
   actor: z
     .object({ id: z.string(), display_name: z.string().nullable() })
     .nullish(),
+  /** Staff-only details, e.g. the team on `assigned`, the note on `progress`. */
+  data: z.record(z.string(), z.unknown()).nullish(),
 });
 export type IssueTimelineEvent = z.infer<typeof issueTimelineEventSchema>;
 
@@ -353,6 +357,23 @@ export const relatedIssueSchema = z.object({
 });
 export type RelatedIssue = z.infer<typeof relatedIssueSchema>;
 
+/** Phase 3 §2: the open assignment on an issue. */
+export const assignmentSchema = AssignmentOut;
+export type Assignment = z.infer<typeof assignmentSchema>;
+
+/** Phase 3 §5. Adapter: after photos use the lenient media shape. */
+export const closureRequestSchema = ClosureRequestOut.extend({
+  after_photos: z.array(mediaSchema).default([]),
+});
+export type ClosureRequest = z.infer<typeof closureRequestSchema>;
+
+/** Phase 3: the open assignment and the pending closure request. */
+export const operationsSchema = z.object({
+  assignment: assignmentSchema.nullish(),
+  closure_request: closureRequestSchema.nullish(),
+});
+export type Operations = z.infer<typeof operationsSchema>;
+
 export const issueDetailSchema = issueListItemSchema.extend({
   reports: z.array(staffReportSchema).default([]),
   timeline: z.array(issueTimelineEventSchema).default([]),
@@ -361,6 +382,8 @@ export const issueDetailSchema = issueListItemSchema.extend({
   breached_at: z.string().nullish(),
   /** 0: none; 1: supervisors told; 2: municipal admins told. */
   escalation_level: z.number().default(0),
+  /** Absent from responses before Phase 3. */
+  operations: operationsSchema.nullish(),
 });
 export type IssueDetail = z.infer<typeof issueDetailSchema>;
 
