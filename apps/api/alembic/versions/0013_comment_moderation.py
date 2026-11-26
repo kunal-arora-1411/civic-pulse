@@ -6,10 +6,10 @@ comment back to the moderation queue. Both tables are tenant-scoped with
 forced row-level security.
 
 Numbered 0013 by agreement with the other Phase work in flight; it follows
-the current head, 0014.
+the head on main when it was written, 0015.
 
 Revision ID: 0013
-Revises: 0014
+Revises: 0015
 Create Date: 2026-11-26
 """
 
@@ -23,7 +23,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0013"
-down_revision: str | None = "0014"
+down_revision: str | None = "0015"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

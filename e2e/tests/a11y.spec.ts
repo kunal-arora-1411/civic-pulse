@@ -75,3 +75,52 @@ test("the operator's console is accessible", async ({ page, context, api }) => {
   await page.waitForLoadState("networkidle");
   await expectAccessible(page, "admin-issues");
 });
+
+test("the moderation queue is accessible", async ({ page, context, api }) => {
+  await giveSession(context, await api.login(SEEDED.operator));
+  await page.goto("/admin/moderation");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await expectAccessible(page, "admin-moderation");
+});
+
+test("the field worker's queue is accessible", async ({
+  page,
+  context,
+  api,
+}) => {
+  await giveSession(context, await api.login(SEEDED.fieldWorker));
+  await page.goto("/field");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await expectAccessible(page, "field-queue");
+});
+
+test("the supervisor's workload page is accessible", async ({
+  page,
+  context,
+  api,
+}) => {
+  await giveSession(context, await api.login(SEEDED.supervisor));
+  await page.goto("/admin/workload");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await expectAccessible(page, "admin-workload");
+});
+
+test("the teams and closure rules pages are accessible", async ({
+  page,
+  context,
+  api,
+}) => {
+  await giveSession(context, await api.login(SEEDED.municipalAdmin));
+  for (const [name, path] of [
+    ["admin-teams", "/admin/teams"],
+    ["admin-closure", "/admin/settings/closure"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await expectAccessible(page, name);
+  }
+});
