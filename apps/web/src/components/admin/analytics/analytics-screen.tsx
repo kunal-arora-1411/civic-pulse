@@ -36,6 +36,7 @@ import {
   useWeekdayNames,
   WardRankingChart,
 } from "./charts";
+import { ExportButton } from "./export-button";
 import { KpiTiles } from "./kpi-tiles";
 import { useAnalyticsFilters } from "./use-analytics-filters";
 
@@ -215,7 +216,11 @@ export function AnalyticsScreen() {
 
   return (
     <div className="motion-safe:animate-rise">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={<ExportButton filters={filters} />}
+      />
       <AnalyticsFiltersBar filters={filters} onChange={setFilters} />
 
       <div className="grid gap-4">

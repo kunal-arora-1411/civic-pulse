@@ -9,9 +9,11 @@
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "biome check .",
     "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.mts",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@civicpulse/api-client": "workspace:*",
     "@hookform/resolvers": "^7.0.8",
     "@tanstack/react-query": "^5.108.4",
     "browser-image-compression": "2.0.2",

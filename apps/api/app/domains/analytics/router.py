@@ -6,10 +6,11 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from app.core.db import DbSession
 from app.core.errors import error_responses
+from app.domains.analytics import export as export_csv
 from app.domains.analytics import service
 from app.domains.analytics.schemas import (
     Activity,
@@ -118,3 +119,39 @@ async def hotspots(
 async def activity(db: DbSession, scope: ScopeDep) -> Activity:
     """Reports by IST weekday and hour."""
     return await service.activity(db, scope)
+
+
+@router.get(
+    "/export",
+    operation_id="analytics_export",
+    responses={
+        **RESPONSES,
+        200: {
+            "content": {"text/csv": {"schema": {"type": "string"}}},
+            "description": "The issues in the period as CSV.",
+        },
+    },
+    response_class=Response,
+)
+async def export_issues(
+    db: DbSession,
+    scope: ScopeDep,
+    principal: Annotated[Principal, require(Permission.ANALYTICS_READ)],
+) -> Response:
+    """Every issue in the period within the caller's scope, as CSV.
+
+    The same filters as the dashboards, so the file matches the figures. No
+    reporter identity, contact details, description or coordinate is
+    included, and the export is audited with its filters and row count.
+    Capped at 20,000 rows; `X-Export-Truncated` says whether it was.
+    """
+    result = await export_csv.issue_export(db, scope, principal)
+    return Response(
+        content=result.content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{result.filename}"',
+            "X-Export-Rows": str(result.rows),
+            "X-Export-Truncated": "true" if result.truncated else "false",
+        },
+    )

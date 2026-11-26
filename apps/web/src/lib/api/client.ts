@@ -81,8 +81,31 @@ export function buildHeaders(
   return headers;
 }
 
+/** A response kept as a file: the body plus the headers describing it. */
+export type FileResponse = {
+  blob: Blob;
+  /** From `Content-Disposition`, when the server names the file. */
+  filename: string | null;
+  headers: Headers;
+};
+
 /** Perform one HTTP exchange and decode it. No retries. */
 export async function send<T>(options: RequestOptions<T>): Promise<T> {
+  return decode(await perform(options), options.schema);
+}
+
+/** Perform one HTTP exchange and keep the body as a file. No retries. */
+async function sendFile(options: RequestOptions<never>): Promise<FileResponse> {
+  const response = await perform(options);
+  return {
+    blob: await response.blob(),
+    filename: filenameFrom(response.headers.get("Content-Disposition")),
+    headers: response.headers,
+  };
+}
+
+/** One HTTP exchange, keeping the Response so it can be decoded either way. */
+async function perform(options: RequestOptions<unknown>): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(buildUrl(options.path, options.query), {
@@ -105,7 +128,20 @@ export async function send<T>(options: RequestOptions<T>): Promise<T> {
   }
 
   if (!response.ok) throw await parseErrorResponse(response);
-  return decode(response, options.schema);
+  return response;
+}
+
+/** `attachment; filename="issues-….csv"` → `issues-….csv`. */
+function filenameFrom(header: string | null): string | null {
+  if (!header) return null;
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header);
+  if (!match) return null;
+  const name = match[1].trim();
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
 }
 
 async function decode<T>(
@@ -147,9 +183,31 @@ async function decode<T>(
 export async function apiRequest<T = void>(
   options: RequestOptions<T>,
 ): Promise<T> {
+  return withSessionRetry(options, () => send(options));
+}
+
+/**
+ * Fetch a file instead of JSON — the analytics CSV, for one. Same auth,
+ * tenant header and refresh-on-expiry behaviour as `apiRequest`, so a
+ * download never needs its own token handling.
+ */
+export async function apiDownload(
+  options: RequestOptions<never>,
+): Promise<FileResponse> {
+  return withSessionRetry(options, () => sendFile(options));
+}
+
+/**
+ * Run one attempt, and once more after a successful refresh if the access
+ * token had expired. A revoked session is dropped, so guards redirect.
+ */
+async function withSessionRetry<T>(
+  options: Pick<RequestOptions<unknown>, "auth">,
+  attempt: () => Promise<T>,
+): Promise<T> {
   const usedToken = options.auth === false ? null : session.getAccessToken();
   try {
-    return await send(options);
+    return await attempt();
   } catch (error) {
     if (!usedToken || !isApiError(error)) throw error;
 
@@ -157,9 +215,9 @@ export async function apiRequest<T = void>(
       const current = session.getAccessToken();
       // Another request may already have refreshed while this one was in
       // flight; if so, just retry with the newer token.
-      if (current && current !== usedToken) return send(options);
+      if (current && current !== usedToken) return attempt();
       const refreshed = await refreshSession().catch(() => null);
-      if (refreshed) return send(options);
+      if (refreshed) return attempt();
       throw error;
     }
 

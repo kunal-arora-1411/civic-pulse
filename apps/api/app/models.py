@@ -26,7 +26,7 @@ from app.domains.org.models import (
     TeamJurisdiction,
     TeamMember,
 )
-from app.domains.outbox.models import OutboxEvent
+from app.domains.outbox.models import OutboxDelivery, OutboxEvent
 from app.domains.places.models import PlaceOfInterest
 from app.domains.rbac.models import UserRole
 from app.domains.reports.models import Report
@@ -57,6 +57,7 @@ __all__ = [
     "ModelRegistryEntry",
     "Notification",
     "OtpChallenge",
+    "OutboxDelivery",
     "OutboxEvent",
     "PlaceOfInterest",
     "ReferenceCounter",

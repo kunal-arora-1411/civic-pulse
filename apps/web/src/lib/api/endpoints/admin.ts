@@ -1,4 +1,15 @@
-import { apiRequest } from "../client";
+import {
+  adminCreateUser,
+  adminGetUser,
+  adminListAuditEvents,
+  adminListDepartments,
+  adminListJurisdictions,
+  adminListUsers,
+  adminReplaceUserRoles,
+  adminUpdateUser,
+  type JurisdictionKind,
+} from "@civicpulse/api-client";
+import { call } from "../generated-client";
 import {
   type AdminUser,
   type AuditEvent,
@@ -45,7 +56,7 @@ export type AuditEventParams = ListParams & {
   action?: string;
   entity_type?: string;
   entity_id?: string;
-  /** ISO 8601 timestamps. */
+  /** ISO 8601 timestamps: `from` inclusive, `to` exclusive. */
   from?: string;
   to?: string;
 };
@@ -56,20 +67,11 @@ export function listUsers(
   params: UserListParams,
   signal?: AbortSignal,
 ): Promise<Paginated<AdminUser>> {
-  return apiRequest({
-    path: "/admin/users",
-    query: params,
-    schema: userPage,
-    signal,
-  });
+  return call(userPage, (o) => adminListUsers(params, o), { signal });
 }
 
 export function getUser(id: string, signal?: AbortSignal): Promise<AdminUser> {
-  return apiRequest({
-    path: `/admin/users/${encodeURIComponent(id)}`,
-    schema: adminUserSchema,
-    signal,
-  });
+  return call(adminUserSchema, (o) => adminGetUser(id, o), { signal });
 }
 
 /**
@@ -81,11 +83,7 @@ export function createUser(
   body: CreateUserBody,
   options: { idempotencyKey: string },
 ): Promise<AdminUser> {
-  return apiRequest({
-    method: "POST",
-    path: "/admin/users",
-    body,
-    schema: adminUserSchema,
+  return call(adminUserSchema, (o) => adminCreateUser(body, o), {
     idempotencyKey: options.idempotencyKey,
   });
 }
@@ -94,57 +92,44 @@ export function updateUser(
   id: string,
   body: UpdateUserBody,
 ): Promise<AdminUser> {
-  return apiRequest({
-    method: "PATCH",
-    path: `/admin/users/${encodeURIComponent(id)}`,
-    body,
-    schema: adminUserSchema,
-  });
+  return call(adminUserSchema, (o) => adminUpdateUser(id, body, o));
 }
 
 export function replaceUserRoles(
   id: string,
   roles: RoleAssignmentInput[],
 ): Promise<AdminUser> {
-  return apiRequest({
-    method: "PUT",
-    path: `/admin/users/${encodeURIComponent(id)}/roles`,
-    body: { roles },
-    schema: adminUserSchema,
-  });
+  return call(adminUserSchema, (o) => adminReplaceUserRoles(id, { roles }, o));
 }
 
 export function listDepartments(
   signal?: AbortSignal,
 ): Promise<Paginated<Department>> {
-  return apiRequest({
-    path: "/admin/departments",
-    query: { limit: 100 },
-    schema: paginated(departmentSchema),
-    signal,
-  });
+  return call(
+    paginated(departmentSchema),
+    (o) => adminListDepartments({ limit: 100 }, o),
+    { signal },
+  );
 }
 
 export function listJurisdictions(
-  params: { kind?: string } = {},
+  params: { kind?: JurisdictionKind } = {},
   signal?: AbortSignal,
 ): Promise<Paginated<Jurisdiction>> {
-  return apiRequest({
-    path: "/admin/jurisdictions",
-    query: { limit: 100, ...params },
-    schema: paginated(jurisdictionSchema),
-    signal,
-  });
+  return call(
+    paginated(jurisdictionSchema),
+    (o) => adminListJurisdictions({ limit: 100, ...params }, o),
+    { signal },
+  );
 }
 
 export function listAuditEvents(
   params: AuditEventParams,
   signal?: AbortSignal,
 ): Promise<Paginated<AuditEvent>> {
-  return apiRequest({
-    path: "/admin/audit-events",
-    query: params,
-    schema: paginated(auditEventSchema),
-    signal,
-  });
+  return call(
+    paginated(auditEventSchema),
+    (o) => adminListAuditEvents(params, o),
+    { signal },
+  );
 }

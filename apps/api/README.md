@@ -18,7 +18,7 @@ docker compose -f infra/docker-compose.yml exec ai-worker python scripts/seed.py
 | redis | 6379 | Rate limits, Celery broker |
 | minio | 9000 / 9001 | Private bucket `civicpulse-media`; CORS for `localhost:3000`/`3100` |
 | minio-init | – | One-shot: creates the bucket and the `civicpulse-app` user (that bucket only) |
-| mailpit | 8025 | Not used until notifications |
+| mailpit | 8025 / 1025 | Collects the outbox's notification email; nothing leaves the machine. SMTP on 1025 |
 | worker | – | Celery: queues `default` (media processing, housekeeping, watchdog) and, until the AI worker exists, `ai` (embeddings, classification, matching) with `AI_PROVIDER=fake` |
 | beat | – | Celery Beat: hourly housekeeping, the matching watchdog every minute, the nightly priority recompute, and a weekly matching quality check that logs a `matching_quality_alert` warning when a category's correction or false-merge rate exceeds `QUALITY_ALERT_RATIO` times its 4-week baseline (run exactly one) |
 | migrate | – | One-shot `alembic upgrade head`, run as the owner role |

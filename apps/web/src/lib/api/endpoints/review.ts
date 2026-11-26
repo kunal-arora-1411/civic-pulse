@@ -1,4 +1,10 @@
-import { apiRequest } from "../client";
+import {
+  matchDecisionsFeedback,
+  reviewTasksGet,
+  reviewTasksList,
+  reviewTasksResolve,
+} from "@civicpulse/api-client";
+import { call, callVoid } from "../generated-client";
 import { type Paginated, paginated } from "../schemas";
 import { type ReviewTask, reviewTaskSchema } from "../schemas-phase2";
 
@@ -6,23 +12,18 @@ export function listReviewTasks(
   params: { status?: "open" | "resolved"; limit?: number; offset?: number },
   signal?: AbortSignal,
 ): Promise<Paginated<ReviewTask>> {
-  return apiRequest({
-    path: "/review-tasks",
-    query: { status: "open", ...params },
-    schema: paginated(reviewTaskSchema),
-    signal,
-  });
+  return call(
+    paginated(reviewTaskSchema),
+    (o) => reviewTasksList({ status: "open", ...params }, o),
+    { signal },
+  );
 }
 
 export function getReviewTask(
   id: string,
   signal?: AbortSignal,
 ): Promise<ReviewTask> {
-  return apiRequest({
-    path: `/review-tasks/${encodeURIComponent(id)}`,
-    schema: reviewTaskSchema,
-    signal,
-  });
+  return call(reviewTaskSchema, (o) => reviewTasksGet(id, o), { signal });
 }
 
 export type ReviewAction =
@@ -39,12 +40,7 @@ export function resolveReviewTask(
   id: string,
   body: ReviewAction,
 ): Promise<ReviewTask> {
-  return apiRequest({
-    method: "POST",
-    path: `/review-tasks/${encodeURIComponent(id)}/resolve`,
-    body,
-    schema: reviewTaskSchema,
-  });
+  return call(reviewTaskSchema, (o) => reviewTasksResolve(id, body, o));
 }
 
 /** Mark an automatic (or reviewed) link as right or wrong (FR-035). */
@@ -52,9 +48,5 @@ export function sendMatchFeedback(
   matchDecisionId: string,
   body: { correct: boolean; note?: string },
 ): Promise<void> {
-  return apiRequest({
-    method: "POST",
-    path: `/match-decisions/${encodeURIComponent(matchDecisionId)}/feedback`,
-    body,
-  });
+  return callVoid((o) => matchDecisionsFeedback(matchDecisionId, body, o));
 }

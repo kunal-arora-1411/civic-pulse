@@ -20,18 +20,18 @@ export function ReportCard({ report }: { report: MyReport }) {
   return (
     <Link
       href={`/reports/${report.id}`}
-      className="group flex gap-3 rounded-xl border border-border bg-card p-3 shadow-card transition-shadow hover:shadow-raised sm:gap-4 sm:p-4"
+      className="group flex gap-3 rounded-2xl border border-border bg-card p-3 shadow-card transition-[box-shadow,border-color] hover:border-input/40 hover:shadow-raised sm:gap-4 sm:p-4"
     >
       <RemoteImage
         src={report.thumb_url}
         alt=""
         width={96}
         height={96}
-        className="size-20 shrink-0 rounded-lg sm:size-24"
+        className="size-20 shrink-0 rounded-xl sm:size-24"
       />
       <div className="grid min-w-0 flex-1 content-start gap-1.5">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <p className="flex min-w-0 items-center gap-1.5 font-semibold">
+          <p className="flex min-w-0 items-center gap-1.5 font-semibold tracking-tight">
             <CategoryIcon
               icon={report.category.icon}
               className="size-4 shrink-0 text-primary"
@@ -74,8 +74,8 @@ export function ReportCard({ report }: { report: MyReport }) {
 
 export function ReportCardSkeleton() {
   return (
-    <div className="flex gap-3 rounded-xl border border-border bg-card p-3 sm:gap-4 sm:p-4">
-      <Skeleton className="size-20 shrink-0 rounded-lg sm:size-24" />
+    <div className="flex gap-3 rounded-2xl border border-border bg-card p-3 sm:gap-4 sm:p-4">
+      <Skeleton className="size-20 shrink-0 rounded-xl sm:size-24" />
       <div className="grid flex-1 content-start gap-2">
         <Skeleton className="h-5 w-2/3" />
         <Skeleton className="h-4 w-full" />

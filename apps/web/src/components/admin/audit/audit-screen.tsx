@@ -131,7 +131,11 @@ export function AuditScreen() {
 
   return (
     <div className="motion-safe:animate-rise">
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader
+        section="audit"
+        title={t("title")}
+        description={t("description")}
+      />
 
       <search className="mb-4 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-card sm:grid-cols-2 lg:grid-cols-3">
         {textFilters.map(({ key, label, placeholder }) => (
