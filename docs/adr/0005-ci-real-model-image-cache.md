@@ -25,7 +25,7 @@ Option 3.
 
 ## Consequences
 
-- Warm runs skip the dependency install and weight download; the first run after a lock change pays for them once.
+- Warm runs skip the dependency install and weight download; the first run after a lock change pays for them once. On the first two runs of this setup (26 Nov 2026) building the three images took 3 min 19 s cold (the AI worker alone 1 min 47 s) and 57 s warm (the AI worker 33 s, mostly loading the image into Docker).
 - The GitHub Actions cache is limited to 10 GB per repository and evicts entries unused for 7 days. The three images fit comfortably (the AI worker's layers are ~700 MB compressed), but after a quiet week the first run is cold. Cache written on `main` is readable by every PR branch.
 - A cold run still needs the Hugging Face Hub. If that becomes a problem, the next step is option 2 for the weights layer only.
 - The e2e job's timeout goes up to 40 minutes to allow for a cold build plus the AI tests, which include waiting out the two-minute matching fallback (AC-03).

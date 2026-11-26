@@ -1,6 +1,6 @@
 # Phase 2: duplicate matching under a burst of reports
 
-**Status: method and tests in place; the real-stack numbers are not recorded yet** (the run was blocked by the development machine's Docker engine, see `docs/STATUS.md`). Fill in the table below from the first green run of the `load` project.
+**Result:** 50 simultaneous reports of one pothole became exactly one issue with 50 reports from 50 people. Every report was decided within 36 s of being sent, on a GitHub Actions runner with the real CLIP model. Recorded from the `load` project's output in CI; rerun it after changes to the AI worker or the matching transaction.
 
 ## What is being shown
 
@@ -29,7 +29,11 @@ pnpm --filter @civicpulse/e2e exec playwright test --project=load --no-deps
 
 | Date | Machine | Reports | All submitted | All decided | p50 | p90 | p95 | max | Outcome |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---|
-| — | — | 50 | — | — | — | — | — | — | not run yet |
+| 2026-11-26 | GitHub Actions `ubuntu-latest`, CI run 45847767612 | 50 | 1.6 s | 37.0 s | 34.0 s | 35.1 s | 35.3 s | 35.4 s | 1 issue, 50 reports, 50 reporters; 1 `new_issue`, 49 `linked` |
+
+## Reading it
+
+Latency here is mostly queueing: the AI worker takes one task at a time, and 50 photos plus 50 matches went through it in about 35 s, roughly 0.35 s of worker time per report on the runner's CPU. p50 and max are close together, which suggests that most decisions came at the end of the burst, after the photos queued ahead of them had been analysed (the setup uploads every photo before any report is sent). A citizen sees "Checking for similar reports" for that long. It stays well inside the two-minute fallback deadline, so every report kept the visual signal and none went to review. A burst several times larger, or a slower CPU, would get close to that deadline; the answer then is a second AI worker process (the advisory lock already makes concurrent matching safe), not a shorter deadline.
 
 ## What to expect
 
