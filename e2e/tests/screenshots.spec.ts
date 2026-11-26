@@ -21,6 +21,9 @@ import { giveSession, test } from "../support/fixtures";
 const OUT = fileURLToPath(new URL("../../docs/screenshots/", import.meta.url));
 const DESKTOP = { width: 1440, height: 900 };
 const MOBILE = { width: 390, height: 844 };
+// The reports list is one card per row, so a phone viewport fits the first one
+// and no more. A taller frame shows the list the page exists to show.
+const MOBILE_LIST = { width: 390, height: 1500 };
 
 type Size = { width: number; height: number };
 
@@ -84,11 +87,17 @@ test.describe("README screenshots", () => {
     await shoot(
       "citizen-reports",
       "/reports",
-      MOBILE,
+      MOBILE_LIST,
       citizen,
       async (page) => {
         await page.getByRole("heading").first().waitFor();
-        await page.locator("main a[href*='/reports/']").first().waitFor();
+        // Wait for a list rather than a single card: the page fetches 20 and
+        // showing that a citizen has many is the whole point of the shot.
+        await page.waitForFunction(
+          () => document.querySelectorAll("main li").length >= 6,
+          undefined,
+          { timeout: 20_000 },
+        );
       },
     );
 

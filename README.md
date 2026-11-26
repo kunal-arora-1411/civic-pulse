@@ -32,7 +32,7 @@ Hindi.
   </tr>
   <tr>
     <td><sub><b>Report in four steps.</b> Photo, then a draggable pin with its accuracy, then category and description.</sub></td>
-    <td><sub><b>Follow every report.</b> Status timeline, the AI's suggested category, and community support.</sub></td>
+    <td><sub><b>Every report in one list.</b> Newest first, each with its status, its photo and the AI's suggested category.</sub></td>
   </tr>
 </table>
 
