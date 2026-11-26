@@ -13,10 +13,15 @@ class RecordingSms:
     def __init__(self) -> None:
         self.codes: dict[str, str] = {}
         self.sent: list[tuple[str, str]] = []
+        self.texts: list[tuple[str, str]] = []
 
     async def send_otp(self, phone: str, code: str, *, ttl_seconds: int) -> None:
         self.codes[phone] = code
         self.sent.append((phone, code))
+
+    async def send_text(self, phone: str, text: str) -> str | None:
+        self.texts.append((phone, text))
+        return f"test-{len(self.texts)}"
 
 
 class RecordingMediaQueue:
@@ -36,6 +41,9 @@ class InlineJobs:
 
     def __init__(self) -> None:
         self.reset()
+
+    # Set by the app fixture: sign-in codes are texted through it.
+    sms: RecordingSms | None = None
 
     def reset(self) -> None:
         self.inline = True
@@ -69,6 +77,15 @@ class InlineJobs:
 
             await run(classification_id, tenant_id)
         return True
+
+    async def deliver_event(self, event_id: uuid.UUID) -> None:
+        self.calls.append(("deliver_event", (event_id,)))
+        if self.inline:
+            from app.domains.outbox.service import dispatch_event
+            from app.domains.outbox.sms import SmsChannel
+
+            assert self.sms is not None
+            await dispatch_event(event_id, channels=(SmsChannel(self.sms),))
 
     def called(self, name: str) -> list[tuple[Any, ...]]:
         return [args for job, args in self.calls if job == name]

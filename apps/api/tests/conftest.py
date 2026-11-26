@@ -201,6 +201,8 @@ async def app(
     await redis.flushdb()
     application = create_app()
     application.dependency_overrides[get_sms_provider] = lambda: sms
+    # Sign-in codes leave through the outbox, inline after the request.
+    jobs.sms = sms
     # Tests run media processing explicitly (tests/phase1.py); nothing may
     # reach the Celery broker from the suite.
     application.dependency_overrides[get_media_queue] = lambda: media_queue

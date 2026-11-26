@@ -19,9 +19,10 @@ from app.domains.auth.sms import get_sms_provider
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
+from app.jobs import get_jobs
 from app.main import create_app
 from tests.factories import TenantRow, UserRow, create_tenant, create_user
-from tests.helpers import RecordingSms, Session, bearer, login, start_login
+from tests.helpers import InlineJobs, RecordingSms, Session, bearer, login, start_login
 
 
 def current_step() -> int:
@@ -233,10 +234,12 @@ async def test_expired_mfa_token(
 
 
 @pytest.fixture
-async def probe_client(sms: RecordingSms) -> AsyncIterator[httpx.AsyncClient]:
+async def probe_client(sms: RecordingSms, jobs: InlineJobs) -> AsyncIterator[httpx.AsyncClient]:
     """An app with one route that needs a staff permission."""
     application: FastAPI = create_app()
     application.dependency_overrides[get_sms_provider] = lambda: sms
+    # Sign-in codes are texted by a job after the request (the outbox).
+    application.dependency_overrides[get_jobs] = lambda: jobs
 
     @application.get("/probe")
     async def probe(
