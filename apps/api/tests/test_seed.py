@@ -24,8 +24,14 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "seed_roles": "SELECT count(*) FROM user_roles r JOIN users u ON u.id = r.user_id "
         "WHERE u.phone LIKE '+9190000000%' OR u.phone = '+919100000001'",
         "city": "SELECT count(*) FROM jurisdictions WHERE code = 'SYN-CITY' AND kind = 'city'",
+        "delhi": "SELECT count(*) FROM jurisdictions WHERE code LIKE 'DEL-%' "
+        "AND ST_GeometryType(geom) = 'ST_MultiPolygon'",
         "categories": "SELECT count(*) FROM categories c JOIN tenants t ON t.id = c.tenant_id "
         "WHERE t.slug = 'demo-city' AND c.name_i18n ? 'hi' AND c.default_department_id IS NOT NULL",
+        "sla_targets": "SELECT count(*) FROM sla_targets s JOIN tenants t ON t.id = s.tenant_id "
+        "WHERE t.slug = 'demo-city'",
+        "scheduled": "SELECT count(*) FROM civic_issues "
+        "WHERE address_text LIKE 'Synthetic Street%' AND due_at IS NOT NULL",
         "transitions": "SELECT count(*) FROM status_transitions s JOIN tenants t "
         "ON t.id = s.tenant_id WHERE t.slug IN ('demo-city', 'other-city')",
         "issues": "SELECT count(*) FROM civic_issues i JOIN tenants t ON t.id = i.tenant_id "
@@ -51,6 +57,13 @@ async def _counts(engine: AsyncEngine) -> dict[str, int]:
         "prioritised": "SELECT count(*) FROM civic_issues "
         "WHERE address_text LIKE 'Synthetic Street%' "
         "AND priority_computed_at IS NOT NULL AND priority_factors IS NOT NULL",
+        # Analytics history
+        "analytics_issues": "SELECT count(*) FROM civic_issues "
+        "WHERE address_text LIKE 'Analytics Street%'",
+        "analytics_reports": "SELECT count(*) FROM reports "
+        "WHERE address_text LIKE 'Analytics Street%'",
+        "analytics_decisions": "SELECT count(*) FROM match_decisions m "
+        "JOIN reports r ON r.id = m.report_id WHERE r.address_text LIKE 'Analytics Street%'",
         "embedded": "SELECT count(DISTINCT e.media_id) FROM media_embeddings e "
         "JOIN media_assets m ON m.id = e.media_id JOIN reports r ON r.id = m.report_id "
         "WHERE r.address_text LIKE 'Synthetic Street%'",
@@ -68,10 +81,24 @@ async def test_seed_is_idempotent_and_usable(
 ) -> None:
     # As in the compose stack: photos are only public after a face check.
     monkeypatch.setattr(settings, "ai_face_blur", True)
+    # As in compose: the AI worker has registered the same model this process
+    # embeds with. Other tests leave their own models in the shared registry.
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO model_registry (id, task, name, version, deployed_at) "
+                "VALUES ('fake-vision@1', 'embedding', 'Fake vision', '1', now()) "
+                "ON CONFLICT (id) DO UPDATE SET deployed_at = now()"
+            )
+        )
     await seed.run()
     first = await _counts(owner_engine)
     await seed.run()
     assert await _counts(owner_engine) == first
+    analytics = {k: first.pop(k) for k in list(first) if k.startswith("analytics_")}
+    assert analytics["analytics_issues"] == 360
+    assert analytics["analytics_reports"] > analytics["analytics_issues"]
+    assert analytics["analytics_decisions"] > analytics["analytics_reports"] - 360
     assert first == {
         "tenants": 2,
         "departments": 4,
@@ -80,8 +107,12 @@ async def test_seed_is_idempotent_and_usable(
         "seed_users": 9,
         "seed_roles": 9,
         "city": 1,
+        "delhi": 6,
         "categories": 5,
-        "transitions": 14,
+        "sla_targets": 10,
+        # every issue but the 6 seeded as rejected, whose clock never ran
+        "scheduled": 54,
+        "transitions": 34,
         "issues": 60,
         # 60 + 5 in duplicate clusters + 2 waiting for review
         "reports": 67,
@@ -137,6 +168,26 @@ async def test_seed_is_idempotent_and_usable(
                 "WHERE address_text LIKE 'Synthetic Street%'"
             )
         )
+    async with owner_engine.connect() as conn:
+        history = dict(
+            (
+                await conn.execute(
+                    text(
+                        "SELECT status, count(*) FROM civic_issues "
+                        "WHERE address_text LIKE 'Analytics Street%' GROUP BY status"
+                    )
+                )
+            ).all()
+        )
+        history_span = await conn.scalar(
+            text(
+                "SELECT max(created_at) - min(created_at) FROM civic_issues "
+                "WHERE address_text LIKE 'Analytics Street%'"
+            )
+        )
+    # The whole lifecycle shows up, over about three months.
+    assert {"reported", "in_progress", "resolved", "closed", "rejected"} <= set(history)
+    assert history_span.days >= 75
     assert statuses == {"reported": 30, "under_review": 12, "verified": 12, "rejected": 6}
     assert wards == 4
     assert span.days >= 28
@@ -161,6 +212,27 @@ async def test_seed_is_idempotent_and_usable(
         ).scalar_one()
     assert contained is True
     assert centre_ward == 4  # the four wards meet at the centre point
+
+    # Ramesh Nagar, West Delhi, is inside Demo City too: one city
+    # boundary, one zone and one ward cover it.
+    async with owner_engine.connect() as conn:
+        ramesh_nagar = dict(
+            (
+                await conn.execute(
+                    text(
+                        "SELECT kind, count(*) FROM jurisdictions j JOIN tenants t "
+                        "ON t.id = j.tenant_id WHERE t.slug = 'demo-city' "
+                        "AND ST_Covers(j.geom, ST_SetSRID(ST_Point(77.131, 28.651), 4326)) "
+                        "GROUP BY kind"
+                    )
+                )
+            ).all()
+        )
+    assert {str(kind): n for kind, n in ramesh_nagar.items()} == {
+        "city": 1,
+        "zone": 1,
+        "ward": 1,
+    }
 
     supervisor = await login(client, sms, "+919000000003", "demo-city")
     assert supervisor.user["roles"][0]["role"] == "supervisor"

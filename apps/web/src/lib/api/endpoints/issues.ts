@@ -52,6 +52,8 @@ export type IssueFilterParams = {
   q?: string;
   severity?: readonly SeverityLevel[];
   priority_band?: readonly PriorityBand[];
+  /** `true`: open and past the SLA deadline. */
+  overdue?: boolean;
 };
 
 export type IssueListParams = IssueFilterParams & {

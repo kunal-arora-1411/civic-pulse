@@ -20,7 +20,7 @@ docker compose -f infra/docker-compose.yml exec ai-worker python scripts/seed.py
 | minio-init | – | One-shot: creates the bucket and the `civicpulse-app` user (that bucket only) |
 | mailpit | 8025 | Not used until notifications |
 | worker | – | Celery: queues `default` (media processing, housekeeping, watchdog) and, until the AI worker exists, `ai` (embeddings, classification, matching) with `AI_PROVIDER=fake` |
-| beat | – | Celery Beat: hourly housekeeping, the matching watchdog every minute, the nightly priority recompute (run exactly one) |
+| beat | – | Celery Beat: hourly housekeeping, the matching watchdog every minute, the nightly priority recompute, and a weekly matching quality check that logs a `matching_quality_alert` warning when a category's correction or false-merge rate exceeds `QUALITY_ALERT_RATIO` times its 4-week baseline (run exactly one) |
 | migrate | – | One-shot `alembic upgrade head`, run as the owner role |
 
 Credentials are development defaults inlined in the compose file. Override them from your shell or with `--env-file .env`.
@@ -86,6 +86,8 @@ AI_MODEL_DIR=.models uv run pytest tests/ai --confcutdir=tests/ai  # no database
 ```
 
 `models.lock.json` pins each model to a Hub commit and records its licence and file hashes; change a pin in `scripts/download_models.py`, then run it with `--update-lock`. The `ai-worker` compose service bakes the weights into its image (`infra/ai-worker/Dockerfile`). The evaluation harness lives in `scripts/eval/` and its results in [`docs/eval/phase-2-baseline.md`](../../docs/eval/phase-2-baseline.md).
+
+To move to another vision model, re-embed every photo with `scripts/reindex_embeddings.py --model-id <id>` (resumable, rate-limited, `--dry-run`); the steps are in [`docs/runbooks/switch-vision-model.md`](../../docs/runbooks/switch-vision-model.md).
 
 ## Migrations
 

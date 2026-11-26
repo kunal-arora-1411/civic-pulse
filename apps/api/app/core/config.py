@@ -87,6 +87,11 @@ class Settings(BaseSettings):
 
     idempotency_ttl_seconds: int = 24 * 3600
 
+    # Report submissions per citizen (PRD 12.3): a burst limit an hour and
+    # a ceiling a day. Idempotent replays don't count.
+    report_max_per_hour: int = 10
+    report_max_per_day: int = 30
+
     # Object storage (S3 API; MinIO in development). The API talks to
     # S3_ENDPOINT, which may be an internal hostname. Pre-signed URLs are
     # handed to browsers, and a SigV4 signature covers the Host header, so
@@ -122,6 +127,12 @@ class Settings(BaseSettings):
     # zone. Every Phase 1 deployment is in India.
     local_timezone: str = "Asia/Kolkata"
 
+    # Weekly matching quality alerts: a week is flagged when its correction
+    # or false-merge rate exceeds the prior four weeks' rate by this factor,
+    # and only once it has enough samples for the rate to mean something.
+    quality_alert_ratio: float = 1.5
+    quality_alert_min_samples: int = 10
+
     # Vision models (Phase 2). `fake` is the deterministic stand-in from
     # app/ai/fake.py, used by tests and by any process that has no model
     # weights; `onnx` loads the real models from AI_MODEL_DIR. Domain code
@@ -139,6 +150,9 @@ class Settings(BaseSettings):
     # A report whose photos still have no embeddings after this long is
     # matched without the visual signal (never linked automatically).
     matching_fallback_after_seconds: int = 120
+    # Dispatched outbox events (and their delivery log, which cascades) are
+    # kept this long for tracing, then deleted by housekeeping.
+    outbox_retention_days: int = 7
 
     @field_validator("cors_origins", mode="before")
     @classmethod

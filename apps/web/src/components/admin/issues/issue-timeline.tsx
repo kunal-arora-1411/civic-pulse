@@ -10,9 +10,11 @@ import {
   Link2Off,
   Lock,
   type LucideIcon,
+  Megaphone,
   MessageSquareText,
   Split,
   Tags,
+  TimerOff,
   UserPlus,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -21,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import type { IssueTimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-/** Phase 2 event types (contract D.5) and their icons. */
+/** Phase 2 event types (contract D.5) and SLA escalations, with icons. */
 const PHASE2_EVENTS = {
   report_linked: UserPlus,
   merged: Combine,
@@ -32,6 +34,8 @@ const PHASE2_EVENTS = {
   priority_changed: Hand,
   related_added: Link2,
   related_removed: Link2Off,
+  sla_breached: TimerOff,
+  sla_escalated: Megaphone,
 } satisfies Record<string, LucideIcon>;
 
 type Phase2Event = keyof typeof PHASE2_EVENTS;

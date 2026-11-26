@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from typing import Annotated, Any
 
@@ -8,15 +9,18 @@ from fastapi import APIRouter, BackgroundTasks, Header, Query, Response, status
 from fastapi.responses import JSONResponse
 
 from app.core import idempotency
+from app.core.config import get_settings
 from app.core.db import DbSession
-from app.core.errors import error_responses
+from app.core.errors import ServiceUnavailable, error_responses
 from app.core.pagination import PageParamsDep
+from app.core.ratelimit import enforce_window
+from app.core.redis import get_redis
 from app.core.storage import Storage
 from app.domains.auth.dependencies import CurrentPrincipal
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
-from app.domains.reports import service
+from app.domains.reports import service, withdraw
 from app.domains.reports.schemas import (
     MyReportPage,
     ReportCreate,
@@ -27,6 +31,7 @@ from app.domains.reports.schemas import (
 from app.domains.workflow.statuses import IssueStatus
 from app.jobs import JobsDep
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["reports"])
 
 RequiredIdempotencyKey = Annotated[
@@ -42,12 +47,24 @@ RequiredIdempotencyKey = Annotated[
 ]
 
 
+async def _enforce_report_limits(principal: Principal) -> None:
+    """Per-user submission limits. Unlike the OTP limits these fail open:
+    an unreachable Redis must not stop citizens reporting problems."""
+    settings = get_settings()
+    key = f"ratelimit:reports:{principal.tenant_id}:{principal.user_id}"
+    try:
+        await enforce_window(get_redis(), f"{key}:hour", settings.report_max_per_hour, 3600)
+        await enforce_window(get_redis(), f"{key}:day", settings.report_max_per_day, 86400)
+    except ServiceUnavailable:
+        logger.warning("report rate limit skipped: limiter unavailable")
+
+
 @router.post(
     "/reports",
     operation_id="reports_create",
     response_model=ReportOwnerView,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(401, 403, 422),
+    responses=error_responses(401, 403, 422, 429),
 )
 async def create_report(
     principal: Annotated[Principal, require(Permission.REPORT_CREATE)],
@@ -72,6 +89,7 @@ async def create_report(
     if isinstance(claim, Response):
         return await _replay(db, storage, claim)
 
+    await _enforce_report_limits(principal)
     report_id = await service.create_report(db, principal, body)
     view = await service.get_owner_view(db, storage, report_id)
     assert view is not None
@@ -135,3 +153,24 @@ async def _replay(db: DbSession, storage: Storage, stored: Response) -> Response
         status_code=stored.status_code,
         headers={idempotency.REPLAY_HEADER: "true"},
     )
+
+
+@router.post(
+    "/reports/{report_id}/withdraw",
+    operation_id="reports_withdraw",
+    response_model=ReportOwnerView,
+    responses=error_responses(401, 403, 404, 422),
+)
+async def withdraw_report(
+    principal: Annotated[Principal, require(Permission.REPORT_READ_OWN)],
+    db: DbSession,
+    storage: Storage,
+    report_id: uuid.UUID,
+) -> ReportOwnerView:
+    """Withdraw your own report. It is kept (and stays on its issue's
+    history) but no longer counts. Refused while matching is still placing
+    it, or once the issue is resolved or closed."""
+    await withdraw.withdraw(db, principal, report_id)
+    view = await service.get_owner_view(db, storage, report_id)
+    assert view is not None
+    return view

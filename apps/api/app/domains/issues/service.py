@@ -53,10 +53,17 @@ from app.domains.priority.rules import BAND_ORDER, PriorityBand, SeverityLevel
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 from app.domains.rbac.roles import Role
-from app.domains.rbac.scope import accessible_jurisdiction_ids, jurisdiction_subtree, scope_filter
+from app.domains.rbac.scope import (
+    IssueAccess,
+    access_allows,
+    access_filter,
+    issue_access,
+    jurisdiction_subtree,
+)
 from app.domains.reports import service as reports
 from app.domains.reports.models import Report
 from app.domains.reports.schemas import WardRef
+from app.domains.sla.rules import SlaState, overdue_clause, sla_state
 from app.domains.users.models import User
 from app.domains.workflow import service as workflow
 from app.domains.workflow.statuses import IssueStatus
@@ -67,6 +74,7 @@ SORTS = {
     "created_at": CivicIssue.created_at,
     "updated_at": CivicIssue.updated_at,
     "report_count": CivicIssue.report_count,
+    "due_at": CivicIssue.due_at,
 }
 DEFAULT_SORT = "-priority"
 # For validation and the error message only; `_order` handles `priority`.
@@ -85,9 +93,14 @@ _PREFIX_SQL = text(
 )
 
 
-async def issue_scope(db: AsyncSession, principal: Principal) -> set[uuid.UUID] | None:
-    """Wards the caller may see issues in (None: the whole tenant)."""
-    return await accessible_jurisdiction_ids(db, principal, Permission.ISSUE_READ)
+async def issue_scope(db: AsyncSession, principal: Principal) -> IssueAccess:
+    """The wards and categories the caller may see issues in (None: the
+    whole tenant). See `rbac.scope.issue_access`."""
+    return await issue_access(db, principal, Permission.ISSUE_READ)
+
+
+def in_access(access: IssueAccess) -> ColumnElement[bool]:
+    return access_filter(CivicIssue.ward_id, CivicIssue.category_id, access)
 
 
 async def _prefix_query(db: AsyncSession, q: str) -> str:
@@ -125,7 +138,7 @@ async def _apply_filters[*Ts](
     # "OR bypass" form hides from it (see ADR 0002).
     stmt = stmt.where(
         CivicIssue.tenant_id == principal.tenant_id,
-        scope_filter(CivicIssue.ward_id, scope),
+        in_access(scope),
         # Merged issues are tombstones: readable by id, never listed.
         CivicIssue.merged_into_id.is_(None),
     )
@@ -133,6 +146,9 @@ async def _apply_filters[*Ts](
         stmt = stmt.where(CivicIssue.severity.in_([s.value for s in filters.severities]))
     if filters.priority_bands:
         stmt = stmt.where(EFFECTIVE_BAND.in_([b.value for b in filters.priority_bands]))
+    if filters.overdue is not None:
+        clause = overdue_clause(datetime.now(UTC))
+        stmt = stmt.where(clause if filters.overdue else ~clause)
     if filters.statuses:
         stmt = stmt.where(CivicIssue.status.in_([s.value for s in filters.statuses]))
     if filters.category_ids:
@@ -200,6 +216,7 @@ def priority_detail_out(issue: CivicIssue) -> PriorityDetailOut | None:
 
 def _list_item(storage: ObjectStorage, row: Any) -> IssueListItem:
     issue, x, y, category, ward_name, cover_status, cover_thumb = row
+    state = sla_state(issue, datetime.now(UTC))
     return IssueListItem(
         id=issue.id,
         reference=issue.reference,
@@ -210,9 +227,13 @@ def _list_item(storage: ObjectStorage, row: Any) -> IssueListItem:
         ward=WardRef(id=issue.ward_id, name=ward_name) if issue.ward_id and ward_name else None,
         report_count=issue.report_count,
         unique_reporter_count=issue.unique_reporter_count,
+        support_count=issue.support_count,
         severity=severity_out(issue),
         priority=priority_out(issue),
         thumb_url=thumb_url(storage, cover_status, cover_thumb),
+        due_at=issue.due_at,
+        overdue=state is SlaState.OVERDUE,
+        sla_state=state,
         created_at=issue.created_at,
         updated_at=issue.updated_at,
         version=issue.version,
@@ -320,8 +341,8 @@ async def get_in_scope(
     issue = await db.scalar(stmt)
     if issue is None:
         raise NotFound()
-    scope = await accessible_jurisdiction_ids(db, principal, permission)
-    if not reports.in_scope(scope, issue.ward_id):
+    access = await issue_access(db, principal, permission)
+    if not access_allows(access, issue.ward_id, issue.category_id):
         raise NotFound()
     return issue
 
@@ -334,9 +355,7 @@ async def list_items(
     if not issue_ids:
         return {}
     scope = await issue_scope(db, principal)
-    rows = await db.execute(
-        _list_select().where(CivicIssue.id.in_(issue_ids), scope_filter(CivicIssue.ward_id, scope))
-    )
+    rows = await db.execute(_list_select().where(CivicIssue.id.in_(issue_ids), in_access(scope)))
     return {row[0].id: _list_item(storage, row) for row in rows}
 
 
@@ -471,6 +490,8 @@ async def change_status(
 async def get_detail(
     db: AsyncSession, storage: ObjectStorage, principal: Principal, issue_id: uuid.UUID
 ) -> IssueDetail:
+    from app.domains.operations.service import operations_view  # imports this module
+
     issue = await get_in_scope(db, principal, issue_id)
     row = (await db.execute(_list_select().where(CivicIssue.id == issue.id))).one()
     report_rows = await reports.fetch_report_rows(db, Report.issue_id == issue.id)
@@ -484,6 +505,9 @@ async def get_detail(
         allowed_transitions=await allowed_transitions(db, principal, issue),
         merged_into=await _merged_into(db, issue),
         related=await related_issues(db, storage, principal, issue.id),
+        operations=await operations_view(db, storage, issue),
+        breached_at=issue.breached_at,
+        escalation_level=issue.escalation_level,
     )
 
 

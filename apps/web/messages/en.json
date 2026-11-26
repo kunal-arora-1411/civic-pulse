@@ -14,26 +14,16 @@
     "label": "Language",
     "switching": "Switching language…"
   },
+  "theme": {
+    "label": "Theme",
+    "system": "Match device",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "citizen": {
-    "headline": "Tell your city what needs <accent>fixing</accent>.",
-    "intro": "Potholes, overflowing bins, broken streetlights, blocked drains: report them to your municipality and follow each one until it's done.",
     "reportCta": "Report an issue",
     "myReports": "My reports",
-    "loadingReports": "Loading your reports…",
-    "signInToSeeTitle": "Sign in to see your reports",
-    "signInToSeeBody": "All you need is your mobile number. No password.",
-    "signIn": "Sign in",
-    "staffShortcut": "Go to the admin console",
-    "howItWorks": "How it works",
-    "step1Title": "Report",
-    "step1Body": "Take a photo, drop a pin and choose what kind of problem it is.",
-    "step2Title": "Routed",
-    "step2Body": "Your report reaches the department and ward responsible for it.",
-    "step3Title": "Fixed",
-    "step3Body": "Follow each update, and confirm when the work is actually done.",
-    "footer": "CivicPulse never shows your name or phone number publicly.",
-    "reportHint": "Takes about a minute. You'll need a photo and the location.",
-    "seeAllReports": "See all {count} reports"
+    "footer": "CivicPulse never shows your name or phone number publicly."
   },
   "account": {
     "signIn": "Sign in",
@@ -126,10 +116,12 @@
       "review": "Review queue",
       "openReviews": "({count} waiting)",
       "map": "Map",
+      "analytics": "Analytics",
       "categories": "Categories",
       "matching": "Matching",
       "priority": "Priority rules",
-      "ai": "AI models"
+      "ai": "AI models",
+      "sla": "SLA targets"
     },
     "overview": {
       "title": "Welcome back",
@@ -314,7 +306,8 @@
         "priority": "Priority",
         "allPriorities": "All priorities",
         "severity": "Severity",
-        "allSeverities": "All severities"
+        "allSeverities": "All severities",
+        "overdueOnly": "Overdue only"
       }
     },
     "settings": {
@@ -337,7 +330,9 @@
         "weightsSumHundred": "The weights must add up to 100.",
         "reviewBelowAuto": "Must be lower than the auto-link score.",
         "pointsIncreasing": "Must be at least as high as the level below.",
-        "bandsDescending": "Must be lower than the band above."
+        "bandsDescending": "Must be lower than the band above.",
+        "hoursRange": "Enter whole hours from 1 to {max}.",
+        "escalateRequired": "Enter when to escalate: this category has a target."
       },
       "matching": {
         "title": "Matching",
@@ -419,6 +414,22 @@
         "examplePlace": "Near a school or hospital",
         "previewScore": "Score {score} of 100",
         "previewInvalid": "Fix the highlighted settings to see the preview."
+      },
+      "sla": {
+        "title": "SLA targets",
+        "description": "How long issues may stay open before they are overdue, and who hears about it. Every change is recorded in the audit log.",
+        "saved": "SLA targets saved",
+        "targetsTitle": "Resolution targets",
+        "targetsIntro": "Hours from the first report to resolution. A blank band uses the All bands target; a category with no target has no deadline. Saving reschedules every open issue.",
+        "tableLabel": "Resolution targets by category and priority",
+        "category": "Category",
+        "allBands": "All bands",
+        "escalateAfter": "Escalate after",
+        "cellLabel": "{category}: {column}, hours",
+        "hoursNote": "All values are in hours. The clock pauses when an issue is resolved, rejected or closed, and restarts if it is reopened.",
+        "escalationTitle": "Escalation",
+        "escalationStep1": "When an issue passes its target, the supervisors of the category's department (and supervisors without a department) are notified and the breach is recorded on the issue.",
+        "escalationStep2": "If it is still open after the Escalate after hours, the municipal admins are notified."
       }
     },
     "ai": {
@@ -602,7 +613,9 @@
           "severity_changed": "Severity changed",
           "priority_changed": "Priority changed",
           "related_added": "Related issue linked",
-          "related_removed": "Related issue unlinked"
+          "related_removed": "Related issue unlinked",
+          "sla_breached": "SLA breached: supervisors alerted",
+          "sla_escalated": "SLA breach escalated to municipal admins"
         }
       },
       "match": {
@@ -769,7 +782,10 @@
         "transitionGoneTitle": "That change is no longer possible",
         "transitionGoneBody": "The issue's status may have moved on. Reload to see which changes are available now.",
         "reload": "Reload issue"
-      }
+      },
+      "slaDue": "SLA due",
+      "slaEscalatedSupervisors": "Breached: supervisors alerted",
+      "slaEscalatedAdmins": "Breached: escalated to municipal admins"
     },
     "map": {
       "title": "Issue map",
@@ -920,6 +936,161 @@
       "operations": "Operations",
       "configuration": "Configuration",
       "governance": "People & audit"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "description": "How reporting and resolution are going: volumes, where issues cluster, how long they take and how the duplicate matching performs.",
+      "loading": "Loading…",
+      "error": "This chart couldn't load.",
+      "retry": "Try again",
+      "empty": "No data for these filters.",
+      "viewTable": "View as table",
+      "viewChart": "View as chart",
+      "noValue": "—",
+      "hours": "{value} h",
+      "days": "{value} d",
+      "bin": "{from}–{to}",
+      "binOpen": "{from}+",
+      "kpisLabel": "Headline figures",
+      "deltaPoints": "{value} pts",
+      "tone": {
+        "good": "{change}, better",
+        "bad": "{change}, worse",
+        "neutral": "{change}"
+      },
+      "vsPrevious": "vs {value} in the previous period",
+      "noComparison": "No comparison",
+      "issuesTotal": "issues",
+      "kpi": {
+        "reports": "Reports",
+        "issues": "New issues",
+        "unique_reporters": "Citizens reporting",
+        "resolution_time": "Median time to resolve",
+        "acknowledgement_time": "Median time to acknowledge",
+        "duplicate_rate": "Duplicate rate",
+        "review_rate": "Sent to review",
+        "reopen_rate": "Reopen rate",
+        "sla_compliance": "Resolved within SLA"
+      },
+      "filters": {
+        "label": "Analytics filters",
+        "period": "Period",
+        "presets": {
+          "7d": "Last 7 days",
+          "30d": "Last 30 days",
+          "90d": "Last 90 days",
+          "mtd": "This month",
+          "custom": "Custom range"
+        },
+        "from": "From",
+        "to": "To",
+        "rangeInvalid": "The start must be on or before the end.",
+        "category": "Category",
+        "allCategories": "All categories",
+        "ward": "Ward",
+        "allWards": "All wards",
+        "status": "Status",
+        "allStatuses": "All statuses",
+        "selected": "{count} selected",
+        "reset": "Reset filters"
+      },
+      "groups": {
+        "new": "New and verified",
+        "inWork": "In work",
+        "done": "Resolved or closed",
+        "rejected": "Rejected"
+      },
+      "trend": {
+        "title": "Reports and resolutions over time",
+        "description": "Reports filed, issues created and issues first resolved.",
+        "summary": "{reports} reports, {issues} new issues and {resolved} resolutions in the period.",
+        "interval": "Group by",
+        "day": "Daily",
+        "week": "Weekly",
+        "weekOf": "Week of {day}",
+        "period": "Period",
+        "reports": "Reports",
+        "issues": "New issues",
+        "resolved": "Resolved"
+      },
+      "status": {
+        "title": "Where issues stand",
+        "description": "Issues created in the period, by their current stage.",
+        "summary": "{total, plural, one {# issue} other {# issues}}; {done} resolved or closed.",
+        "status": "Status",
+        "count": "Issues"
+      },
+      "category": {
+        "title": "Issues by category",
+        "description": "Split by current stage.",
+        "summary": "{name} has the most issues: {count}.",
+        "category": "Category",
+        "total": "Total"
+      },
+      "wards": {
+        "title": "Ward ranking",
+        "description": "The {count} wards with the most issues.",
+        "summary": "{name} has the most issues: {count}.",
+        "ward": "Ward",
+        "issues": "Issues",
+        "open": "Open",
+        "resolved": "Resolved",
+        "median": "Median time to resolve",
+        "outside": "Outside any ward"
+      },
+      "resolution": {
+        "title": "Time to resolve",
+        "description": "How long issues took to be first resolved. The dashed line marks the median.",
+        "summary": "{count, plural, one {# issue} other {# issues}} resolved; median {median}, 90th percentile {p90}.",
+        "bin": "Time to resolve",
+        "issues": "Issues",
+        "median": "Median",
+        "mean": "Mean",
+        "p90": "90th percentile",
+        "medianMarker": "Median {value}"
+      },
+      "activity": {
+        "title": "When citizens report",
+        "description": "Reports by weekday and hour (India time).",
+        "summary": "The busiest hour is {day} at {hour}:00 with {count, plural, one {# report} other {# reports}}.",
+        "day": "Day",
+        "hour": "Hour",
+        "reports": "Reports",
+        "cell": "{day}, {hour}:00: {count, plural, one {# report} other {# reports}}",
+        "hint": "Point at a cell for its count.",
+        "fewer": "Fewer",
+        "more": "More ({max})"
+      },
+      "hotspots": {
+        "title": "Hotspots",
+        "description": "Issues per map cell (about 0.7 km² each). Darker cells have more issues.",
+        "summary": "{cells, plural, one {# cell} other {# cells}} with issues; the densest has {max}.",
+        "where": "Cell centre (lat, lng)",
+        "issues": "Issues",
+        "open": "Open",
+        "tooltip": "{issues, plural, one {# issue} other {# issues}}, {open} open"
+      },
+      "quality": {
+        "title": "Duplicate matching quality",
+        "description": "Across {count, plural, one {# decided report} other {# decided reports}}.",
+        "auto_link_rate": "Linked automatically",
+        "review_rate": "Sent to review",
+        "duplicate_rate": "Duplicates",
+        "correction_rate": "Marked incorrect",
+        "feedback": "of {count} reviewed",
+        "metric": "Measure",
+        "value": "Rate"
+      },
+      "export": {
+        "label": "Download CSV",
+        "busy": "Preparing the file…",
+        "fallbackFilename": "issues.csv",
+        "doneTitle": "{rows, plural, one {# issue downloaded} other {# issues downloaded}}",
+        "truncatedTitle": "Partial file: the first {rows, plural, one {# issue} other {# issues}}",
+        "truncatedDescription": "The export stops at 20,000 issues. Narrow the period or the filters to get the rest.",
+        "failedTitle": "Couldn't download the file",
+        "rangeInvalid": "Fix the custom range first."
+      }
     }
   },
   "profile": {
@@ -992,7 +1163,8 @@
     "age": "{count, plural, =0 {Reported today} one {Open for # day} other {Open for # days}}",
     "recurrence": "{count, plural, =0 {No similar issues nearby recently} one {# similar issue nearby in recent months} other {# similar issues nearby in recent months}}",
     "nearPlaces": "Near a school, hospital or other sensitive place",
-    "noPlaces": "No sensitive places nearby"
+    "noPlaces": "No sensitive places nearby",
+    "community": "{count, plural, one {# neighbour says they face this too} other {# neighbours say they face this too}}"
   },
   "priority": {
     "label": "Priority",
@@ -1071,7 +1243,18 @@
       "tooMany": "Remove {extra, plural, one {# photo} other {# photos}}: you can add up to {max}.",
       "limitReached": "You've added the most photos allowed ({max}).",
       "skipped": "{count, plural, one {# photo wasn't} other {# photos weren't}} added: you can add up to {max}.",
-      "tip": "Tip: step back a little so the surroundings show too. It helps the team find the spot."
+      "tip": "Tip: step back a little so the surroundings show too. It helps the team find the spot.",
+      "camera": {
+        "title": "Take a photo",
+        "close": "Close the camera",
+        "preview": "Camera preview",
+        "capture": "Take photo",
+        "switch": "Switch camera",
+        "starting": "Starting the camera…",
+        "denied": "Camera access is blocked. Allow the camera for this site in your browser settings, or choose a photo file instead.",
+        "unavailable": "We couldn't find a camera on this device. Choose a photo file instead.",
+        "useFiles": "Choose a photo file"
+      }
     },
     "location": {
       "title": "Where is the problem?",
@@ -1176,6 +1359,8 @@
       "server": "Something went wrong on our side. Your report is saved, so try again in a moment. It won't be sent twice.",
       "rate_limited": "You've sent several reports in a short time. Wait a little, then try again.",
       "rate_limited_wait": "You've sent several reports in a short time. Try again in {seconds, plural, one {# second} other {# seconds}}.",
+      "rate_limited_minutes": "You've sent several reports in a short time. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+      "rate_limited_hours": "You've reached today's limit for new reports. Try again in {hours, plural, one {# hour} other {# hours}}.",
       "out_of_jurisdiction": "This location is outside the city's area, so the municipality can't act on it. Move the pin inside the city.",
       "evidence_required": "This kind of problem needs a different number of photos. Check the photos step.",
       "invalid_media": "One or more photos couldn't be attached; they may have expired. Remove them and add them again.",
@@ -1261,5 +1446,395 @@
       "badgeChecking": "Checking for similar reports",
       "badgeReview": "Being checked by staff"
     }
+  },
+  "landing": {
+    "metaTitle": "Report civic problems and see them fixed",
+    "nav": {
+      "label": "Main",
+      "home": "CivicPulse home",
+      "howItWorks": "How it works",
+      "liveMap": "Live map",
+      "blog": "Blog",
+      "forCities": "For cities",
+      "signIn": "Sign in",
+      "report": "Report an issue",
+      "track": "Track issues"
+    },
+    "hero": {
+      "titleLead": "What needs fixing",
+      "titleMuted": "on your street?",
+      "composerLabel": "Start a report",
+      "location": "Sector 7, Ward 42 · auto-detected",
+      "examples": [
+        "Deep pothole outside the bus stop, bikes are swerving round it",
+        "Streetlight on the park road has been out for a week",
+        "The bins by the market haven't been cleared since Monday",
+        "Drain on Station Road is blocked and the lane floods when it rains"
+      ],
+      "category": "Pothole",
+      "photos": "1 photo",
+      "languages": "EN · हिं",
+      "railLabel": "Report by category",
+      "helper": "No app to install. Free for every citizen, in English and हिन्दी."
+    },
+    "categories": {
+      "pothole": "Pothole",
+      "streetlight": "Streetlight",
+      "garbage": "Garbage",
+      "drain": "Blocked drain",
+      "water": "Water leak",
+      "tree": "Fallen tree"
+    },
+    "stats": {
+      "label": "CivicPulse in numbers",
+      "resolved": "Issues resolved this year",
+      "resolvedNote": "+3 in the last hour",
+      "median": "Median time to fix",
+      "medianUnit": "days",
+      "medianNote": "18% faster since launch",
+      "wards": "Wards reporting live",
+      "wardsNote": "across 3 pilot cities",
+      "hindi": "Reports in हिन्दी",
+      "hindiNote": "translated for staff",
+      "disclaimer": "Illustrative pilot figures, shown until the pilot's public statistics are live."
+    },
+    "recent": {
+      "title": "Welcome back. <muted>Here are your latest reports.</muted>",
+      "loading": "Loading your reports…",
+      "empty": "You haven't reported anything yet. When you do, it shows up here.",
+      "all": "All my reports",
+      "staff": "Go to the admin console"
+    },
+    "status": {
+      "open": "Open",
+      "inProgress": "In progress",
+      "fixed": "Fixed",
+      "overdue": "Overdue"
+    },
+    "map": {
+      "title": "See your city, live. <muted>Every report is a pin. Every pin has a status. Every status change is public, ward by ward.</muted>",
+      "track": "Track your reports",
+      "label": "Illustration: a ward map with reports marked open, in progress and fixed",
+      "all": "All",
+      "toast": "New report · Streetlight out · MG Road",
+      "now": "now",
+      "selectedTitle": "Pothole by the bus stop",
+      "selectedRef": "CP-2611 · Sector 7 · Ward 42",
+      "selectedTimeline": "Reported Mon → fixed Thu",
+      "updated": "Ward 42 · updated 12s ago"
+    },
+    "bento": {
+      "title": "From photo to fixed. <muted>One flow for citizens, one queue for the city, and nothing lost in between.</muted>",
+      "report": {
+        "title": "Report in thirty seconds. <muted>Photo, pin and category; your location fills itself in.</muted>",
+        "what": "What is it?",
+        "send": "Send report",
+        "uploading": "Uploading on 2G",
+        "located": "Located to ±6 m"
+      },
+      "routed": {
+        "title": "Routed to the right desk. <muted>Category and ward decide who owns it.</muted>",
+        "report": "Report",
+        "reportValue": "CP-2611 · Pothole",
+        "ward": "Ward",
+        "wardValue": "42 · Sector 7",
+        "department": "Department",
+        "departmentValue": "Roads & Works",
+        "assigned": "Assigned",
+        "assignedValue": "Crew 7 · 6h SLA"
+      },
+      "updates": {
+        "title": "Every step, out loud. <muted>A message at each change of status.</muted>",
+        "first": "CP-2611 received. We'll keep you posted.",
+        "second": "Assigned to Roads & Works, Ward 42.",
+        "third": "Fixed ✓ Reply 1 to confirm, 2 to reopen.",
+        "firstTime": "Mon 9:12",
+        "secondTime": "Mon 11:40",
+        "thirdTime": "Thu 16:05"
+      },
+      "proof": {
+        "title": "Proof, not promises. <muted>Crews close the loop with an after photo.</muted>",
+        "before": "Before",
+        "after": "After",
+        "confirmed": "Confirmed by citizen"
+      },
+      "hindi": {
+        "title": "हिन्दी, first class. <muted>Every screen, message and status in both languages.</muted>",
+        "english": "English",
+        "hindi": "हिन्दी",
+        "sample": "बस स्टॉप के पास गहरा गड्ढा",
+        "ward": "CP-2611 · वार्ड 42",
+        "status": "ठीक हो गया"
+      }
+    },
+    "cities": {
+      "title": "A work queue your teams will actually use. <muted>Triage, assign and close issues across every ward, with SLAs and a full audit trail.</muted>",
+      "walkthrough": "Book a walkthrough",
+      "tabsLabel": "Console views",
+      "tabs": {
+        "queue": "Queue",
+        "map": "Map",
+        "audit": "Audit log",
+        "field": "Field app"
+      },
+      "consoleLabel": "Illustration of the staff console",
+      "search": "Search reference, address or description",
+      "team": "Roads & Works · Ward 42",
+      "kpis": {
+        "open": "Open",
+        "overdue": "Overdue",
+        "inProgress": "In progress",
+        "fixedToday": "Fixed today"
+      },
+      "columns": {
+        "ref": "Ref",
+        "issue": "Issue",
+        "ward": "Ward",
+        "department": "Department",
+        "status": "Status",
+        "sla": "SLA",
+        "assignee": "Assignee"
+      },
+      "unassigned": "Unassigned",
+      "departments": {
+        "sanitation": "Sanitation",
+        "electrical": "Electrical",
+        "parks": "Parks",
+        "roads": "Roads & Works"
+      },
+      "sla": {
+        "over": "{hours}h over",
+        "hoursLeft": "{hours}h left",
+        "daysLeft": "{days}d left",
+        "closed": "Closed"
+      },
+      "mapPanel": "The same issues on a map, clustered by ward and coloured by status. Pick a pin to open it in the queue.",
+      "audit": {
+        "first": "Status changed from In progress to Fixed",
+        "second": "Assigned to Crew 7",
+        "third": "Priority raised: near a school",
+        "firstWho": "S. Kumar · Supervisor",
+        "secondWho": "A. Patel · Operator",
+        "thirdWho": "Rules engine"
+      },
+      "field": {
+        "title": "Today's jobs · Crew 7",
+        "first": "Pothole · Sector 7 · bus stop",
+        "second": "Fallen tree · Lake road",
+        "third": "Streetlight · MG Road",
+        "start": "Start",
+        "photo": "Add after photo"
+      },
+      "features": {
+        "routingTitle": "Auto-routing",
+        "routingBody": "Category and ward decide the department. No inbox to sort.",
+        "slaTitle": "SLA timers",
+        "slaBody": "Every issue has a clock. Overdue work floats to the top.",
+        "auditTitle": "Audit trail",
+        "auditBody": "Who changed what and when, with the before and after.",
+        "rolesTitle": "Roles and wards",
+        "rolesBody": "Operators, supervisors and crews see only their own scope."
+      }
+    },
+    "cta": {
+      "title": "Your street is waiting. <muted>Report the first thing you see on the way home tonight.</muted>",
+      "report": "Report an issue",
+      "talk": "Talk to our team",
+      "track": "Track issues in your city"
+    },
+    "footer": {
+      "label": "Footer",
+      "blurb": "Civic reporting for Indian cities. Report it, track it, see it fixed.",
+      "status": "All systems normal",
+      "product": "Product",
+      "report": "Report an issue",
+      "myReports": "My reports",
+      "howItWorks": "How it works",
+      "liveMap": "Live map",
+      "cities": "For cities",
+      "staffConsole": "Staff console",
+      "fieldApp": "Field crew app",
+      "walkthrough": "Book a walkthrough",
+      "account": "Account",
+      "signIn": "Sign in",
+      "profile": "Profile",
+      "privacy": "CivicPulse never shows your name or phone number publicly.",
+      "copyright": "© CivicPulse"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Updates on your reports and the work waiting for you.",
+    "bellLabel": "Notifications",
+    "bellLabelUnread": "Notifications, {count, plural, one {# unread} other {# unread}}",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all notifications",
+    "today": "Today",
+    "earlier": "Earlier",
+    "unread": "Unread",
+    "loading": "Loading notifications",
+    "loadError": "Notifications could not be loaded. Try again shortly.",
+    "emptyTitle": "No notifications yet",
+    "emptyUnreadTitle": "You're all caught up",
+    "emptyBody": "We'll let you know when something changes on your reports or needs your attention.",
+    "filterLabel": "Show",
+    "filterAll": "All",
+    "filterUnread": "Unread ({count})",
+    "pagesLabel": "Notification pages",
+    "messages": {
+      "report_new_issue": {
+        "title": "Report {report} is now issue {issue}",
+        "body": "Yours is the first report of this problem. We'll keep you posted as it moves."
+      },
+      "report_linked": {
+        "title": "Report {report} joined issue {issue}",
+        "body": "Others reported the same problem, so your report was added to it. You'll get its updates."
+      },
+      "issue_status": {
+        "title": "Issue {issue}: {status}",
+        "body": "The issue your report is on is now “{status}”."
+      },
+      "review_task": {
+        "title": "Report {report} needs a duplicate decision",
+        "body": "Matching wasn't sure whether it repeats an existing issue. Open the review queue to decide."
+      },
+      "assignment": {
+        "title": "Issue {issue} assigned to you",
+        "body": "Open your field work to accept it and get started."
+      },
+      "fallback": {
+        "title": "Update",
+        "body": "Something changed. Open it for details."
+      },
+      "sla_breach": {
+        "title": "Issue {issue} is past its SLA",
+        "body_level_1": "It hasn't been resolved in the target time. Check who is working on it.",
+        "body_level_2": "It is still open well past its target. The supervisors were alerted earlier."
+      }
+    }
+  },
+  "community": {
+    "support": {
+      "button": "I face this too",
+      "supported": "You face this too",
+      "pressedHint": "Press again to take it back.",
+      "count": "{count, plural, =0 {Be the first to say so} one {# person faces this} other {# people face this}}",
+      "signIn": "Sign in to say you face this too",
+      "failed": "We couldn't save that. Try again.",
+      "closed": "This issue is no longer open for support.",
+      "merged": "This issue was combined with another one. Support that one instead."
+    },
+    "verify": {
+      "title": "Is it fixed?",
+      "description": "The municipality says the work is done. Please check the spot and tell us whether the problem is really fixed.",
+      "requestedOn": "Marked as fixed on {date}",
+      "afterPhotos": "Photos after the work",
+      "afterPhotosOf": "Photos after the work on {reference}",
+      "noAfterPhotos": "No photos were added after the work.",
+      "closureNote": "Closure note: {note}",
+      "yes": "Yes, it's fixed",
+      "no": "No, still broken",
+      "noteLabel": "What's still wrong?",
+      "noteHint": "Your note helps the field team find what was missed.",
+      "noteRequired": "Tell us what's still wrong.",
+      "submitNo": "Send: still broken",
+      "cancel": "Cancel",
+      "answeredResolved": "Thanks. You said it's fixed.",
+      "answeredUnresolved": "Thanks. You said it's still broken, so the municipality will look at it again.",
+      "sentResolved": "Thanks for confirming",
+      "sentUnresolved": "Thanks, we've sent it back to the municipality",
+      "not_eligible": "Only people who reported this issue can confirm the fix.",
+      "already_verified": "You've already answered for this round of work.",
+      "invalid_transition": "This issue isn't waiting for confirmation any more. Reload to see where it is now."
+    },
+    "reopen": {
+      "button": "Reopen this issue",
+      "title": "Reopen this issue",
+      "description": "If the problem has come back or was never fixed, reopen it and the municipality will assign it again.",
+      "reasonLabel": "Why are you reopening it?",
+      "reasonRequired": "Tell us why you're reopening it.",
+      "submit": "Reopen",
+      "cancel": "Cancel",
+      "close": "Close",
+      "done": "Issue reopened",
+      "not_eligible": "Only people who reported this issue can reopen it.",
+      "invalid_transition": "This issue can't be reopened right now. Reload to see where it is."
+    }
+  },
+  "track": {
+    "metaTitle": "Track issues",
+    "metaDescription": "See the civic issues reported in your city, where they are, and how quickly they're being fixed. No sign-in needed.",
+    "title": "Track issues in your city",
+    "description": "Every reported problem, where it is and how it's going. Locations are approximate and no one's name is shown.",
+    "scorecardLink": "Ward scorecard",
+    "mapLabel": "Map of reported issues, coloured by status",
+    "markerLabel": "{reference}, {status}",
+    "truncated": "The map shows the first 2,000 issues. Filter to see the rest.",
+    "filters": {
+      "label": "Filter issues",
+      "status": "Status",
+      "category": "Category",
+      "ward": "Ward",
+      "all": "All",
+      "open": "Open",
+      "sort": "Sort by",
+      "reset": "Clear filters"
+    },
+    "sorts": {
+      "-created_at": "Newest first",
+      "created_at": "Oldest first",
+      "-updated_at": "Recently updated",
+      "-support_count": "Most supported",
+      "-report_count": "Most reported"
+    },
+    "results": "{count, plural, =0 {No issues} one {# issue} other {# issues}}",
+    "empty": "No issues match these filters.",
+    "loading": "Loading issues…",
+    "loadError": "We couldn't load the issues",
+    "retry": "Try again",
+    "more": "Show more",
+    "reports": "{count, plural, one {# report} other {# reports}}",
+    "supporters": "{count, plural, one {# supporter} other {# supporters}}",
+    "age": "{count, plural, =0 {Reported today} one {# day old} other {# days old}}",
+    "detail": {
+      "metaTitle": "Issue",
+      "back": "All issues",
+      "loading": "Loading the issue…",
+      "loadError": "We couldn't load this issue",
+      "notFoundTitle": "Issue not found",
+      "notFoundBody": "This issue doesn't exist or isn't public.",
+      "reportedOn": "Reported on {date}",
+      "before": "Before",
+      "after": "After",
+      "beforeOf": "Photos of issue {reference} as reported",
+      "afterOf": "Photos of issue {reference} after the work",
+      "noPhotos": "No photos.",
+      "progress": "Progress",
+      "location": "Approximate location",
+      "mapLabel": "Map showing the approximate area of the issue",
+      "precision": "Shown to within about {meters} m to protect people's privacy.",
+      "mergedInto": "This issue was combined with <link>{reference}</link>. Follow that one for updates.",
+      "mergedIntoPlain": "This issue was combined with {reference}."
+    },
+    "scorecard": {
+      "metaTitle": "Ward scorecard",
+      "title": "Ward scorecard",
+      "description": "Open and resolved issues in each ward, and the median number of days from report to fix.",
+      "back": "Back to the tracker",
+      "loading": "Loading the scorecard…",
+      "loadError": "We couldn't load the scorecard",
+      "empty": "No wards yet.",
+      "open": "Open",
+      "resolved": "Resolved",
+      "median": "Median days to fix",
+      "noMedian": "Nothing fixed yet",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "retry": "Try again"
+    }
+  },
+  "sla": {
+    "overdue": "Overdue",
+    "dueSoon": "Due soon",
+    "dueAt": "SLA due {date}"
   }
 }

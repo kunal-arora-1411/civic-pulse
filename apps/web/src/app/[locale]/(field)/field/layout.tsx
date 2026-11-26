@@ -2,6 +2,8 @@ import { useTranslations } from "next-intl";
 import { AccountMenu } from "@/components/account-menu";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Link } from "@/i18n/navigation";
 
 export default function FieldLayout({
@@ -19,7 +21,9 @@ export default function FieldLayout({
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            <ThemeSwitcher className="hidden sm:flex" />
             <LanguageSwitcher />
+            <NotificationBell />
             <AccountMenu />
           </div>
         </div>

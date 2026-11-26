@@ -28,6 +28,7 @@ from app.core.db import get_session_factory
 from app.core.logging import log_fields
 from app.core.tenancy import set_tenant, system_session
 from app.domains.categories.models import Category
+from app.domains.community.models import IssueSupport
 from app.domains.config.service import priority_config
 from app.domains.geo.distance import distance_meters, within_meters
 from app.domains.issues.models import CivicIssue, SeveritySource
@@ -41,7 +42,7 @@ from app.domains.priority.rules import (
     compute_priority,
     compute_severity,
 )
-from app.domains.reports.models import Report
+from app.domains.reports.models import Report, ReportStatus
 from app.domains.workflow.statuses import IssueStatus
 
 logger = logging.getLogger(__name__)
@@ -96,10 +97,18 @@ async def recompute(db: AsyncSession, issue_id: uuid.UUID, *, now: datetime | No
 
     reports = (
         await db.execute(
-            select(Report.details, Report.reporter_id).where(Report.issue_id == issue.id)
+            select(Report.details, Report.reporter_id).where(
+                Report.issue_id == issue.id, Report.status == ReportStatus.ACCEPTED
+            )
         )
     ).all()
-    unique_reporters = len({reporter for _, reporter in reports})
+    reporter_ids = {reporter for _, reporter in reports}
+    unique_reporters = len(reporter_ids)
+    # Supporters who also reported are already counted as reporters.
+    supporter_ids = set(
+        await db.scalars(select(IssueSupport.user_id).where(IssueSupport.issue_id == issue.id))
+    )
+    supporters = len(supporter_ids - reporter_ids)
 
     radius = rules.search_radius_m
     nearest = {
@@ -154,6 +163,7 @@ async def recompute(db: AsyncSession, issue_id: uuid.UUID, *, now: datetime | No
             recurrence=int(recurrence or 0),
             near_place=any(d <= NEAR_PLACES_RADIUS_M for d in nearest.values()),
             inactive_status=inactive,
+            supporters=supporters,
         ),
     )
     values |= {

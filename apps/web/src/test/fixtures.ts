@@ -135,6 +135,9 @@ export function makeReport(overrides: Partial<Report> = {}): Report {
       id: "iss-1",
       reference: "CP-26-000123",
       status: "reported",
+      support_count: 0,
+      can_verify: false,
+      can_reopen: false,
       timeline: [
         {
           at: "2026-11-24T08:15:01+05:30",
@@ -166,6 +169,9 @@ export function makeIssue(
     severity: null,
     priority: null,
     thumb_url: null,
+    due_at: null,
+    overdue: false,
+    sla_state: "none",
     created_at: "2026-11-20T10:00:00+05:30",
     updated_at: "2026-11-20T10:00:00+05:30",
     version: 3,
@@ -201,6 +207,8 @@ export function makeIssueDetail(
       { to_status: "rejected", requires_reason: true },
     ],
     related: [],
+    breached_at: null,
+    escalation_level: 0,
     ...overrides,
   };
 }

@@ -1,4 +1,5 @@
 import {
+  ChartLine,
   Cpu,
   Gauge,
   GitCompareArrows,
@@ -9,6 +10,7 @@ import {
   ScrollText,
   SlidersHorizontal,
   Tags,
+  Timer,
   UsersRound,
 } from "lucide-react";
 import type { CurrentUser } from "@/lib/api";
@@ -19,9 +21,11 @@ export type AdminNavKey =
   | "issues"
   | "review"
   | "map"
+  | "analytics"
   | "categories"
   | "matching"
   | "priority"
+  | "sla"
   | "ai"
   | "users"
   | "audit";
@@ -37,9 +41,11 @@ export type AdminNavItem = {
     | "/admin/issues"
     | "/admin/review"
     | "/admin/map"
+    | "/admin/analytics"
     | "/admin/categories"
     | "/admin/settings/matching"
     | "/admin/settings/priority"
+    | "/admin/settings/sla"
     | "/admin/ai"
     | "/admin/users"
     | "/admin/audit";
@@ -80,6 +86,13 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     permission: "issue:read",
   },
   {
+    key: "analytics",
+    group: "operations",
+    href: "/admin/analytics",
+    icon: ChartLine,
+    permission: "analytics:read",
+  },
+  {
     key: "categories",
     group: "configuration",
     href: "/admin/categories",
@@ -98,6 +111,13 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     group: "configuration",
     href: "/admin/settings/priority",
     icon: Gauge,
+    permission: "config:read",
+  },
+  {
+    key: "sla",
+    group: "configuration",
+    href: "/admin/settings/sla",
+    icon: Timer,
     permission: "config:read",
   },
   {

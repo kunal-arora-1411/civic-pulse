@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { AppProviders } from "@/components/providers";
+import { ThemeScript } from "@/components/theme-switcher";
 import { locales, routing } from "@/i18n/routing";
 import { fontVariables } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -37,8 +38,14 @@ export default async function LocaleLayout({
   const t = await getTranslations("common");
 
   return (
-    <html lang={locale} className={cn(fontVariables, "h-full")}>
+    <html
+      lang={locale}
+      className={cn(fontVariables, "h-full")}
+      // ThemeScript may set data-theme on <html> before React hydrates.
+      suppressHydrationWarning
+    >
       <body className="flex min-h-full flex-col">
+        <ThemeScript />
         <a
           href="#main"
           className="sr-only z-50 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:start-4 focus:top-4"

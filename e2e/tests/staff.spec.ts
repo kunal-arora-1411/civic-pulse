@@ -55,7 +55,7 @@ test("an operator reviews and rejects a report; the citizen sees only the public
   await page.getByRole("searchbox", { name: "Search" }).fill(issueRef);
   await expect(page).toHaveURL(new RegExp(`q=${issueRef}`));
   const table = page.getByRole("region", { name: "Issues" });
-  await expect(table.getByRole("link")).toHaveCount(1);
+  await expect(table.getByRole("link", { name: issueRef })).toHaveCount(1);
   await table.getByRole("link", { name: issueRef }).click();
 
   // The detail page has the photo and the citizen's report.

@@ -86,6 +86,8 @@ class CivicIssue(TimestampMixin, Base):
             name="counts_consistent",
         ),
         CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint("support_count >= 0", name="support_count_non_negative"),
+        CheckConstraint("escalation_level BETWEEN 0 AND 2", name="escalation_level_range"),
         CheckConstraint(f"severity IN ({sql_in(SeverityLevel)})", name="severity_values"),
         CheckConstraint(
             f"severity_source IN ({sql_in(SeveritySource)})", name="severity_source_values"
@@ -119,6 +121,7 @@ class CivicIssue(TimestampMixin, Base):
         Index("ix_civic_issues_tenant_report_count", "tenant_id", "report_count"),
         Index("ix_civic_issues_merged_into_id", "merged_into_id"),
         Index("ix_civic_issues_tenant_priority_score", "tenant_id", "priority_score"),
+        Index("ix_civic_issues_due_at", "due_at", postgresql_where=text("due_at IS NOT NULL")),
         # Issues waiting for their first priority computation.
         Index(
             "ix_civic_issues_priority_pending",
@@ -139,6 +142,8 @@ class CivicIssue(TimestampMixin, Base):
     ward_id: Mapped[uuid.UUID | None] = mapped_column()
     report_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     unique_reporter_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    # Citizens who said "I face this too" (app/domains/community).
+    support_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     # Severity (FR-038): computed from the category's rules unless a person
     # overrode it (`severity_source = override`, with their reason).
     severity: Mapped[str] = mapped_column(
@@ -162,6 +167,9 @@ class CivicIssue(TimestampMixin, Base):
     status_changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Phase 3: when the issue last became `resolved`; the resolution window
+    # runs from here.
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     search_document: Mapped[Any] = mapped_column(
         TSVECTOR, server_default=text("''::tsvector"), deferred=True
     )
@@ -169,6 +177,14 @@ class CivicIssue(TimestampMixin, Base):
     # keeps its reference and history but has no reports and drops out of
     # lists, the map and matching; reading it points at the survivor.
     merged_into_id: Mapped[uuid.UUID | None] = mapped_column()
+    # SLA (migration 0010). The `sla_schedule` trigger sets `sla_started_at`
+    # and `due_at` from the matching target; the scanner (app/domains/sla)
+    # sets `breached_at` and raises `escalation_level` (1: the department's
+    # supervisors were told, 2: the municipal admins were told).
+    sla_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    breached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    escalation_level: Mapped[int] = mapped_column(SmallInteger, default=0, server_default=text("0"))
 
 
 class EventType(StrEnum):
@@ -183,6 +199,23 @@ class EventType(StrEnum):
     CATEGORY_CHANGED = "category_changed"
     SEVERITY_CHANGED = "severity_changed"
     PRIORITY_CHANGED = "priority_changed"
+    # Phase 3: operations (docs/api/phase-3-contract.md, "Timeline event types")
+    ASSIGNED = "assigned"
+    REASSIGNED = "reassigned"
+    WORK_ORDER_ACCEPTED = "work_order_accepted"
+    WORK_ORDER_DECLINED = "work_order_declined"
+    WORK_STARTED = "work_started"
+    PROGRESS = "progress"
+    CLOSURE_REQUESTED = "closure_requested"
+    CLOSURE_APPROVED = "closure_approved"
+    CLOSURE_REJECTED = "closure_rejected"
+    VERIFICATION = "verification"
+    REOPENED = "reopened"
+    CLOSED = "closed"
+    REPORT_WITHDRAWN = "report_withdrawn"
+    # SLA (migration 0010): internal only.
+    SLA_BREACHED = "sla_breached"
+    SLA_ESCALATED = "sla_escalated"
 
 
 class Visibility(StrEnum):

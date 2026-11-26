@@ -8,6 +8,10 @@
  * slightly warm, like the paper of a public notice. Every text/background
  * pairing below meets WCAG 2.2 AA (4.5:1 for text, 3:1 for UI boundaries
  * such as input borders and focus rings) in both themes.
+ *
+ * The landing page (.landing) is designed for light only, so it
+ * re-declares the light values for the shared components it embeds
+ * (language switcher, account menu) even when the OS is in dark mode.
  */
 /*
  * CivicPulse design tokens, matched to the marketing site: a cool,
@@ -16,7 +20,8 @@
  * only (never to carry meaning). Every text/background pairing meets
  * WCAG 2.2 AA (4.5:1 for text, 3:1 for UI boundaries) in both themes.
  */
-:root {
+:root,
+.landing {
   color-scheme: light;
 
   --background: oklch(0.985 0.002 190);
@@ -78,8 +83,13 @@
   --shadow-color: 200 25% 18%;
 }
 
+/*
+ * Dark tokens apply when the OS asks for dark and the person hasn't chosen
+ * light, or when they've chosen dark (data-theme, set by the theme switch
+ * and by the inline script in the root layout before first paint).
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
 
     --background: oklch(0.175 0.016 205);
@@ -138,6 +148,52 @@
   }
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: oklch(0.185 0.02 235);
+  --foreground: oklch(0.95 0.008 95);
+
+  --card: oklch(0.22 0.022 235);
+  --card-foreground: var(--foreground);
+
+  --muted: oklch(0.255 0.02 235);
+  --muted-foreground: oklch(0.76 0.015 235);
+
+  --primary: oklch(0.79 0.105 178);
+  --primary-hover: oklch(0.84 0.1 178);
+  --primary-foreground: oklch(0.2 0.035 200);
+  --primary-soft: oklch(0.3 0.05 182);
+  --primary-soft-foreground: oklch(0.88 0.07 178);
+
+  --accent: oklch(0.83 0.14 78);
+  --accent-foreground: oklch(0.22 0.04 60);
+  --accent-soft: oklch(0.32 0.06 75);
+
+  --secondary: oklch(0.29 0.022 235);
+  --secondary-foreground: oklch(0.93 0.01 95);
+
+  --destructive: oklch(0.71 0.16 25);
+  --destructive-hover: oklch(0.76 0.15 25);
+  --destructive-foreground: oklch(0.2 0.04 25);
+  --destructive-soft: oklch(0.3 0.07 25);
+  --destructive-soft-foreground: oklch(0.88 0.07 25);
+
+  --success-soft: oklch(0.3 0.05 155);
+  --success-soft-foreground: oklch(0.88 0.08 155);
+  --warning-soft: oklch(0.32 0.06 75);
+  --warning-soft-foreground: oklch(0.9 0.09 85);
+  --info-soft: oklch(0.3 0.04 250);
+  --info-soft-foreground: oklch(0.88 0.06 250);
+
+  --border: oklch(0.32 0.02 235);
+  --input: oklch(0.56 0.02 235);
+  --ring: oklch(0.8 0.11 178);
+
+  --grid-dot: oklch(0.95 0.008 95 / 0.06);
+  --shadow-color: 235 40% 4%;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -186,6 +242,26 @@
   --font-display:
     var(--font-latin), var(--font-body), ui-sans-serif, sans-serif;
   --font-mono: var(--font-code), ui-monospace, monospace;
+
+  /* Landing page only (see components/landing). Geist has no Devanagari,
+     so Hindi falls through to Anek Devanagari glyph by glyph. */
+  --font-lp:
+    var(--font-geist), var(--font-anek), ui-sans-serif, system-ui, sans-serif;
+  --font-lp-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-lp-ink: #0a0f12;
+  --color-lp-ink-2: #3d4850;
+  --color-lp-mute: #8a949b;
+  --color-lp-mute-2: #646e75;
+  --color-lp-hair: #e9eae7;
+  --color-lp-wash: #f6f7f5;
+  --color-lp-teal: #0f5d57;
+  --color-lp-teal-vivid: #16a08e;
+  --color-lp-teal-text: #0d7a6c;
+  --color-lp-mint: #a6e8d8;
+  --color-lp-marigold: #f2b632;
+  --color-lp-marigold-soft: #fdf1d6;
+  --color-lp-teal-soft: #ddf0ec;
+  --color-lp-red: #c23b26;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -455,6 +531,12 @@
   fill: var(--primary);
 }
 
+/* Analytics hotspots: one hue, the cell's opacity carries the count. */
+.cp-hotspot {
+  stroke: var(--viz-seq-hi);
+  fill: var(--viz-1);
+}
+
 /* Review comparison map: labelled tags rather than bare pins, so which
    point is the new report and which the issue never rests on colour.
    The tag's dot marks the exact spot. */
@@ -516,4 +598,49 @@
 
 .cp-link-line {
   stroke: var(--foreground);
+}
+
+/*
+ * Chart palette (analytics). Categorical slots in fixed order, validated
+ * for colour-vision deficiency against both surfaces; the sequential ramp
+ * runs from "near zero" (blends into the card) to the darkest step. Dark
+ * values are their own steps, not a flip.
+ */
+:root {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-seq-lo: #e4effc;
+  --viz-seq-hi: #0d366b;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-up: #006300;
+  --viz-down: #b42828;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
+    --viz-3: #199e70;
+    --viz-4: #c98500;
+    --viz-seq-lo: #1d2a3a;
+    --viz-seq-hi: #9ec5f4;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #4a4a46;
+    --viz-up: #3cc23c;
+    --viz-down: #f08080;
+  }
+}
+:root[data-theme="dark"] {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-seq-lo: #1d2a3a;
+  --viz-seq-hi: #9ec5f4;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #4a4a46;
+  --viz-up: #3cc23c;
+  --viz-down: #f08080;
 }

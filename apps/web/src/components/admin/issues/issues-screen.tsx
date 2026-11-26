@@ -15,6 +15,7 @@ import { Pagination } from "@/components/admin/pagination";
 import { useOpenReviewCount } from "@/components/admin/review/use-open-review-count";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { PriorityBadge } from "@/components/issues/priority-badge";
+import { SlaBadge } from "@/components/issues/sla-badge";
 import { StatusBadge } from "@/components/issues/status-badge";
 import { RemoteImage } from "@/components/media/remote-image";
 import { Alert } from "@/components/ui/alert";
@@ -39,6 +40,7 @@ import {
   serializeIssueFilters,
   toListParams,
 } from "@/lib/issues/filters";
+import { cn } from "@/lib/utils";
 import { IssueFiltersBar } from "./issue-filters";
 import { useIssueFilters } from "./use-issue-filters";
 
@@ -89,6 +91,25 @@ function SortHeader({
     </TableHead>
   );
 }
+
+/*
+ * Phone layout for a row: a three-column grid card.
+ *   photo | reference + address | priority
+ *   photo | category            | status
+ *   photo | ward                | age
+ * The report count is left out there; it's on the issue page.
+ */
+const MOBILE = {
+  row: "max-md:grid max-md:grid-cols-[2.5rem_minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:px-3 max-md:py-3 max-md:[&>td]:p-0",
+  photo: "max-md:row-span-3 max-md:self-start",
+  reference: "max-md:col-start-2 max-md:row-start-1 max-md:min-w-0",
+  priority: "max-md:col-start-3 max-md:row-start-1 max-md:justify-self-end",
+  category: "max-md:col-start-2 max-md:row-start-2 max-md:min-w-0",
+  status: "max-md:col-start-3 max-md:row-start-2 max-md:justify-self-end",
+  ward: "max-md:col-start-2 max-md:row-start-3 max-md:truncate max-md:text-xs max-md:text-muted-foreground",
+  reports: "max-md:hidden",
+  age: "max-md:col-start-3 max-md:row-start-3 max-md:justify-self-end max-md:text-xs",
+} as const;
 
 export function IssuesScreen() {
   const t = useTranslations("admin.issues");
@@ -204,9 +225,11 @@ export function IssuesScreen() {
       <Table
         label={t("tableLabel")}
         aria-busy={issues.isFetching || undefined}
-        className="[&_td]:py-2"
+        // Below md each row becomes a compact card (see MOBILE below): the
+        // same markup at every size, so nothing is duplicated.
+        className="[&_td]:py-2 max-md:block max-md:[&_tbody]:block"
       >
-        <TableHeader>
+        <TableHeader className="max-md:hidden">
           <TableRow className="hover:bg-transparent">
             <TableHead className="w-16 pe-0">
               <span className="sr-only">{t("colPhoto")}</span>
@@ -240,13 +263,16 @@ export function IssuesScreen() {
           {issues.isPending ? (
             Array.from({ length: 8 }, (_, row) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders
-              <TableRow key={row}>
-                <TableCell>
+              <TableRow key={row} className={MOBILE.row}>
+                <TableCell className={MOBILE.photo}>
                   <Skeleton className="size-10 rounded-md" />
                 </TableCell>
                 {Array.from({ length: COLUMNS - 1 }, (_, cell) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders
-                  <TableCell key={cell}>
+                  <TableCell
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders
+                    key={cell}
+                    className={cn(cell > 1 && "max-md:hidden", "max-md:p-0")}
+                  >
                     <Skeleton className="h-4 w-full max-w-28" />
                   </TableCell>
                 ))}
@@ -256,7 +282,7 @@ export function IssuesScreen() {
             issues.data.items.map((issue) => (
               <TableRow
                 key={issue.id}
-                className="cursor-pointer"
+                className={cn("cursor-pointer", MOBILE.row)}
                 onClick={(event) => {
                   // The reference link is the keyboard and screen reader
                   // path; the whole row is a larger mouse target.
@@ -264,7 +290,7 @@ export function IssuesScreen() {
                   router.push(`/admin/issues/${issue.id}`);
                 }}
               >
-                <TableCell className="pe-0">
+                <TableCell className={cn("pe-0", MOBILE.photo)}>
                   <RemoteImage
                     src={issue.thumb_url}
                     alt=""
@@ -273,7 +299,7 @@ export function IssuesScreen() {
                     className="size-10 max-w-none shrink-0 rounded-md"
                   />
                 </TableCell>
-                <TableCell className="whitespace-nowrap">
+                <TableCell className={cn("whitespace-nowrap", MOBILE.priority)}>
                   {issue.priority ? (
                     <PriorityBadge
                       band={issue.priority.band}
@@ -287,7 +313,9 @@ export function IssuesScreen() {
                     </span>
                   )}
                 </TableCell>
-                <TableCell className="whitespace-nowrap">
+                <TableCell
+                  className={cn("whitespace-nowrap", MOBILE.reference)}
+                >
                   <Link
                     href={`/admin/issues/${issue.id}`}
                     className="font-mono text-[0.8125rem] font-semibold text-primary underline-offset-4 hover:underline"
@@ -295,12 +323,12 @@ export function IssuesScreen() {
                     {issue.reference}
                   </Link>
                   {issue.address_text ? (
-                    <span className="block max-w-56 truncate text-xs text-muted-foreground">
+                    <span className="block max-w-56 truncate text-xs text-muted-foreground max-md:max-w-none">
                       {issue.address_text}
                     </span>
                   ) : null}
                 </TableCell>
-                <TableCell>
+                <TableCell className={MOBILE.category}>
                   <span className="flex items-center gap-1.5">
                     <CategoryIcon
                       icon={issue.category.icon}
@@ -311,16 +339,26 @@ export function IssuesScreen() {
                     </span>
                   </span>
                 </TableCell>
-                <TableCell className="whitespace-nowrap">
+                <TableCell className={cn("whitespace-nowrap", MOBILE.ward)}>
                   {issue.ward?.name ?? "—"}
                 </TableCell>
-                <TableCell className="text-center tabular-nums">
+                <TableCell
+                  className={cn("text-center tabular-nums", MOBILE.reports)}
+                >
                   {issue.report_count}
                 </TableCell>
-                <TableCell>
-                  <StatusBadge status={issue.status} />
+                <TableCell className={MOBILE.status}>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <StatusBadge status={issue.status} />
+                    <SlaBadge state={issue.sla_state} dueAt={issue.due_at} />
+                  </span>
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
+                <TableCell
+                  className={cn(
+                    "whitespace-nowrap text-muted-foreground",
+                    MOBILE.age,
+                  )}
+                >
                   <time
                     dateTime={issue.created_at}
                     title={format.dateTime(new Date(issue.created_at), {
@@ -334,8 +372,8 @@ export function IssuesScreen() {
               </TableRow>
             ))
           ) : issues.isSuccess ? (
-            <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={COLUMNS}>
+            <TableRow className="hover:bg-transparent max-md:block">
+              <TableCell colSpan={COLUMNS} className="max-md:block">
                 <div className="grid justify-items-center gap-2 py-10 text-center">
                   <Inbox
                     aria-hidden="true"

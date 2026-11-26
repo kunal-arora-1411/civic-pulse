@@ -33,6 +33,9 @@ celery_app = Celery(
         "app.domains.priority.tasks",
         "app.domains.ai.tasks",
         "app.domains.matching.tasks",
+        "app.domains.operations.tasks",
+        "app.domains.sla.tasks",
+        "app.domains.outbox.tasks",
     ],
 )
 
@@ -68,6 +71,13 @@ celery_app.conf.update(
             "task": "civicpulse.housekeeping.cleanup",
             "schedule": crontab(minute=17),
         },
+        # Delivers what committed to `outbox_events`. Twenty seconds is the
+        # longest a notification should sit behind the transaction that
+        # wrote it; the claim uses SKIP LOCKED, so overlapping runs are safe.
+        "outbox-dispatch": {
+            "task": "civicpulse.outbox.dispatch",
+            "schedule": 20.0,
+        },
         # Re-queues reports stuck in matching, applies the AI-unavailable
         # fallback after two minutes, fails abandoned classifications and
         # computes priorities that were never computed.
@@ -76,9 +86,26 @@ celery_app.conf.update(
             "schedule": 60.0,
         },
         # 02:40 IST: issues age by a day, so every open issue's score moves.
+        # Closes resolved issues whose resolution window has passed (Phase 3).
+        "close-resolved-issues": {
+            "task": "civicpulse.operations.close_resolved",
+            "schedule": crontab(minute="*/15"),
+        },
+        # Marks issues past their SLA and escalates them. Each issue moves up
+        # each escalation level once, so overlapping runs are harmless.
+        "sla-scan": {
+            "task": "civicpulse.sla.scan",
+            "schedule": crontab(minute="*/5"),
+        },
         "priority-nightly": {
             "task": "civicpulse.priority.nightly",
             "schedule": crontab(hour=21, minute=10),
+        },
+        # Monday 06:30 IST: matching quality against the 4-week baseline.
+        # Alerts are log lines only; nothing is changed.
+        "matching-quality-weekly": {
+            "task": "civicpulse.matching.quality_check",
+            "schedule": crontab(day_of_week=1, hour=1, minute=0),
         },
     },
 )

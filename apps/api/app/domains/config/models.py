@@ -17,6 +17,7 @@ from app.domains.workflow.statuses import sql_in
 class ConfigKey(StrEnum):
     MATCHING = "matching"
     PRIORITY = "priority"
+    CLOSURE = "closure"
 
 
 class TenantConfig(TimestampMixin, Base):

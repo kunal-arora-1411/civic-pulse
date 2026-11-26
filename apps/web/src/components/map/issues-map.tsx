@@ -22,6 +22,7 @@ import {
   toLeaflet,
 } from "./map-config";
 import { priorityShapeSvg } from "./priority-shapes";
+import { useFreshContainerKey } from "./use-fresh-container";
 
 /*
  * The staff map: clustered issue markers and ward outlines. Loaded only
@@ -203,8 +204,11 @@ export function IssuesMap({ wards, initialView, ...props }: IssuesMapProps) {
     [wards],
   );
 
+  const containerKey = useFreshContainerKey();
+
   return (
     <MapContainer
+      key={containerKey}
       center={toLeaflet(initialView.center)}
       zoom={initialView.zoom}
       className="size-full rounded-xl"

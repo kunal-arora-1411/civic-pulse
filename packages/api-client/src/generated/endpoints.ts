@@ -9,18 +9,36 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  Activity,
   AdminGetAiQualityParams,
   AdminListAuditEventsParams,
   AdminListCategoriesParams,
   AdminListDepartmentsParams,
   AdminListJurisdictionsParams,
+  AdminListTeamsParams,
   AdminListTransitionsParams,
   AdminListUsersParams,
   AdminUser,
   AdminUserCreate,
   AdminUserPage,
   AdminUserUpdate,
+  AnalyticsActivityParams,
+  AnalyticsByCategoryParams,
+  AnalyticsByStatusParams,
+  AnalyticsByWardParams,
+  AnalyticsExportParams,
+  AnalyticsHotspotsParams,
+  AnalyticsMatchingQualityParams,
+  AnalyticsOverviewParams,
+  AnalyticsResolutionTimesParams,
+  AnalyticsTrendParams,
+  ApproveClosure,
+  AssignmentCreate,
+  AssignmentOut,
   AuditEventPage,
+  ByCategory,
+  ByStatus,
+  ByWard,
   CategoryChange,
   CategoryCreate,
   CategoryOut,
@@ -28,12 +46,20 @@ import type {
   CategoryUpdate,
   ClassificationCreate,
   ClassificationOut,
+  ClosureConfig,
+  ClosureRequestBody,
+  DeclineBody,
   DepartmentCreate,
   DepartmentOut,
   DepartmentPage,
+  EligibleTeam,
   FeedbackIn,
+  FieldListWorkOrdersParams,
+  FieldWorkOrder,
+  FieldWorkOrderPage,
   GeoReverseParams,
   HealthOut,
+  Hotspots,
   IssueDetail,
   IssueFeatureCollection,
   IssuePage,
@@ -42,6 +68,7 @@ import type {
   JurisdictionPage,
   MatchDecisionOut,
   MatchingConfig,
+  MatchingQuality,
   MediaAssetOut,
   MergeRequest,
   MfaChallengeResponse,
@@ -50,23 +77,38 @@ import type {
   MfaVerifyIn,
   ModelList,
   MyReportPage,
+  NoteCreate,
+  NotificationOut,
+  NotificationPage,
+  NotificationsListParams,
   OtpRequestIn,
   OtpRequestOut,
   OtpVerifyIn,
+  Overview,
   PlatformListTenantsParams,
   PlatformTenant,
   PlatformTenantPage,
   PriorityConfig,
   PriorityOverride,
+  ProgressBody,
+  PublicFeatureCollection,
+  PublicIssueDetail,
+  PublicIssuePage,
+  PublicIssuesGeojsonParams,
+  PublicIssuesListParams,
   QualityOut,
+  ReadAllResult,
   ReadinessOut,
   RefreshIn,
+  RejectClosure,
   RelatedIssueOut,
   RelatedRequest,
+  ReopenRequest,
   ReportCreate,
   ReportOwnerView,
   ReportStaffView,
   ReportsListMineParams,
+  ResolutionTimes,
   ResolveLink,
   ResolveNewIssue,
   ReverseGeocodeOut,
@@ -74,18 +116,32 @@ import type {
   ReviewTaskPage,
   ReviewTasksListParams,
   RolesUpdate,
+  Scorecard,
   SeverityOverride,
+  SlaTargets,
+  SlaTargetsUpdate,
   SplitRequest,
   SplitResult,
   StatusChange,
+  SupportState,
+  TeamCreate,
+  TeamOut,
+  TeamPage,
+  TeamUpdate,
   TenantCreate,
   TenantCurrent,
+  TimelineEvent,
   TokenResponse,
   TransitionPage,
+  Trend,
+  UnreadCount,
   UploadCreate,
   UploadCreated,
   UserMe,
-  UserMeUpdate
+  UserMeUpdate,
+  VerificationCreate,
+  VersionBody,
+  Workload
 } from './schemas';
 
 import { customInstance } from '../mutator';
@@ -370,6 +426,64 @@ export const adminListJurisdictions = (
     }
 
 /**
+ * @summary List Teams
+ */
+export const adminListTeams = (
+    params?: AdminListTeamsParams,
+ options?: SecondParameter<typeof customInstance<TeamPage>>,) => {
+      return customInstance<TeamPage>(
+      {url: `/api/v1/admin/teams`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Create a team with its members, service area, categories and schedule.
+ * Audited.
+ * @summary Create Team
+ */
+export const adminCreateTeam = (
+    teamCreate: TeamCreate,
+ options?: SecondParameter<typeof customInstance<TeamOut>>,) => {
+      return customInstance<TeamOut>(
+      {url: `/api/v1/admin/teams`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: teamCreate
+    },
+      options);
+    }
+
+/**
+ * @summary Get Team
+ */
+export const adminGetTeam = (
+    teamId: string,
+ options?: SecondParameter<typeof customInstance<TeamOut>>,) => {
+      return customInstance<TeamOut>(
+      {url: `/api/v1/admin/teams/${encodeURIComponent(String(teamId))}`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Lists replace what is stored. Deactivating a team that holds open
+ * work orders is `409 team_has_open_work`. Audited.
+ * @summary Update Team
+ */
+export const adminUpdateTeam = (
+    teamId: string,
+    teamUpdate: TeamUpdate,
+ options?: SecondParameter<typeof customInstance<TeamOut>>,) => {
+      return customInstance<TeamOut>(
+      {url: `/api/v1/admin/teams/${encodeURIComponent(String(teamId))}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: teamUpdate
+    },
+      options);
+    }
+
+/**
  * @summary List Audit Events
  */
 export const adminListAuditEvents = (
@@ -571,6 +685,21 @@ export const reportsGet = (
  options?: SecondParameter<typeof customInstance<ReportOwnerView | ReportStaffView>>,) => {
       return customInstance<ReportOwnerView | ReportStaffView>(
       {url: `/api/v1/reports/${encodeURIComponent(String(reportId))}`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Withdraw your own report. It is kept (and stays on its issue's
+ * history) but no longer counts. Refused while matching is still placing
+ * it, or once the issue is resolved or closed.
+ * @summary Withdraw Report
+ */
+export const reportsWithdraw = (
+    reportId: string,
+ options?: SecondParameter<typeof customInstance<ReportOwnerView>>,) => {
+      return customInstance<ReportOwnerView>(
+      {url: `/api/v1/reports/${encodeURIComponent(String(reportId))}/withdraw`, method: 'POST'
     },
       options);
     }
@@ -818,6 +947,63 @@ export const adminUpdatePriorityConfig = (
     }
 
 /**
+ * Resolution window and confirmation threshold in effect (defaults if never set).
+ * @summary Get Closure Config
+ */
+export const adminGetClosureConfig = (
+
+ options?: SecondParameter<typeof customInstance<ClosureConfig>>,) => {
+      return customInstance<ClosureConfig>(
+      {url: `/api/v1/admin/closure-config`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Replace the whole document; a field left out goes back to its default. Audited.
+ * @summary Update Closure Config
+ */
+export const adminUpdateClosureConfig = (
+    closureConfig: ClosureConfig,
+ options?: SecondParameter<typeof customInstance<ClosureConfig>>,) => {
+      return customInstance<ClosureConfig>(
+      {url: `/api/v1/admin/closure-config`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: closureConfig
+    },
+      options);
+    }
+
+/**
+ * Resolution targets per category, optionally narrowed to a priority band.
+ * @summary Get Sla Targets
+ */
+export const adminGetSlaTargets = (
+
+ options?: SecondParameter<typeof customInstance<SlaTargets>>,) => {
+      return customInstance<SlaTargets>(
+      {url: `/api/v1/admin/sla-targets`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Replace the whole set. One target per category and band (a null band
+ * covers the rest). Every open issue is rescheduled against it. Audited.
+ * @summary Update Sla Targets
+ */
+export const adminUpdateSlaTargets = (
+    slaTargetsUpdate: SlaTargetsUpdate,
+ options?: SecondParameter<typeof customInstance<SlaTargets>>,) => {
+      return customInstance<SlaTargets>(
+      {url: `/api/v1/admin/sla-targets`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: slaTargetsUpdate
+    },
+      options);
+    }
+
+/**
  * Suggest categories for the caller's uploaded photos (completed
  * uploads only). Waits up to 4 s: `200` with the result if it is ready
  * (`done`, or `failed` with `error: "ai_unavailable"`), otherwise `202`
@@ -941,6 +1127,554 @@ export const matchDecisionsFeedback = (
       options);
     }
 
+/**
+ * Active teams that handle the issue's category and cover its ward,
+ * most local first.
+ * @summary Eligible Teams
+ */
+export const issuesEligibleTeams = (
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<EligibleTeam[]>>,) => {
+      return customInstance<EligibleTeam[]>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/eligible-teams`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Assign (from `verified` or `reopened`) or reassign (needs `reason`)
+ * to a team and optionally a member; a member gets a work order. Audited.
+ * @summary Assign
+ */
+export const issuesAssign = (
+    issueId: string,
+    assignmentCreate: AssignmentCreate,
+ options?: SecondParameter<typeof customInstance<IssueDetail>>,) => {
+      return customInstance<IssueDetail>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/assignments`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: assignmentCreate
+    },
+      options);
+    }
+
+/**
+ * Every assignment, newest first.
+ * @summary Assignment History
+ */
+export const issuesAssignmentHistory = (
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<AssignmentOut[]>>,) => {
+      return customInstance<AssignmentOut[]>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/assignments`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * An internal note (staff only) or a public update (shown to citizens).
+ * @summary Add Note
+ */
+export const issuesAddNote = (
+    issueId: string,
+    noteCreate: NoteCreate,
+ options?: SecondParameter<typeof customInstance<TimelineEvent>>,) => {
+      return customInstance<TimelineEvent>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/notes`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: noteCreate
+    },
+      options);
+    }
+
+/**
+ * `pending_verification` → `resolved`; the resolution window starts.
+ * @summary Approve Closure
+ */
+export const issuesApproveClosure = (
+    issueId: string,
+    approveClosure: ApproveClosure,
+ options?: SecondParameter<typeof customInstance<IssueDetail>>,) => {
+      return customInstance<IssueDetail>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/closure/approve`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: approveClosure
+    },
+      options);
+    }
+
+/**
+ * Back to `in_progress` with a reason; the work order resumes.
+ * @summary Reject Closure
+ */
+export const issuesRejectClosure = (
+    issueId: string,
+    rejectClosure: RejectClosure,
+ options?: SecondParameter<typeof customInstance<IssueDetail>>,) => {
+      return customInstance<IssueDetail>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/closure/reject`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: rejectClosure
+    },
+      options);
+    }
+
+/**
+ * A reporter says whether the issue is fixed. One answer per closure
+ * round. Returns the caller's report as they see it.
+ * @summary Verify
+ */
+export const issuesVerify = (
+    issueId: string,
+    verificationCreate: VerificationCreate,
+ options?: SecondParameter<typeof customInstance<ReportOwnerView>>,) => {
+      return customInstance<ReportOwnerView>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/verification`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: verificationCreate
+    },
+      options);
+    }
+
+/**
+ * Reopen a `resolved` or `closed` issue. Staff get the issue detail; a
+ * reporter gets their report's owner view.
+ * @summary Reopen
+ */
+export const issuesReopen = (
+    issueId: string,
+    reopenRequest: ReopenRequest,
+ options?: SecondParameter<typeof customInstance<IssueDetail | ReportOwnerView>>,) => {
+      return customInstance<IssueDetail | ReportOwnerView>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/reopen`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: reopenRequest
+    },
+      options);
+    }
+
+/**
+ * Open work per team and member, for teams in the caller's scope.
+ * @summary Workload
+ */
+export const workloadGet = (
+
+ options?: SecondParameter<typeof customInstance<Workload>>,) => {
+      return customInstance<Workload>(
+      {url: `/api/v1/workload`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * The caller's work orders, newest first.
+ * @summary List Work Orders
+ */
+export const fieldListWorkOrders = (
+    params?: FieldListWorkOrdersParams,
+ options?: SecondParameter<typeof customInstance<FieldWorkOrderPage>>,) => {
+      return customInstance<FieldWorkOrderPage>(
+      {url: `/api/v1/field/work-orders`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * One of the caller's work orders; anyone else's is `404`.
+ * @summary Get Work Order
+ */
+export const fieldGetWorkOrder = (
+    workOrderId: string,
+ options?: SecondParameter<typeof customInstance<FieldWorkOrder>>,) => {
+      return customInstance<FieldWorkOrder>(
+      {url: `/api/v1/field/work-orders/${encodeURIComponent(String(workOrderId))}`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * @summary Accept
+ */
+export const fieldAccept = (
+    workOrderId: string,
+    versionBody: VersionBody,
+ options?: SecondParameter<typeof customInstance<FieldWorkOrder>>,) => {
+      return customInstance<FieldWorkOrder>(
+      {url: `/api/v1/field/work-orders/${encodeURIComponent(String(workOrderId))}/accept`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: versionBody
+    },
+      options);
+    }
+
+/**
+ * With a reason. The issue goes back to `verified` for reassignment.
+ * @summary Decline
+ */
+export const fieldDecline = (
+    workOrderId: string,
+    declineBody: DeclineBody,
+ options?: SecondParameter<typeof customInstance<FieldWorkOrder>>,) => {
+      return customInstance<FieldWorkOrder>(
+      {url: `/api/v1/field/work-orders/${encodeURIComponent(String(workOrderId))}/decline`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: declineBody
+    },
+      options);
+    }
+
+/**
+ * The issue moves to `in_progress`.
+ * @summary Start
+ */
+export const fieldStart = (
+    workOrderId: string,
+    versionBody: VersionBody,
+ options?: SecondParameter<typeof customInstance<FieldWorkOrder>>,) => {
+      return customInstance<FieldWorkOrder>(
+      {url: `/api/v1/field/work-orders/${encodeURIComponent(String(workOrderId))}/start`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: versionBody
+    },
+      options);
+    }
+
+/**
+ * A note, an optional location and optional evidence photos.
+ * @summary Progress
+ */
+export const fieldProgress = (
+    workOrderId: string,
+    progressBody: ProgressBody,
+ options?: SecondParameter<typeof customInstance<FieldWorkOrder>>,) => {
+      return customInstance<FieldWorkOrder>(
+      {url: `/api/v1/field/work-orders/${encodeURIComponent(String(workOrderId))}/progress`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: progressBody
+    },
+      options);
+    }
+
+/**
+ * Needs an `after` photo on the work order or an allowed `reason_code`.
+ * The issue moves to `pending_verification`.
+ * @summary Request Closure
+ */
+export const fieldRequestClosure = (
+    workOrderId: string,
+    closureRequestBody: ClosureRequestBody,
+ options?: SecondParameter<typeof customInstance<FieldWorkOrder>>,) => {
+      return customInstance<FieldWorkOrder>(
+      {url: `/api/v1/field/work-orders/${encodeURIComponent(String(workOrderId))}/request-closure`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: closureRequestBody
+    },
+      options);
+    }
+
+/**
+ * Newest first. `unread=true` keeps only unread ones; `unread` in the
+ * body is always the full unread count.
+ * @summary List Notifications
+ */
+export const notificationsList = (
+    params?: NotificationsListParams,
+ options?: SecondParameter<typeof customInstance<NotificationPage>>,) => {
+      return customInstance<NotificationPage>(
+      {url: `/api/v1/notifications`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Cheap enough to poll for the header badge.
+ * @summary Unread Count
+ */
+export const notificationsUnreadCount = (
+
+ options?: SecondParameter<typeof customInstance<UnreadCount>>,) => {
+      return customInstance<UnreadCount>(
+      {url: `/api/v1/notifications/unread-count`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Mark every unread notification read; returns how many changed.
+ * @summary Read All
+ */
+export const notificationsReadAll = (
+
+ options?: SecondParameter<typeof customInstance<ReadAllResult>>,) => {
+      return customInstance<ReadAllResult>(
+      {url: `/api/v1/notifications/read-all`, method: 'POST'
+    },
+      options);
+    }
+
+/**
+ * Idempotent. Someone else's notification is a 404.
+ * @summary Read One
+ */
+export const notificationsRead = (
+    notificationId: string,
+ options?: SecondParameter<typeof customInstance<NotificationOut>>,) => {
+      return customInstance<NotificationOut>(
+      {url: `/api/v1/notifications/${encodeURIComponent(String(notificationId))}/read`, method: 'POST'
+    },
+      options);
+    }
+
+/**
+ * Headline KPIs for the period, the same figures for the period just
+ * before it, and a sparkline (daily up to 45 days, else weekly).
+ * @summary Overview
+ */
+export const analyticsOverview = (
+    params?: AnalyticsOverviewParams,
+ options?: SecondParameter<typeof customInstance<Overview>>,) => {
+      return customInstance<Overview>(
+      {url: `/api/v1/analytics/overview`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Reports, issues and first resolutions per IST day or ISO week.
+ * @summary Trend
+ */
+export const analyticsTrend = (
+    params?: AnalyticsTrendParams,
+ options?: SecondParameter<typeof customInstance<Trend>>,) => {
+      return customInstance<Trend>(
+      {url: `/api/v1/analytics/trend`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Issues created in the period, by their current status.
+ * @summary By Status
+ */
+export const analyticsByStatus = (
+    params?: AnalyticsByStatusParams,
+ options?: SecondParameter<typeof customInstance<ByStatus>>,) => {
+      return customInstance<ByStatus>(
+      {url: `/api/v1/analytics/by-status`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Issues created in the period per category, split by current status.
+ * @summary By Category
+ */
+export const analyticsByCategory = (
+    params?: AnalyticsByCategoryParams,
+ options?: SecondParameter<typeof customInstance<ByCategory>>,) => {
+      return customInstance<ByCategory>(
+      {url: `/api/v1/analytics/by-category`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Issues per ward (most first) with open/resolved counts and median
+ * resolution time.
+ * @summary By Ward
+ */
+export const analyticsByWard = (
+    params?: AnalyticsByWardParams,
+ options?: SecondParameter<typeof customInstance<ByWard>>,) => {
+      return customInstance<ByWard>(
+      {url: `/api/v1/analytics/by-ward`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Distribution of time to first resolution, in hour bins.
+ * @summary Resolution Times
+ */
+export const analyticsResolutionTimes = (
+    params?: AnalyticsResolutionTimesParams,
+ options?: SecondParameter<typeof customInstance<ResolutionTimes>>,) => {
+      return customInstance<ResolutionTimes>(
+      {url: `/api/v1/analytics/resolution-times`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * How duplicate matching performed: auto-link, review, duplicate and
+ * correction rates.
+ * @summary Matching Quality
+ */
+export const analyticsMatchingQuality = (
+    params?: AnalyticsMatchingQualityParams,
+ options?: SecondParameter<typeof customInstance<MatchingQuality>>,) => {
+      return customInstance<MatchingQuality>(
+      {url: `/api/v1/analytics/matching-quality`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Issue counts per H3 cell, densest first (at most 400 cells).
+ * @summary Hotspots
+ */
+export const analyticsHotspots = (
+    params?: AnalyticsHotspotsParams,
+ options?: SecondParameter<typeof customInstance<Hotspots>>,) => {
+      return customInstance<Hotspots>(
+      {url: `/api/v1/analytics/hotspots`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Reports by IST weekday and hour.
+ * @summary Activity
+ */
+export const analyticsActivity = (
+    params?: AnalyticsActivityParams,
+ options?: SecondParameter<typeof customInstance<Activity>>,) => {
+      return customInstance<Activity>(
+      {url: `/api/v1/analytics/activity`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Every issue in the period within the caller's scope, as CSV.
+ *
+ * The same filters as the dashboards, so the file matches the figures. No
+ * reporter identity, contact details, description or coordinate is
+ * included, and the export is audited with its filters and row count.
+ * Capped at 20,000 rows; `X-Export-Truncated` says whether it was.
+ * @summary Export Issues
+ */
+export const analyticsExport = (
+    params?: AnalyticsExportParams,
+ options?: SecondParameter<typeof customInstance<string>>,) => {
+      return customInstance<string>(
+      {url: `/api/v1/analytics/export`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * The support count and whether the caller supports the issue.
+ * @summary Get Support
+ */
+export const issuesSupportGet = (
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<SupportState>>,) => {
+      return customInstance<SupportState>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/support`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Say "I face this too": one per citizen per issue (repeating is harmless),
+ * and it follows the issue. Rejected or closed issues: `422
+ * invalid_transition`; a merged one: `422 issue_merged`. Support from
+ * citizens who did not report the issue adds a small, capped bonus to its
+ * priority (factor `community`).
+ * @summary Add Support
+ */
+export const issuesSupportAdd = (
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<SupportState>>,) => {
+      return customInstance<SupportState>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/support`, method: 'POST'
+    },
+      options);
+    }
+
+/**
+ * Withdraw support and stop following. Idempotent.
+ * @summary Remove Support
+ */
+export const issuesSupportRemove = (
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<SupportState>>,) => {
+      return customInstance<SupportState>(
+      {url: `/api/v1/issues/${encodeURIComponent(String(issueId))}/support`, method: 'DELETE'
+    },
+      options);
+    }
+
+/**
+ * Issues with generalised locations, newest first by default.
+ * @summary List Issues
+ */
+export const publicIssuesList = (
+    tenant: string,
+    params?: PublicIssuesListParams,
+ options?: SecondParameter<typeof customInstance<PublicIssuePage>>,) => {
+      return customInstance<PublicIssuePage>(
+      {url: `/api/v1/public/${encodeURIComponent(String(tenant))}/issues`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * Generalised points for the map, `[lng, lat]`, at most 2000.
+ * @summary Issues Geojson
+ */
+export const publicIssuesGeojson = (
+    tenant: string,
+    params?: PublicIssuesGeojsonParams,
+ options?: SecondParameter<typeof customInstance<PublicFeatureCollection>>,) => {
+      return customInstance<PublicFeatureCollection>(
+      {url: `/api/v1/public/${encodeURIComponent(String(tenant))}/issues/geojson`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * The public timeline and face-blurred before/after photos.
+ * @summary Get Issue
+ */
+export const publicIssuesGet = (
+    tenant: string,
+    issueId: string,
+ options?: SecondParameter<typeof customInstance<PublicIssueDetail>>,) => {
+      return customInstance<PublicIssueDetail>(
+      {url: `/api/v1/public/${encodeURIComponent(String(tenant))}/issues/${encodeURIComponent(String(issueId))}`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Per ward: open issues, resolved issues and the median days to resolve.
+ * @summary Scorecard
+ */
+export const publicScorecard = (
+    tenant: string,
+ options?: SecondParameter<typeof customInstance<Scorecard>>,) => {
+      return customInstance<Scorecard>(
+      {url: `/api/v1/public/${encodeURIComponent(String(tenant))}/scorecard`, method: 'GET'
+    },
+      options);
+    }
+
 export type HealthLiveResult = NonNullable<Awaited<ReturnType<typeof healthLive>>>
 export type HealthReadyResult = NonNullable<Awaited<ReturnType<typeof healthReady>>>
 export type TenantsGetCurrentResult = NonNullable<Awaited<ReturnType<typeof tenantsGetCurrent>>>
@@ -962,6 +1696,10 @@ export type AdminReplaceUserRolesResult = NonNullable<Awaited<ReturnType<typeof 
 export type AdminListDepartmentsResult = NonNullable<Awaited<ReturnType<typeof adminListDepartments>>>
 export type AdminCreateDepartmentResult = NonNullable<Awaited<ReturnType<typeof adminCreateDepartment>>>
 export type AdminListJurisdictionsResult = NonNullable<Awaited<ReturnType<typeof adminListJurisdictions>>>
+export type AdminListTeamsResult = NonNullable<Awaited<ReturnType<typeof adminListTeams>>>
+export type AdminCreateTeamResult = NonNullable<Awaited<ReturnType<typeof adminCreateTeam>>>
+export type AdminGetTeamResult = NonNullable<Awaited<ReturnType<typeof adminGetTeam>>>
+export type AdminUpdateTeamResult = NonNullable<Awaited<ReturnType<typeof adminUpdateTeam>>>
 export type AdminListAuditEventsResult = NonNullable<Awaited<ReturnType<typeof adminListAuditEvents>>>
 export type PlatformListTenantsResult = NonNullable<Awaited<ReturnType<typeof platformListTenants>>>
 export type PlatformCreateTenantResult = NonNullable<Awaited<ReturnType<typeof platformCreateTenant>>>
@@ -976,6 +1714,7 @@ export type GeoReverseResult = NonNullable<Awaited<ReturnType<typeof geoReverse>
 export type ReportsCreateResult = NonNullable<Awaited<ReturnType<typeof reportsCreate>>>
 export type ReportsListMineResult = NonNullable<Awaited<ReturnType<typeof reportsListMine>>>
 export type ReportsGetResult = NonNullable<Awaited<ReturnType<typeof reportsGet>>>
+export type ReportsWithdrawResult = NonNullable<Awaited<ReturnType<typeof reportsWithdraw>>>
 export type IssuesListResult = NonNullable<Awaited<ReturnType<typeof issuesList>>>
 export type IssuesGeojsonResult = NonNullable<Awaited<ReturnType<typeof issuesGeojson>>>
 export type IssuesGetResult = NonNullable<Awaited<ReturnType<typeof issuesGet>>>
@@ -991,6 +1730,10 @@ export type AdminGetMatchingConfigResult = NonNullable<Awaited<ReturnType<typeof
 export type AdminUpdateMatchingConfigResult = NonNullable<Awaited<ReturnType<typeof adminUpdateMatchingConfig>>>
 export type AdminGetPriorityConfigResult = NonNullable<Awaited<ReturnType<typeof adminGetPriorityConfig>>>
 export type AdminUpdatePriorityConfigResult = NonNullable<Awaited<ReturnType<typeof adminUpdatePriorityConfig>>>
+export type AdminGetClosureConfigResult = NonNullable<Awaited<ReturnType<typeof adminGetClosureConfig>>>
+export type AdminUpdateClosureConfigResult = NonNullable<Awaited<ReturnType<typeof adminUpdateClosureConfig>>>
+export type AdminGetSlaTargetsResult = NonNullable<Awaited<ReturnType<typeof adminGetSlaTargets>>>
+export type AdminUpdateSlaTargetsResult = NonNullable<Awaited<ReturnType<typeof adminUpdateSlaTargets>>>
 export type AiCreateClassificationResult = NonNullable<Awaited<ReturnType<typeof aiCreateClassification>>>
 export type AiGetClassificationResult = NonNullable<Awaited<ReturnType<typeof aiGetClassification>>>
 export type AdminListAiModelsResult = NonNullable<Awaited<ReturnType<typeof adminListAiModels>>>
@@ -999,3 +1742,40 @@ export type ReviewTasksListResult = NonNullable<Awaited<ReturnType<typeof review
 export type ReviewTasksGetResult = NonNullable<Awaited<ReturnType<typeof reviewTasksGet>>>
 export type ReviewTasksResolveResult = NonNullable<Awaited<ReturnType<typeof reviewTasksResolve>>>
 export type MatchDecisionsFeedbackResult = NonNullable<Awaited<ReturnType<typeof matchDecisionsFeedback>>>
+export type IssuesEligibleTeamsResult = NonNullable<Awaited<ReturnType<typeof issuesEligibleTeams>>>
+export type IssuesAssignResult = NonNullable<Awaited<ReturnType<typeof issuesAssign>>>
+export type IssuesAssignmentHistoryResult = NonNullable<Awaited<ReturnType<typeof issuesAssignmentHistory>>>
+export type IssuesAddNoteResult = NonNullable<Awaited<ReturnType<typeof issuesAddNote>>>
+export type IssuesApproveClosureResult = NonNullable<Awaited<ReturnType<typeof issuesApproveClosure>>>
+export type IssuesRejectClosureResult = NonNullable<Awaited<ReturnType<typeof issuesRejectClosure>>>
+export type IssuesVerifyResult = NonNullable<Awaited<ReturnType<typeof issuesVerify>>>
+export type IssuesReopenResult = NonNullable<Awaited<ReturnType<typeof issuesReopen>>>
+export type WorkloadGetResult = NonNullable<Awaited<ReturnType<typeof workloadGet>>>
+export type FieldListWorkOrdersResult = NonNullable<Awaited<ReturnType<typeof fieldListWorkOrders>>>
+export type FieldGetWorkOrderResult = NonNullable<Awaited<ReturnType<typeof fieldGetWorkOrder>>>
+export type FieldAcceptResult = NonNullable<Awaited<ReturnType<typeof fieldAccept>>>
+export type FieldDeclineResult = NonNullable<Awaited<ReturnType<typeof fieldDecline>>>
+export type FieldStartResult = NonNullable<Awaited<ReturnType<typeof fieldStart>>>
+export type FieldProgressResult = NonNullable<Awaited<ReturnType<typeof fieldProgress>>>
+export type FieldRequestClosureResult = NonNullable<Awaited<ReturnType<typeof fieldRequestClosure>>>
+export type NotificationsListResult = NonNullable<Awaited<ReturnType<typeof notificationsList>>>
+export type NotificationsUnreadCountResult = NonNullable<Awaited<ReturnType<typeof notificationsUnreadCount>>>
+export type NotificationsReadAllResult = NonNullable<Awaited<ReturnType<typeof notificationsReadAll>>>
+export type NotificationsReadResult = NonNullable<Awaited<ReturnType<typeof notificationsRead>>>
+export type AnalyticsOverviewResult = NonNullable<Awaited<ReturnType<typeof analyticsOverview>>>
+export type AnalyticsTrendResult = NonNullable<Awaited<ReturnType<typeof analyticsTrend>>>
+export type AnalyticsByStatusResult = NonNullable<Awaited<ReturnType<typeof analyticsByStatus>>>
+export type AnalyticsByCategoryResult = NonNullable<Awaited<ReturnType<typeof analyticsByCategory>>>
+export type AnalyticsByWardResult = NonNullable<Awaited<ReturnType<typeof analyticsByWard>>>
+export type AnalyticsResolutionTimesResult = NonNullable<Awaited<ReturnType<typeof analyticsResolutionTimes>>>
+export type AnalyticsMatchingQualityResult = NonNullable<Awaited<ReturnType<typeof analyticsMatchingQuality>>>
+export type AnalyticsHotspotsResult = NonNullable<Awaited<ReturnType<typeof analyticsHotspots>>>
+export type AnalyticsActivityResult = NonNullable<Awaited<ReturnType<typeof analyticsActivity>>>
+export type AnalyticsExportResult = NonNullable<Awaited<ReturnType<typeof analyticsExport>>>
+export type IssuesSupportGetResult = NonNullable<Awaited<ReturnType<typeof issuesSupportGet>>>
+export type IssuesSupportAddResult = NonNullable<Awaited<ReturnType<typeof issuesSupportAdd>>>
+export type IssuesSupportRemoveResult = NonNullable<Awaited<ReturnType<typeof issuesSupportRemove>>>
+export type PublicIssuesListResult = NonNullable<Awaited<ReturnType<typeof publicIssuesList>>>
+export type PublicIssuesGeojsonResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGeojson>>>
+export type PublicIssuesGetResult = NonNullable<Awaited<ReturnType<typeof publicIssuesGet>>>
+export type PublicScorecardResult = NonNullable<Awaited<ReturnType<typeof publicScorecard>>>

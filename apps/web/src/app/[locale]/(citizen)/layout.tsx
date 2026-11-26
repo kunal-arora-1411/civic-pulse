@@ -3,6 +3,8 @@ import { useTranslations } from "next-intl";
 import { AccountMenu } from "@/components/account-menu";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -35,7 +37,9 @@ export default function CitizenLayout({ children }: LayoutProps<"/[locale]">) {
             </nav>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeSwitcher className="hidden sm:flex" />
             <LanguageSwitcher />
+            <NotificationBell />
             <AccountMenu />
             <Link
               href="/report"

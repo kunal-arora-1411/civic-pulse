@@ -15,6 +15,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { use, useEffect, useState } from "react";
 import { useDetailLabels } from "@/components/citizen/report-detail";
 import { CategoryIcon } from "@/components/issues/category-icon";
+import { SlaBadge } from "@/components/issues/sla-badge";
 import { StatusBadge } from "@/components/issues/status-badge";
 import { PinMap } from "@/components/map/lazy-maps";
 import { PhotoGallery } from "@/components/media/photo-gallery";
@@ -138,6 +139,7 @@ function Body({
         <div className="grid gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={issue.status} />
+            <SlaBadge state={issue.sla_state} dueAt={issue.due_at} />
             <span className="text-sm text-muted-foreground">
               {t("reportCount", { count: issue.report_count })}
             </span>
@@ -262,6 +264,24 @@ function Body({
                   timeStyle: "short",
                 })}
               </dd>
+              {issue.due_at ? (
+                <>
+                  <dt className="text-muted-foreground">{t("slaDue")}</dt>
+                  <dd>
+                    {format.dateTime(new Date(issue.due_at), {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                    {issue.escalation_level > 0 ? (
+                      <span className="block text-xs text-muted-foreground">
+                        {issue.escalation_level > 1
+                          ? t("slaEscalatedAdmins")
+                          : t("slaEscalatedSupervisors")}
+                      </span>
+                    ) : null}
+                  </dd>
+                </>
+              ) : null}
               <dt className="text-muted-foreground">{t("reporters")}</dt>
               <dd>{issue.unique_reporter_count}</dd>
               <dt className="text-muted-foreground">{t("version")}</dt>

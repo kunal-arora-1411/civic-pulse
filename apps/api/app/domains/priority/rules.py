@@ -20,6 +20,11 @@ Priority, from the tenant's priority config: five factors, each scaled to
 [0, 1] and multiplied by its weight; the score is their sum (0 to 100)
 and the band comes from the thresholds. Rejected, closed and merged issues
 score 0.
+
+Community support ("I face this too" from citizens who did not report the
+issue) adds a small bonus on top, at most COMMUNITY_MAX_POINTS. It grows
+logarithmically and is capped well below a band's width, so it can nudge an
+issue up the queue but never decides its priority on its own.
 """
 
 from __future__ import annotations
@@ -35,6 +40,10 @@ from app.domains.config.schemas import PriorityBands, PriorityConfig
 
 # Contract F: a place of interest this close counts for the priority factor.
 NEAR_PLACES_RADIUS_M = 150
+
+# Community support: a capped bonus, outside the configurable weights.
+COMMUNITY_MAX_POINTS = 5.0
+COMMUNITY_SATURATION = 25
 
 
 class SeverityLevel(StrEnum):
@@ -198,6 +207,7 @@ class PriorityInputs:
     recurrence: int  # other issues of the category nearby within the lookback
     near_place: bool  # any place of interest within NEAR_PLACES_RADIUS_M
     inactive_status: str | None = None  # "rejected", "closed" or "merged" -> score 0
+    supporters: int = 0  # citizens who support it without having reported it
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,6 +259,12 @@ def recurrence_factor(count: int, saturation: int) -> float:
     return min(1.0, max(0, count) / saturation)
 
 
+def community_factor(supporters: int) -> float:
+    """Logarithmic like reporters: the first few supporters matter most."""
+    s = max(0, supporters)
+    return min(1.0, math.log1p(s) / math.log1p(COMMUNITY_SATURATION))
+
+
 def compute_priority(config: PriorityConfig, inputs: PriorityInputs) -> PriorityResult:
     if inputs.inactive_status is not None:
         factor = Factor("status", inputs.inactive_status, 0.0, 0.0, "priority.inactive")
@@ -286,6 +302,20 @@ def compute_priority(config: PriorityConfig, inputs: PriorityInputs) -> Priority
         Factor(name, value, round(norm, 4), round(norm * weight, 2), f"priority.{name}")
         for name, value, norm, weight in normalized
     ]
+    if inputs.supporters > 0:
+        # Only listed when someone supports the issue, so the explanation
+        # shows it exactly when it contributes.
+        norm = community_factor(inputs.supporters)
+        normalized.append(("community", inputs.supporters, norm, COMMUNITY_MAX_POINTS))
+        factors.append(
+            Factor(
+                "community",
+                inputs.supporters,
+                round(norm, 4),
+                round(norm * COMMUNITY_MAX_POINTS, 2),
+                "priority.community",
+            )
+        )
     score = round(min(100.0, sum(norm * weight for _, _, norm, weight in normalized)), 2)
     factors.sort(key=lambda f: (-f.points, f.factor))
     return PriorityResult(score=score, band=band_for(score, config.bands), factors=factors)

@@ -30,8 +30,9 @@ class DefaultTransition:
 _STAFF = (Role.OPERATOR, Role.SUPERVISOR, Role.MUNICIPAL_ADMIN)
 _SENIOR = (Role.SUPERVISOR, Role.MUNICIPAL_ADMIN)
 
-# Phase 1 defaults (docs/api/phase-1-contract.md §7). Later phases add the
-# rest of the lifecycle. Migration 0002 holds a frozen copy for backfill.
+# Phase 1 defaults (docs/api/phase-1-contract.md §7) and Phase 3's system
+# moves (docs/api/phase-3-contract.md §9). Migrations 0002 and 0007 hold
+# frozen copies for backfill.
 DEFAULT_TRANSITIONS: tuple[DefaultTransition, ...] = (
     DefaultTransition(S.REPORTED, S.UNDER_REVIEW, _STAFF),
     DefaultTransition(S.REPORTED, S.VERIFIED, _STAFF),
@@ -40,6 +41,17 @@ DEFAULT_TRANSITIONS: tuple[DefaultTransition, ...] = (
     DefaultTransition(S.UNDER_REVIEW, S.REJECTED, _STAFF, requires_reason=True),
     DefaultTransition(S.REJECTED, S.UNDER_REVIEW, _SENIOR, requires_reason=True),
     DefaultTransition(S.VERIFIED, S.ASSIGNED, system_only=True),
+    # Phase 3: made by assignment, work orders, closure and the resolution window.
+    DefaultTransition(S.REOPENED, S.ASSIGNED, system_only=True),
+    DefaultTransition(S.IN_PROGRESS, S.ASSIGNED, system_only=True),
+    DefaultTransition(S.ASSIGNED, S.VERIFIED, system_only=True),
+    DefaultTransition(S.ASSIGNED, S.IN_PROGRESS, system_only=True),
+    DefaultTransition(S.IN_PROGRESS, S.PENDING_VERIFICATION, system_only=True),
+    DefaultTransition(S.PENDING_VERIFICATION, S.RESOLVED, system_only=True),
+    DefaultTransition(S.PENDING_VERIFICATION, S.IN_PROGRESS, system_only=True),
+    DefaultTransition(S.RESOLVED, S.CLOSED, system_only=True),
+    DefaultTransition(S.RESOLVED, S.REOPENED, system_only=True),
+    DefaultTransition(S.CLOSED, S.REOPENED, system_only=True),
 )
 
 _LIFECYCLE_ORDER = {status.value: index for index, status in enumerate(S)}
@@ -105,3 +117,15 @@ def permits(transition: StatusTransition, roles: Iterable[Role]) -> bool:
     if transition.system_only:
         return False
     return bool(set(transition.allowed_roles) & {r.value for r in roles})
+
+
+async def has_transition(db: AsyncSession, from_status: str, to_status: str) -> bool:
+    """Whether the tenant's workflow has this move at all. The platform's own
+    moves (assignment, closure, ...) check this, so a tenant that removed a
+    move really has turned that step off."""
+    found = await db.scalar(
+        select(StatusTransition.id).where(
+            StatusTransition.from_status == from_status, StatusTransition.to_status == to_status
+        )
+    )
+    return found is not None

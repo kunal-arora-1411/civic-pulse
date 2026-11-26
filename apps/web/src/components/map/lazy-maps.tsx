@@ -40,3 +40,8 @@ export const IssuesMap = dynamic(
   () => import("./issues-map").then((mod) => mod.IssuesMap),
   { ssr: false, loading: () => <MapSkeleton /> },
 );
+
+export const HotspotMap = dynamic(
+  () => import("./hotspot-map").then((mod) => mod.HotspotMap),
+  { ssr: false, loading: () => <MapSkeleton /> },
+);

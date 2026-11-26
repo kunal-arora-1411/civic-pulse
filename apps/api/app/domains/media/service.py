@@ -12,7 +12,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import NotFound
+from app.core.errors import Forbidden, NotFound
 from app.core.logging import log_fields
 from app.core.storage import ObjectStorage, ObjectTooLarge, StorageError
 from app.domains.media.errors import (
@@ -22,7 +22,7 @@ from app.domains.media.errors import (
     UploadVerificationFailed,
 )
 from app.domains.media.inspect import EXTENSIONS, InvalidImage, inspect
-from app.domains.media.models import ALLOWED_CONTENT_TYPES, MediaAsset, MediaStatus
+from app.domains.media.models import ALLOWED_CONTENT_TYPES, MediaAsset, MediaPurpose, MediaStatus
 from app.domains.media.schemas import (
     MediaAssetOut,
     MediaOut,
@@ -30,6 +30,7 @@ from app.domains.media.schemas import (
     UploadCreate,
     UploadCreated,
 )
+from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ async def create_upload(
 ) -> UploadCreated:
     settings = get_settings()
     assert principal.tenant_id is not None
+    if body.purpose == MediaPurpose.WORK_EVIDENCE and not principal.has(Permission.EVIDENCE_UPLOAD):
+        raise Forbidden()
     if body.content_type not in ALLOWED_CONTENT_TYPES:
         raise UnsupportedMediaType(details={"allowed": list(ALLOWED_CONTENT_TYPES)})
     if body.size_bytes > settings.media_max_bytes:
@@ -79,6 +82,7 @@ async def create_upload(
             tenant_id=principal.tenant_id,
             owner_id=principal.user_id,
             purpose=body.purpose,
+            phase=body.phase,
             status=MediaStatus.PENDING,
             content_type=body.content_type,
             declared_size_bytes=body.size_bytes,

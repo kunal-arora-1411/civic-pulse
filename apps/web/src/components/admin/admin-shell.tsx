@@ -8,6 +8,8 @@ import { TenantName } from "@/components/auth/tenant-name";
 import { BrandArcs } from "@/components/brand/brand-arcs";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
@@ -77,7 +79,9 @@ function Frame({
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              <ThemeSwitcher className="hidden sm:flex" />
               <LanguageSwitcher />
+              <NotificationBell />
               <AccountMenu />
             </div>
           </div>

@@ -4,6 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { use } from "react";
+import { SupportButton } from "@/components/community/support-button";
+import {
+  ReopenButton,
+  VerificationCard,
+} from "@/components/community/verification-card";
 import { CategoryIcon } from "@/components/issues/category-icon";
 import { PublicTimeline } from "@/components/issues/public-timeline";
 import { StatusBadge } from "@/components/issues/status-badge";
@@ -16,7 +21,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useCategories, useLocalized } from "@/hooks/use-reference-data";
 import { Link } from "@/i18n/navigation";
-import { type Category, getReport, isApiError, type Report } from "@/lib/api";
+import {
+  type Category,
+  getReport,
+  type IssueStatus,
+  isApiError,
+  type Report,
+} from "@/lib/api";
 import { processingRefetchInterval } from "@/lib/media/processing";
 import {
   matchingRefetchInterval,
@@ -24,6 +35,9 @@ import {
   soonest,
 } from "@/lib/report/matching";
 import { MatchingBadge, MatchingStatus } from "./matching-status";
+
+/** Issues nobody can support any more (the API refuses with 422). */
+const CLOSED = new Set<IssueStatus>(["closed", "rejected"]);
 
 /** "road_name" → "Road name", for fields of categories since edited. */
 function humanize(key: string): string {
@@ -106,6 +120,10 @@ function Body({ report }: { report: Report }) {
         </p>
       </header>
 
+      {report.issue ? (
+        <VerificationCard reportId={report.id} issue={report.issue} />
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="grid content-start gap-6">
           <Card className="grid gap-3 p-5">
@@ -179,7 +197,18 @@ function Body({ report }: { report: Report }) {
             <MatchingStatus report={report} />
           )}
           {report.issue ? (
-            <PublicTimeline events={report.issue.timeline} />
+            <>
+              <SupportButton
+                issueId={report.issue.id}
+                count={report.issue.support_count}
+                open={!CLOSED.has(report.issue.status)}
+                returnTo={`/reports/${report.id}`}
+              />
+              {report.issue.can_reopen ? (
+                <ReopenButton reportId={report.id} issueId={report.issue.id} />
+              ) : null}
+              <PublicTimeline events={report.issue.timeline} />
+            </>
           ) : null}
         </Card>
       </div>

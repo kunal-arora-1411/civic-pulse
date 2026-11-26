@@ -30,6 +30,7 @@ class IssueFilters:
     bbox: BBox | None = None
     severities: list[SeverityLevel] = field(default_factory=list)
     priority_bands: list[PriorityBand] = field(default_factory=list)
+    overdue: bool | None = None
 
 
 def _invalid(param: str, msg: str) -> ValidationFailed:
@@ -86,6 +87,10 @@ def _common(
         list[PriorityBand] | None,
         Query(description="The effective band (an override counts). Repeatable."),
     ] = None,
+    overdue: Annotated[
+        bool | None,
+        Query(description="`true`: open and past the SLA deadline; `false`: everything else."),
+    ] = None,
 ) -> IssueFilters:
     if date_from and date_to and date_from > date_to:
         raise _invalid("from", "`from` is after `to`.")
@@ -98,6 +103,7 @@ def _common(
         q=(q.strip() or None) if q else None,
         severities=severity or [],
         priority_bands=priority_band or [],
+        overdue=overdue,
     )
 
 

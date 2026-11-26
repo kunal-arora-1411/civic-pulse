@@ -86,9 +86,8 @@
 | Media retention periods | 8 Feb |
 
 ## Known gaps carried forward
+- **Report rate limit is global:** the per-citizen submission limits are settings, not per-tenant configuration (tenant configs would need a new key, a migration and admin UI).
 - **Evaluation data:** small (187 images), mostly Flickr via Openverse (Commons rate-limited downloads), with few Indian scenes for some classes. Duplicate pairs are synthetic augmentations. These are baseline numbers, not real-world performance.
-- **Issue scope:** issues are scoped by jurisdiction only; a department supervisor still sees all categories.
-- **Rate limits:** no per-user throttling on report submission yet (PRD §12.3).
 - **SMS:** still sent inside the request; moves to an outbox in Phase 4 (A4.3).
 - **Audit:** not hash-chained yet (A6.3).
 - **Signed URLs:** they change on every request, so browsers can't cache photos.

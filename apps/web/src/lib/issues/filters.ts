@@ -25,6 +25,8 @@ export type IssueFilters = {
   severity: SeverityLevel[];
   /** Effective priority band; `band` in the URL. */
   band: PriorityBand[];
+  /** Only issues open past their SLA deadline; `overdue=1` in the URL. */
+  overdue: boolean;
   /** Calendar dates, YYYY-MM-DD, inclusive. */
   from: string | null;
   to: string | null;
@@ -43,6 +45,7 @@ export const EMPTY_FILTERS: IssueFilters = {
   ward: [],
   severity: [],
   band: [],
+  overdue: false,
   from: null,
   to: null,
   q: "",
@@ -94,6 +97,7 @@ export function parseIssueFilters(params: ReadableParams): IssueFilters {
     ward: ids("ward"),
     severity: oneOf(params, "severity", SEVERITY_LEVELS),
     band: oneOf(params, "band", PRIORITY_BANDS),
+    overdue: params.get("overdue") === "1",
     from: isDate(from) ? from : null,
     to: isDate(to) ? to : null,
     q: (params.get("q") ?? "").trim().slice(0, 200),
@@ -124,6 +128,7 @@ export function serializeIssueFilters(
   for (const id of unique(value.ward)) params.append("ward", id);
   for (const level of unique(value.severity)) params.append("severity", level);
   for (const band of unique(value.band)) params.append("band", band);
+  if (value.overdue) params.set("overdue", "1");
   if (value.from) params.set("from", value.from);
   if (value.to) params.set("to", value.to);
   if (value.sort !== DEFAULT_SORT) params.set("sort", value.sort);
@@ -148,6 +153,7 @@ export function activeFilterCount(filters: IssueFilters): number {
     filters.ward.length +
     filters.severity.length +
     filters.band.length +
+    (filters.overdue ? 1 : 0) +
     (filters.from ? 1 : 0) +
     (filters.to ? 1 : 0) +
     (filters.q ? 1 : 0)
@@ -167,6 +173,7 @@ export function toFilterParams(filters: IssueFilters): IssueFilterParams {
     ward_id: filters.ward.length ? filters.ward : undefined,
     severity: filters.severity.length ? filters.severity : undefined,
     priority_band: filters.band.length ? filters.band : undefined,
+    overdue: filters.overdue || undefined,
     from: inverted ? undefined : (filters.from ?? undefined),
     to: inverted ? undefined : (filters.to ?? undefined),
     q: filters.q || undefined,

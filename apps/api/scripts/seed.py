@@ -11,11 +11,20 @@ tenants and about 60 synthetic issues with processed placeholder photos.
 scripts/seed_phase2.py then adds severity rules, places of interest, the
 matching and priority configs, duplicate clusters and two open review
 tasks, and computes severity and priority for every issue.
+scripts/seed_analytics.py adds about 90 days of varied history (360 more
+issues across the lifecycle, duplicates and match decisions) so the
+analytics dashboard looks real.
 Running it again converges on the same state: names, geometry, roles and
 categories are reset to these values, and existing issues are left alone.
+Resolution SLA targets are set for every category (tighter for critical
+issues); the trigger schedules issues against them as they are written.
 
 The ward polygons are SYNTHETIC rectangles around central Bengaluru
-(~12.97 N, 77.59 E). They are not real municipal boundaries.
+(~12.97 N, 77.59 E). A second synthetic area around Ramesh Nagar in West
+Delhi (~28.65 N, 77.13 E) gives Demo City a city boundary, a zone and four
+wards there too, so the report flow can be tried from Delhi with a real
+GPS fix. The seeded issues all stay in Bengaluru. None of these are real
+municipal boundaries.
 """
 
 from __future__ import annotations
@@ -35,12 +44,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import get_engine
 from app.core.tenancy import system_session
-from app.domains.org.models import Department, Jurisdiction, JurisdictionKind
+from app.domains.org.models import (
+    Department,
+    Jurisdiction,
+    JurisdictionKind,
+    Team,
+    TeamCategory,
+    TeamJurisdiction,
+    TeamMember,
+)
+from app.domains.priority.service import recompute_tenant
 from app.domains.rbac.models import UserRole
 from app.domains.rbac.roles import Role
+from app.domains.sla.models import SlaTarget
 from app.domains.tenants.models import Tenant
 from app.domains.users.models import User
 from app.domains.workflow.service import install_default_transitions
+from scripts import seed_analytics as analytics
 from scripts import seed_phase1 as phase1
 from scripts import seed_phase2 as phase2
 
@@ -56,6 +76,11 @@ DEPARTMENTS = [
 # Synthetic grid around central Bengaluru: (min_lon, min_lat, max_lon, max_lat).
 WEST, MID_LON, EAST = 77.55, 77.59, 77.63
 SOUTH, MID_LAT, NORTH = 12.93, 12.97, 13.01
+
+
+# Synthetic grid around Ramesh Nagar, West Delhi.
+D_WEST, D_MID_LON, D_EAST = 77.09, 77.13, 77.17
+D_SOUTH, D_MID_LAT, D_NORTH = 28.62, 28.65, 28.68
 
 
 @dataclass(frozen=True)
@@ -112,6 +137,54 @@ AREAS = [
         JurisdictionKind.WARD,
         (MID_LON, SOUTH, EAST, MID_LAT),
         "SYN-ZS",
+    ),
+]
+
+# A second, separate piece of Demo City in West Delhi. Any of the tenant's
+# city boundaries counts as "in jurisdiction" (geo.place), so reports there
+# get a ward and a zone like anywhere else. Kept out of AREAS so the seeded
+# issues and their wards stay exactly as before.
+DELHI_AREAS = [
+    Area(
+        "DEL-CITY",
+        "Demo City, West Delhi (synthetic)",
+        JurisdictionKind.CITY,
+        (D_WEST, D_SOUTH, D_EAST, D_NORTH),
+    ),
+    Area(
+        "DEL-ZW",
+        "Synthetic Zone West Delhi",
+        JurisdictionKind.ZONE,
+        (D_WEST, D_SOUTH, D_EAST, D_NORTH),
+        "DEL-CITY",
+    ),
+    Area(
+        "DEL-W01",
+        "Synthetic Ward D1 (Rajouri Garden)",
+        JurisdictionKind.WARD,
+        (D_WEST, D_MID_LAT, D_MID_LON, D_NORTH),
+        "DEL-ZW",
+    ),
+    Area(
+        "DEL-W02",
+        "Synthetic Ward D2 (Ramesh Nagar)",
+        JurisdictionKind.WARD,
+        (D_MID_LON, D_MID_LAT, D_EAST, D_NORTH),
+        "DEL-ZW",
+    ),
+    Area(
+        "DEL-W03",
+        "Synthetic Ward D3 (Tagore Garden)",
+        JurisdictionKind.WARD,
+        (D_WEST, D_SOUTH, D_MID_LON, D_MID_LAT),
+        "DEL-ZW",
+    ),
+    Area(
+        "DEL-W04",
+        "Synthetic Ward D4 (Kirti Nagar)",
+        JurisdictionKind.WARD,
+        (D_MID_LON, D_SOUTH, D_EAST, D_MID_LAT),
+        "DEL-ZW",
     ),
 ]
 
@@ -192,6 +265,79 @@ async def _upsert_user(
     return user_id
 
 
+async def _upsert_team(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    department_id: uuid.UUID,
+    *,
+    jurisdiction_id: uuid.UUID,
+    category_ids: list[uuid.UUID],
+    lead_id: uuid.UUID,
+) -> uuid.UUID:
+    """Phase 3: a field team in Roads covering Zone North, with the seeded
+    field worker as its lead."""
+    team_id = await db.scalar(
+        pg_insert(Team)
+        .values(
+            tenant_id=tenant_id,
+            department_id=department_id,
+            name="Roads North",
+            schedule={
+                "timezone": "Asia/Kolkata",
+                "days": [{"weekday": d, "start": "09:00", "end": "18:00"} for d in range(6)],
+            },
+        )
+        .on_conflict_do_update(
+            constraint="uq_teams_tenant_id_department_id_name", set_={"is_active": True}
+        )
+        .returning(Team.id)
+    )
+    assert team_id is not None
+    for model, values in (
+        (TeamMember, {"user_id": lead_id, "team_role": "lead"}),
+        (TeamJurisdiction, {"jurisdiction_id": jurisdiction_id}),
+        *((TeamCategory, {"category_id": c}) for c in category_ids),
+    ):
+        await db.execute(
+            pg_insert(model)
+            .values(tenant_id=tenant_id, team_id=team_id, **values)
+            .on_conflict_do_nothing()
+        )
+    return team_id
+
+
+# Resolution targets in hours per category: (any band, critical, escalate
+# to the admins this long after a breach).
+SLA_TARGETS: dict[str, tuple[int, int, int]] = {
+    "pothole": (168, 48, 48),
+    "waste": (48, 12, 24),
+    "waterlogging": (72, 12, 24),
+    "streetlight": (96, 24, 48),
+    "drainage": (120, 24, 48),
+}
+
+
+async def _upsert_sla_targets(
+    db: AsyncSession, tenant_id: uuid.UUID, categories: dict[str, uuid.UUID]
+) -> None:
+    for code, (any_band, critical, escalate) in SLA_TARGETS.items():
+        for band, hours in ((None, any_band), ("critical", critical)):
+            values = {"resolve_hours": hours, "escalate_after_hours": escalate}
+            await db.execute(
+                pg_insert(SlaTarget)
+                .values(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_id,
+                    category_id=categories[code],
+                    priority_band=band,
+                    **values,
+                )
+                .on_conflict_do_update(
+                    constraint="uq_sla_targets_tenant_id_category_id_priority_band", set_=values
+                )
+            )
+
+
 async def run() -> dict[str, int]:
     if get_settings().is_production:
         raise SystemExit("Refusing to seed synthetic data into a production environment.")
@@ -205,7 +351,7 @@ async def run() -> dict[str, int]:
             code: await _upsert_department(db, demo, code, name) for code, name in DEPARTMENTS
         }
         areas: dict[str, uuid.UUID] = {}
-        for area in AREAS:  # parents are listed before their children
+        for area in [*AREAS, *DELHI_AREAS]:  # parents are listed before their children
             parent_id = areas[area.parent] if area.parent else None
             areas[area.code] = await _upsert_area(db, demo, area, parent_id)
 
@@ -216,8 +362,17 @@ async def run() -> dict[str, int]:
             user_ids[seed.phone] = await _upsert_user(db, seed, tenant_id, department_id)
 
         categories = await phase1.seed_categories(db, demo, departments)
+        await _upsert_sla_targets(db, demo, categories)
         for tenant_id in tenant_ids.values():
             await install_default_transitions(db, tenant_id)
+        await _upsert_team(
+            db,
+            demo,
+            departments["ROADS"],
+            jurisdiction_id=areas["SYN-ZN"],
+            category_ids=[categories["pothole"]],
+            lead_id=user_ids["+919000000004"],
+        )
 
     wards = {areas[area.code]: area.bbox for area in AREAS if area.kind is JurisdictionKind.WARD}
     issues = await phase1.seed_issues(
@@ -234,14 +389,26 @@ async def run() -> dict[str, int]:
         wards=wards,
         reporters=[user_ids[p] for p in ("+919000000005", "+919000000006", "+919000000007")],
     )
+    # After the matching examples, so the extra issues can't change what
+    # those reports match.
+    history = await analytics.seed_history(
+        tenant_id=demo,
+        categories=categories,
+        wards=wards,
+        reporters=[user_ids[p] for p in ("+919000000005", "+919000000006", "+919000000007")],
+        operator_id=user_ids["+919000000002"],
+    )
+    await recompute_tenant(demo)
     return {
         "tenants": len(tenant_ids),
         "departments": len(departments),
         "jurisdictions": len(areas),
         "users": len(USERS),
         "categories": len(categories),
+        "sla targets": 2 * len(SLA_TARGETS),
         "issues": issues,
         "places": places,
+        "analytics issues": history,
         **{f"extra reports {status}": count for status, count in sorted(matching.items())},
     }
 

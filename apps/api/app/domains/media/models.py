@@ -36,6 +36,14 @@ class MediaStatus(StrEnum):
 
 class MediaPurpose(StrEnum):
     REPORT_EVIDENCE = "report_evidence"
+    WORK_EVIDENCE = "work_evidence"
+
+
+class MediaPhase(StrEnum):
+    """Before or after the work, for `work_evidence` (FR-066)."""
+
+    BEFORE = "before"
+    AFTER = "after"
 
 
 ALLOWED_CONTENT_TYPES = ("image/jpeg", "image/png", "image/webp")
@@ -70,6 +78,14 @@ class MediaAsset(TimestampMixin, Base):
         CheckConstraint(f"status IN ({sql_in(MediaStatus)})", name="status_values"),
         CheckConstraint(f"purpose IN ({sql_in(MediaPurpose)})", name="purpose_values"),
         CheckConstraint(
+            "(purpose = 'work_evidence') = "
+            f"(phase IS NOT NULL AND phase IN ({sql_in(MediaPhase)}))",
+            name="phase_for_work_evidence",
+        ),
+        CheckConstraint(
+            "work_order_id IS NULL OR purpose = 'work_evidence'", name="work_order_evidence_only"
+        ),
+        CheckConstraint(
             f"content_type IN ({sql_in(ALLOWED_CONTENT_TYPES)})", name="content_type_values"
         ),
         CheckConstraint("declared_size_bytes > 0", name="declared_size_positive"),
@@ -77,7 +93,15 @@ class MediaAsset(TimestampMixin, Base):
         # Only verified uploads can be attached to a report.
         CheckConstraint("report_id IS NULL OR status <> 'pending'", name="attached_is_verified"),
         Index("ix_media_assets_tenant_owner_status", "tenant_id", "owner_id", "status"),
+        ForeignKeyConstraint(
+            ["tenant_id", "work_order_id"],
+            ["work_orders.tenant_id", "work_orders.id"],
+            ondelete="RESTRICT",
+            name="fk_media_assets_tenant_work_order",
+            use_alter=True,
+        ),
         Index("ix_media_assets_report_id", "report_id"),
+        Index("ix_media_assets_work_order_id", "work_order_id"),
         Index("ix_media_assets_status_created_at", "status", "created_at"),
     )
 
@@ -113,3 +137,7 @@ class MediaAsset(TimestampMixin, Base):
     # until this check has run.
     faces_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     face_count: Mapped[int | None] = mapped_column(SmallInteger)
+    # Phase 3: field evidence. The work order is set when the photo is
+    # attached on progress or a closure request.
+    phase: Mapped[str | None] = mapped_column(String(8))
+    work_order_id: Mapped[uuid.UUID | None] = mapped_column()

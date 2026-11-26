@@ -7,6 +7,7 @@ import { TenantName } from "@/components/auth/tenant-name";
 import { BrandArcs } from "@/components/brand/brand-arcs";
 import { Logo } from "@/components/brand/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Card } from "@/components/ui/card";
 import { Link } from "@/i18n/navigation";
 
@@ -24,7 +25,7 @@ export default function LoginPage() {
   ];
 
   return (
-    <div className="grid flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <div className="grid flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside className="relative isolate m-3 hidden overflow-hidden rounded-3xl bg-panel text-panel-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
         <BrandArcs className="absolute inset-y-0 end-0 -z-10 h-full w-4/5 opacity-80" />
         <div
@@ -60,12 +61,15 @@ export default function LoginPage() {
         </p>
       </aside>
 
-      <div className="flex flex-col">
+      <div className="flex min-w-0 flex-col">
         <header className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="rounded-lg lg:invisible">
-            <Logo />
+            <Logo compact />
           </Link>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <ThemeSwitcher />
+            <LanguageSwitcher />
+          </div>
         </header>
         <main
           id="main"
