@@ -59,7 +59,15 @@ def create_app() -> FastAPI:
             "X-Request-ID",
             "X-Tenant",
         ],
-        expose_headers=["X-Request-ID", "Idempotent-Replayed", "Retry-After"],
+        expose_headers=[
+            "X-Request-ID",
+            "Idempotent-Replayed",
+            "Retry-After",
+            # The analytics CSV export reports its size and whether the cap
+            # cut it short; a browser cannot read either without this.
+            "X-Export-Rows",
+            "X-Export-Truncated",
+        ],
         max_age=600,
     )
 

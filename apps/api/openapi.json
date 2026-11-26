@@ -11909,6 +11909,187 @@
         }
       }
     },
+    "/api/v1/analytics/export": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Export Issues",
+        "description": "Every issue in the period within the caller's scope, as CSV.\n\nThe same filters as the dashboards, so the file matches the figures. No\nreporter identity, contact details, description or coordinate is\nincluded, and the export is audited with its filters and row count.\nCapped at 20,000 rows; `X-Export-Truncated` says whether it was.",
+        "operationId": "analytics_export",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First IST day, inclusive (default: 30 days ago).",
+              "title": "From"
+            },
+            "description": "First IST day, inclusive (default: 30 days ago)."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last IST day, inclusive (default today).",
+              "title": "To"
+            },
+            "description": "Last IST day, inclusive (default today)."
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "name": "ward_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ward Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Issue states.",
+              "title": "Status"
+            },
+            "description": "Issue states."
+          },
+          {
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 63
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators.",
+              "title": "X-Tenant"
+            },
+            "description": "Optional. If sent with a tenant user's token it must match the token's tenant (403 tenant_mismatch). Ignored for platform administrators."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The issues in the period as CSV.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/issues/{issue_id}/support": {
       "get": {
         "tags": [
