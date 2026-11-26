@@ -11,6 +11,7 @@ export * from "./endpoints/ai";
 export * from "./endpoints/analytics";
 export * from "./endpoints/auth";
 export * from "./endpoints/categories";
+export * from "./endpoints/comments";
 export * from "./endpoints/community";
 export * from "./endpoints/extras";
 export * from "./endpoints/field";

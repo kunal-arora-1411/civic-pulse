@@ -242,7 +242,8 @@
       "announcements": "Announcements",
       "workload": "Workload",
       "teams": "Teams",
-      "closure": "Closure rules"
+      "closure": "Closure rules",
+      "moderation": "Moderation"
     },
     "overview": {
       "title": "Welcome back",
@@ -1500,6 +1501,36 @@
         "noCategories": "No categories",
         "active": "Active: can be assigned new work"
       }
+    },
+    "moderation": {
+      "title": "Moderation",
+      "description": "Citizens' comments on issues. Nothing is public until you approve it; flagged comments come back here first.",
+      "tabsLabel": "Show comments",
+      "tabs": {
+        "pending": "To review",
+        "rejected": "Removed",
+        "approved": "Published"
+      },
+      "empty": {
+        "pending": "Nothing to review.",
+        "rejected": "No removed comments.",
+        "approved": "No published comments."
+      },
+      "loadError": "Couldn't load the moderation queue",
+      "unnamed": "Unnamed citizen",
+      "flags": "{count, plural, one {# flag} other {# flags}}",
+      "reasonShown": "Removed: {reason}",
+      "approve": "Publish",
+      "reject": "Remove",
+      "approved": "Comment published",
+      "rejected": "Comment removed",
+      "rejectTitle": "Remove this comment",
+      "rejectDescription": "Its author sees the reason. Everyone else stops seeing the comment.",
+      "reason": "Reason",
+      "reasonHelp": "Shown to the person who wrote it, and kept in the audit log.",
+      "reasonRequired": "Say why it's removed.",
+      "close": "Close",
+      "cancel": "Cancel"
     }
   },
   "profile": {
@@ -2186,6 +2217,25 @@
       "done": "Issue reopened",
       "not_eligible": "Only people who reported this issue can reopen it.",
       "invalid_transition": "This issue can't be reopened right now. Reload to see where it is."
+    },
+    "comments": {
+      "title": "Comments",
+      "none": "No comments yet.",
+      "you": "You",
+      "resident": "A resident",
+      "state": {
+        "pending": "Waiting for review",
+        "rejected": "Removed",
+        "approved": "Published"
+      },
+      "rejectedBecause": "Removed by a moderator: {reason}",
+      "flag": "Report",
+      "flagged": "You reported this",
+      "add": "Add a comment",
+      "addHelp": "A moderator checks comments before others see them. Don't include phone numbers or other personal details.",
+      "required": "Write your comment.",
+      "submit": "Send comment",
+      "sent": "Thanks. Your comment will appear once a moderator has checked it."
     }
   },
   "track": {

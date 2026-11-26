@@ -9,6 +9,7 @@ import {
   type LucideIcon,
   Map as MapIcon,
   Megaphone,
+  MessageSquareWarning,
   ScrollText,
   SlidersHorizontal,
   Tags,
@@ -24,6 +25,7 @@ export type AdminNavKey =
   | "overview"
   | "issues"
   | "review"
+  | "moderation"
   | "map"
   | "workload"
   | "teams"
@@ -48,6 +50,7 @@ export type AdminNavItem = {
     | "/admin"
     | "/admin/issues"
     | "/admin/review"
+    | "/admin/moderation"
     | "/admin/map"
     | "/admin/workload"
     | "/admin/teams"
@@ -89,6 +92,13 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: GitCompareArrows,
     permission: "issue:triage",
     badge: "openReviews",
+  },
+  {
+    key: "moderation",
+    group: "operations",
+    href: "/admin/moderation",
+    icon: MessageSquareWarning,
+    permission: "issue:update",
   },
   {
     key: "map",

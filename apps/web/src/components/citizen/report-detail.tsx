@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { use } from "react";
+import { IssueComments } from "@/components/community/issue-comments";
 import { SupportButton } from "@/components/community/support-button";
 import {
   ReopenButton,
@@ -183,6 +184,9 @@ function Body({ report }: { report: Report }) {
               )}
             </p>
           </Card>
+          {report.issue && report.status !== "withdrawn" ? (
+            <IssueComments issueId={report.issue.id} />
+          ) : null}
         </div>
 
         <Card className="grid content-start gap-4 self-start p-5 lg:sticky lg:top-24">
