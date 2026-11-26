@@ -42,21 +42,20 @@
 ## TODO: finish Phase 2 (milestone M1)
 
 - [x] **Type checking:** pyright green with and without the `ai` extra; CI type-checks with the extra installed (`08b8330`).
-- [x] **CI cost:** the e2e job builds the images with BuildKit's layer cache in the GitHub Actions cache and runs the real AI worker on every PR; the duplicate `images` job is gone ([ADR 0005](adr/0005-ci-real-model-image-cache.md)). Not yet seen running on GitHub (D1.1).
-- [ ] **End-to-end walkthrough** (the real `ai-worker` stack was up and being seeded when the work paused) with real photos on the stack running the real `ai-worker` (curl + browser).
-- [ ] **Update the e2e suite** for Phase 2 behaviour (partly done: tests that care what a report matches now report from fresh spots in the empty West Delhi area, and staff accounts are made per run so tests don't wait on OTP cooldowns; still to check against the stack): wait for the matching outcome on the confirmation and report pages; the default queue sort is `-priority`; new Priority column; new nav entries (Review queue, Matching, Priority rules, AI models).
-- [ ] **New e2e tests against the real model:** written (`e2e/tests/ai.spec.ts`, `ai-down.spec.ts`, real Commons photos in `e2e/fixtures/` with attribution; the model classifies both as potholes, cosine 0.81 between them, below the 0.92 floor), **not yet run against the stack** because the development Docker engine hung (see below).
+- [x] **CI cost:** the e2e job builds the images with BuildKit's layer cache in the GitHub Actions cache and runs the real AI worker on every PR; the duplicate `images` job is gone ([ADR 0005](adr/0005-ci-real-model-image-cache.md)). On GitHub the image builds take 3 min 19 s cold and 57 s warm.
+- [x] **End-to-end walkthrough:** covered by the real-model e2e tests in CI (PR #12) instead of by hand; the local stack was unavailable (see Known gaps).
+- [x] **Update the e2e suite** for Phase 2: matching outcomes are awaited, tests that care what a report matches report from fresh spots in the empty West Delhi area, staff accounts are made per run (no OTP cooldown races), and the refresh cookie is given the API's own path (with Playwright's default path a second page load ended the session).
+- [x] **New e2e tests against the real model** (`e2e/tests/ai.spec.ts`, `ai-down.spec.ts`; real Commons photos in `e2e/fixtures/` with attribution), green in CI. AC-03 found a UI bug, now fixed: a report waiting for staff review was shown as "taking longer than usual" after three minutes.
   - AC-02: real pothole photo gets a suggestion (openly licensed fixture with attribution)
   - AC-03: AI worker stopped → the report is still accepted and goes to manual
   - AC-04: the same photo twice auto-links and the counts update
   - AC-05: a nearby different scene isn't auto-linked
   - AC-06: an ambiguous report creates a review task and the operator resolves it
   - AC-07/AC-08: merge/split through the UI
-- [ ] **e2e green 3 times in a row** against the real stack.
-- [ ] **Concurrency at scale:** the pytest burst now also runs at 50 and the e2e `load` project sends 50 real reports at once; neither has run yet (Docker), and the latency table in [`eval/phase-2-matching-load.md`](eval/phase-2-matching-load.md) is empty.
+- [x] **e2e green 3 times in a row** against the real stack, in CI on PR #12 (no retries needed).
+- [x] **Concurrency at scale:** 50 simultaneous reports of one pothole → one issue, 50 reports, 50 reporters, in pytest (fake model) and in the e2e `load` project (real model). Every report decided within about 30–35 s on a CI runner; numbers in [`eval/phase-2-matching-load.md`](eval/phase-2-matching-load.md).
 - [x] **Contract cleanup:** section K and the frontend's edits are folded into the main text of [`api/phase-2-contract.md`](api/phase-2-contract.md) (checked against `openapi.json`; the related-issue links are audit-only, not timeline events).
 - [x] **Docs:** README and `apps/api/README.md` sections on the AI worker, the model download and the evaluation scripts; the compose file takes host ports and an image tag from the environment so a second stack can run beside the first.
-- [ ] **Blocked on Docker (26 Nov):** after the C: drive filled up, Docker Desktop's engine and its WSL VM stopped answering (`docker ps` and `wsl -d docker-desktop` hang; the published ports time out). Restart Docker Desktop, then: run pytest (including the 50-report burst), bring up the stack, run the e2e suite 3× in a row, and fill in the load numbers.
 - [ ] **Housekeeping:** remove the leftover worktree `.claude/worktrees/agent-a444236bd94054a03` and its branch once the integration pass is merged (its compose stack was replaced by the one running from `infra/`); delete the folder `.claude/worktrees/agent-a14a93622fdf6aff0`, which was locked by a process when the worktree was unregistered.
 
 ## TODO: rest of Sprint 1 (30 Nov – 11 Dec)
@@ -108,6 +107,7 @@ Still to do for P6:
 | Media retention periods | 8 Feb |
 
 ## Known gaps carried forward
+- **Local Docker (26 Nov):** after the C: drive filled up, the development machine's Docker engine and WSL VM stopped answering, so the Phase 2 proof ran in CI only. Restart Docker Desktop and prune before the next local stack.
 - **Report rate limit is global:** the per-citizen submission limits are settings, not per-tenant configuration (tenant configs would need a new key, a migration and admin UI).
 - **Evaluation data:** small (187 images), mostly Flickr via Openverse (Commons rate-limited downloads), with few Indian scenes for some classes. Duplicate pairs are synthetic augmentations. These are baseline numbers, not real-world performance.
 - **SMS:** still sent inside the request; moves to an outbox in Phase 4 (A4.3).
