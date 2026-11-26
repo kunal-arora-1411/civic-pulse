@@ -1110,7 +1110,17 @@
     "languageHelp": "Used for this site and for SMS updates about your reports.",
     "save": "Save changes",
     "discard": "Discard",
-    "saved": "Profile saved"
+    "saved": "Profile saved",
+    "delete": {
+      "title": "Delete my personal data",
+      "body": "Removes your mobile number, email, name and the location data in your photos, and signs you out everywhere. Your reports stay, so the issues can still be fixed, but nothing in them identifies you any more. This can't be undone.",
+      "open": "Delete my data…",
+      "confirmTitle": "Delete your personal data?",
+      "confirmBody": "You'll be signed out on every device. If you sign in again with the same number, you'll start with a new, empty account and won't see your old reports.",
+      "cancel": "Keep my account",
+      "confirm": "Delete my data",
+      "deleting": "Deleting…"
+    }
   },
   "pagination": {
     "range": "{from}–{to} of {total}",
