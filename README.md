@@ -165,6 +165,14 @@ the API log).
 All seeded data is synthetic. The full list of accounts is in the
 [Phase 0 contract](docs/api/phase-0-contract.md#seed-data-development-only-synthetic).
 
+## The AI worker
+
+The stack's `ai-worker` runs the real vision models on CPU: CLIP ViT-B/32 for category suggestions and duplicate matching, and YuNet to blur faces before any photo is published. The first `--build` downloads about 600 MB of weights from the Hugging Face Hub into the image and checks them against `apps/api/models.lock.json`; later builds reuse that layer until the lock changes. The worker needs about 1.5 GB of RAM.
+
+- **Without the weights:** add `-f infra/docker-compose.fake-ai.yml` to every compose command to run the same pipeline with deterministic fake models (start from `down -v` when switching).
+- **When it's down:** reporting still works. The citizen picks the category by hand, and matching falls back to location, category and time after two minutes, sending anything close to human review instead of linking it.
+- **Model download, the evaluation scripts and switching models:** [`apps/api/README.md`](apps/api/README.md#vision-models). Results: [evaluation baseline](docs/eval/phase-2-baseline.md) and [matching under load](docs/eval/phase-2-matching-load.md).
+
 ## Tests
 
 **API** (needs the compose `db`, `redis` and `minio` running):
@@ -217,6 +225,7 @@ CAPTURE=1 pnpm --filter @civicpulse/e2e exec playwright test tests/screenshots.s
 - [Implementation plan](IMPLEMENTATION_PLAN.md)
 - API contracts: [Phase 0](docs/api/phase-0-contract.md) (tenancy, auth, administration),
   [Phase 1](docs/api/phase-1-contract.md) (reports, media, issues, workflow),
+  [Phase 2](docs/api/phase-2-contract.md) (AI suggestions, duplicate matching, priority),
   [Phase 3](docs/api/phase-3-contract.md) (operations),
   [SLA and escalation](docs/api/sla-escalation.md),
   [analytics and notifications](docs/api/analytics-notifications.md),
@@ -224,4 +233,5 @@ CAPTURE=1 pnpm --filter @civicpulse/e2e exec playwright test tests/screenshots.s
 - ADRs: [stack and modular monolith](docs/adr/0001-stack-and-modular-monolith.md),
   [multi-tenancy with row-level security](docs/adr/0002-multi-tenancy-with-row-level-security.md),
   [authentication](docs/adr/0003-authentication.md),
-  [the outbox](docs/adr/0004-outbox.md)
+  [the outbox](docs/adr/0004-outbox.md),
+  [real models in CI](docs/adr/0005-ci-real-model-image-cache.md)
