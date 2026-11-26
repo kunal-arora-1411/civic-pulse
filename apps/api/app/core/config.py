@@ -35,6 +35,12 @@ class Settings(BaseSettings):
 
     env: Environment = Environment.DEVELOPMENT
     log_level: str = "INFO"
+    # Error reporting and tracing (app/core/observability.py); off when empty.
+    sentry_dsn: SecretStr | None = None
+    sentry_traces_sample_rate: float = 0.0
+    otel_exporter_otlp_endpoint: str = ""
+    # The deployed version (a git SHA or tag), reported with errors and traces.
+    release: str = ""
     service_name: str = "civicpulse-api"
 
     # The API connects as the non-superuser app role so that RLS applies.
