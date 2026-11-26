@@ -60,6 +60,13 @@ x-api-env: &api-env
   # publishes it. Both must agree, hence one setting for every service.
   # Only the ai-worker loads models (AI_PROVIDER there); nothing else does.
   AI_FACE_BLUR: ${AI_FACE_BLUR:-true}
+  # Email goes to Mailpit, which keeps every message for inspection at
+  # http://localhost:8025 and sends nothing outside the machine. Leaving
+  # SMTP_HOST empty switches the outbox's email channel off entirely.
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_FROM: ${SMTP_FROM:-CivicPulse <no-reply@civicpulse.local>}
+  WEB_URL: ${WEB_URL:-http://localhost:3000}
 
 services:
   db:
@@ -160,6 +167,8 @@ services:
     image: axllent/mailpit:v1.29
     ports:
       - "8025:8025"
+      # SMTP, so the channel can also be exercised from the host.
+      - "1025:1025"
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 5s

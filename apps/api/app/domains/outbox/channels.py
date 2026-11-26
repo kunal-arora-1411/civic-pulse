@@ -2,16 +2,19 @@
 
 An adapter turns one domain event into one message on one channel. The seam
 exists so choosing a provider (MSG91 or Gupshup for SMS, SES or Postmark for
-email, VAPID for web push) is a new class here, not a change to the
-dispatcher, the task or the beat schedule.
+email, VAPID for web push) is a new class, here or beside it, not a change to
+the dispatcher, the task or the beat schedule.
 
-Nothing is registered yet. The **in-app inbox needs no adapter**: notifications
-are written by database triggers in the same transaction as the change they
-describe (migration 0008, plus the SLA scanner), so that channel is already
-delivered by the time an event reaches the outbox. What remains is the
-external channels, and each needs a provider decision first — see
-docs/STATUS.md. Until then every event is recorded as `skipped` with the
-reason, which is honest about what did and did not leave the building.
+Email is the first one: `app/domains/outbox/email.py` delivers an assignment
+to the assignee over SMTP whenever `SMTP_HOST` is set. With no relay
+configured it is absent from the registry, so every event is still recorded as
+`skipped` with the reason — which is honest about what did and did not leave
+the building.
+
+The **in-app inbox needs no adapter**: notifications are written by database
+triggers in the same transaction as the change they describe (migration 0008,
+plus the SLA scanner), so that channel is already delivered by the time an
+event reaches the outbox.
 """
 
 from __future__ import annotations
@@ -59,12 +62,28 @@ class Channel(Protocol):
 
 # Populated when a provider is chosen and its credentials exist. Order is
 # irrelevant: every matching channel is attempted.
-CHANNELS: tuple[Channel, ...] = ()
-
+#
 # Recorded against every event while no external channel exists, so the
 # delivery log distinguishes "nothing to send it on" from "nothing to send".
 NO_CHANNEL = "no external channel is configured"
 
 
+def default_channels() -> tuple[Channel, ...]:
+    """The channels this deployment can actually deliver on.
+
+    Imported lazily: the email channel imports `Delivery` from this module, so
+    a module-level import would be a cycle.
+    """
+    from app.core.mail import get_mailer
+    from app.domains.outbox.email import EmailChannel
+
+    channels: list[Channel] = []
+    mailer = get_mailer()
+    if mailer is not None:
+        channels.append(EmailChannel(mailer))
+    return tuple(channels)
+
+
 def channels_for(event_type: str, channels: tuple[Channel, ...] | None = None) -> list[Channel]:
-    return [c for c in (CHANNELS if channels is None else channels) if c.handles(event_type)]
+    adapters = default_channels() if channels is None else channels
+    return [c for c in adapters if c.handles(event_type)]
