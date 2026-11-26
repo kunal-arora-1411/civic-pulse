@@ -185,7 +185,7 @@ jobs:
         run: pnpm audit --prod --audit-level high
 
       - name: Dockerfiles and compose (Trivy config)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: .
@@ -196,7 +196,7 @@ jobs:
         run: docker compose -f infra/docker-compose.yml build api
 
       - name: API image (Trivy)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           image-ref: civicpulse-api:dev

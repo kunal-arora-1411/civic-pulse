@@ -16,7 +16,7 @@ from app.domains.auth.cookies import REFRESH_COOKIE
 from app.domains.housekeeping.service import cleanup
 from app.domains.users.anonymize import PLACEHOLDER_PREFIX
 from tests import images
-from tests.helpers import RecordingSms, login, request_otp
+from tests.helpers import RecordingSms, clear_otp_limits, login, request_otp
 from tests.phase1 import City, make_city, ready_media_id
 
 ANONYMIZE = "/api/v1/users/me/anonymize"
@@ -54,7 +54,11 @@ async def _asset(engine: AsyncEngine, asset_id: str) -> Any:
 
 
 async def test_citizen_can_anonymize_their_account(
-    client: httpx.AsyncClient, sms: RecordingSms, owner_engine: AsyncEngine, city: City
+    client: httpx.AsyncClient,
+    sms: RecordingSms,
+    owner_engine: AsyncEngine,
+    city: City,
+    redis: Any,
 ) -> None:
     citizen = city.citizen
     old_phone = city.citizen_row.phone
@@ -96,6 +100,7 @@ async def test_citizen_can_anonymize_their_account(
         assert old_phone not in str(audit)
 
     # Logging in again with the same number makes a new, empty account.
+    await clear_otp_limits(redis, old_phone)
     fresh = await login(client, sms, old_phone, city.tenant.slug)
     assert fresh.user["id"] != citizen.user["id"]
     assert fresh.user["display_name"] is None

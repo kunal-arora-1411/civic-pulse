@@ -72,11 +72,15 @@ export function setup() {
   if (requested.status !== 200) fail(`OTP request: ${requested.status}`);
   const verified = http.post(
     `${API}/auth/otp/verify`,
-    JSON.stringify({ challenge_id: requested.json("challenge_id"), code: DEV_OTP }),
+    JSON.stringify({
+      challenge_id: requested.json("challenge_id"),
+      code: DEV_OTP,
+    }),
     { headers },
   );
   const token = verified.json("access_token");
-  if (!token) fail(`OTP verify: ${verified.status} (is DEV_FIXED_OTP on, MFA off?)`);
+  if (!token)
+    fail(`OTP verify: ${verified.status} (is DEV_FIXED_OTP on, MFA off?)`);
 
   const pub = http.get(`${API}/public/${TENANT}/issues?limit=50`);
   const issueIds = (pub.json("items") || []).map((i) => i.id);

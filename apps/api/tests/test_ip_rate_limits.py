@@ -12,9 +12,10 @@ from collections.abc import AsyncIterator
 import httpx
 import pytest
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.config import Settings
-from tests.factories import TenantRow
+from tests.factories import create_tenant
 
 
 @pytest.fixture
@@ -69,10 +70,12 @@ async def test_mfa_verify_is_limited_per_address(
 
 async def test_tenant_lookup_is_limited_per_address(
     remote: httpx.AsyncClient,
-    tenant: TenantRow,
+    owner_engine: AsyncEngine,
     settings: Settings,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    async with owner_engine.begin() as conn:
+        tenant = await create_tenant(conn)
     monkeypatch.setattr(settings, "tenant_lookup_max_per_ip_per_minute", 2)
     headers = {"X-Tenant": tenant.slug}
     statuses = [
