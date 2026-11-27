@@ -37,6 +37,7 @@ celery_app = Celery(
         "app.domains.operations.tasks",
         "app.domains.sla.tasks",
         "app.domains.outbox.tasks",
+        "app.domains.audit.tasks",
     ],
 )
 
@@ -107,6 +108,20 @@ celery_app.conf.update(
         "matching-quality-weekly": {
             "task": "civicpulse.matching.quality_check",
             "schedule": crontab(day_of_week=1, hour=1, minute=0),
+        },
+        # Hourly: seal each chain's head into an HMAC-signed checkpoint, but only
+        # after the range since the previous seal verified. A broken chain stops
+        # being sealed, which freezes the evidence at the last good state.
+        "audit-checkpoint": {
+            "task": "civicpulse.audit.checkpoint",
+            "schedule": crontab(minute=5),
+        },
+        # 02:15 IST: verify every chain, incrementally from the last passing run
+        # (from the first event on Mondays). A break is a recorded row plus an
+        # ERROR log, never a raised task: a retry would redo the same scan.
+        "audit-verify-daily": {
+            "task": "civicpulse.audit.verify",
+            "schedule": crontab(hour=20, minute=45),
         },
     },
 )
