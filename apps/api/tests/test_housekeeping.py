@@ -206,3 +206,76 @@ def test_cleanup_is_scheduled_hourly() -> None:
     celery_app.loader.import_default_modules()
     assert "civicpulse.housekeeping.cleanup" in celery_app.tasks
     assert "civicpulse.media.process" in celery_app.tasks
+
+
+async def test_cleanup_expires_verification_runs_but_never_the_evidence(
+    owner_engine: AsyncEngine,
+) -> None:
+    """A6.3 / AC-12: a verification run is housekeeping; the log is evidence."""
+    old = NOW - timedelta(days=120)
+    async with owner_engine.begin() as conn:
+        tenant = await create_tenant(conn)
+        for index in range(3):
+            await conn.execute(
+                text(
+                    "INSERT INTO audit_events (tenant_id, action, entity_type) "
+                    "VALUES (:t, :a, 'test')"
+                ),
+                {"t": tenant.id, "a": f"test.event.{index}"},
+            )
+        await conn.execute(
+            text(
+                "INSERT INTO audit_checkpoints "
+                "(tenant_id, up_to_seq, head_hash, key_id, signature) "
+                "VALUES (:t, 2, decode(repeat('11', 32), 'hex'), 'k1', "
+                "        decode(repeat('22', 32), 'hex'))"
+            ),
+            {"t": tenant.id},
+        )
+
+        async def run_row(started_at: datetime, status: str) -> uuid.UUID:
+            return (
+                await conn.execute(
+                    text(
+                        "INSERT INTO audit_chain_verifications "
+                        "(tenant_id, from_seq, to_seq, mode, status, started_at) "
+                        "VALUES (:t, 1, 3, 'db', :s, :at) RETURNING id"
+                    ),
+                    {"t": tenant.id, "s": status, "at": started_at},
+                )
+            ).scalar_one()
+
+        expired = await run_row(old, "passed")
+        fresh = await run_row(NOW - timedelta(days=2), "passed")
+        # A run still in flight is never deleted, however old it looks.
+        in_flight = await run_row(old, "pending")
+        events_before = (
+            await conn.execute(
+                text("SELECT count(*) FROM audit_events WHERE tenant_id = :t"),
+                {"t": tenant.id},
+            )
+        ).scalar_one()
+
+    result = await cleanup()
+    assert result.audit_verifications >= 1
+    assert result.summary()["audit_verifications"] >= 1
+
+    async with owner_engine.connect() as conn:
+        assert not await _exists(conn, "audit_chain_verifications", expired)
+        assert await _exists(conn, "audit_chain_verifications", fresh)
+        assert await _exists(conn, "audit_chain_verifications", in_flight)
+        # The evidence itself is untouched.
+        assert (
+            await conn.scalar(
+                text("SELECT count(*) FROM audit_events WHERE tenant_id = :t"),
+                {"t": tenant.id},
+            )
+            == events_before
+        )
+        assert (
+            await conn.scalar(
+                text("SELECT count(*) FROM audit_checkpoints WHERE tenant_id = :t"),
+                {"t": tenant.id},
+            )
+            == 1
+        )

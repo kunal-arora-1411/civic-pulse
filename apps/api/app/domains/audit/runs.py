@@ -299,10 +299,6 @@ async def sweep(*, mode: Mode = "db") -> dict[str, int]:
     }
 
 
-def _days(count: int) -> Any:
-    return timedelta(days=count)
-
-
 async def purge(*, older_than_days: int, now: datetime | None = None) -> int:
     """Delete verification runs past their retention. Called by housekeeping.
 
@@ -313,7 +309,7 @@ async def purge(*, older_than_days: int, now: datetime | None = None) -> int:
     async with system_session(reason="audit verification retention") as db:
         statement = (
             select(AuditChainVerification)
-            .where(AuditChainVerification.started_at < moment - _days(older_than_days))
+            .where(AuditChainVerification.started_at < moment - timedelta(days=older_than_days))
             .where(AuditChainVerification.status.in_(("passed", "failed", "error")))
         )
         removed = 0
