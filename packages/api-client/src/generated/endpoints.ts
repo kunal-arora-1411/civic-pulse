@@ -12,6 +12,8 @@ import type {
   Activity,
   AdminAnnouncementsListParams,
   AdminGetAiQualityParams,
+  AdminListAuditChainVerificationsParams,
+  AdminListAuditCheckpointsParams,
   AdminListAuditEventsParams,
   AdminListCategoriesParams,
   AdminListDeadLettersParams,
@@ -43,6 +45,11 @@ import type {
   ApproveClosure,
   AssignmentCreate,
   AssignmentOut,
+  AuditChainStatus,
+  AuditChainVerificationOut,
+  AuditChainVerificationPage,
+  AuditChainVerificationRequest,
+  AuditCheckpointPage,
   AuditEventPage,
   BulkAction,
   BulkResult,
@@ -533,6 +540,84 @@ export const adminListAuditEvents = (
  options?: SecondParameter<typeof customInstance<AuditEventPage>>,) => {
       return customInstance<AuditEventPage>(
       {url: `/api/v1/admin/audit-events`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * The head, the newest signed checkpoint, and the last verification.
+ *
+ * `healthy: false` means rows moved or vanished after they were sealed. It is
+ * deliberately not part of `/ready`: taking the API out of a load balancer would
+ * stop a city accepting reports, which is worse than a flagged audit trail.
+ * @summary Get Audit Chain
+ */
+export const adminGetAuditChain = (
+
+ options?: SecondParameter<typeof customInstance<AuditChainStatus>>,) => {
+      return customInstance<AuditChainStatus>(
+      {url: `/api/v1/admin/audit-chain`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Queue a verification of a window of this tenant's chain.
+ *
+ * Only one run may be in flight per tenant: the database enforces it with a
+ * partial unique index, and the second request gets a 409 rather than quietly
+ * starting a duplicate scan of the same rows.
+ * @summary Start Audit Chain Verification
+ */
+export const adminStartAuditChainVerification = (
+    auditChainVerificationRequest: AuditChainVerificationRequest,
+ options?: SecondParameter<typeof customInstance<AuditChainVerificationOut>>,) => {
+      return customInstance<AuditChainVerificationOut>(
+      {url: `/api/v1/admin/audit-chain/verifications`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: auditChainVerificationRequest
+    },
+      options);
+    }
+
+/**
+ * @summary List Audit Chain Verifications
+ */
+export const adminListAuditChainVerifications = (
+    params?: AdminListAuditChainVerificationsParams,
+ options?: SecondParameter<typeof customInstance<AuditChainVerificationPage>>,) => {
+      return customInstance<AuditChainVerificationPage>(
+      {url: `/api/v1/admin/audit-chain/verifications`, method: 'GET',
+        params
+    },
+      options);
+    }
+
+/**
+ * One run. A run belonging to another tenant is a 404, not a 403: the row is
+ * invisible under row-level security, and no error may reveal that it exists.
+ * @summary Get Audit Chain Verification
+ */
+export const adminGetAuditChainVerification = (
+    verificationId: string,
+ options?: SecondParameter<typeof customInstance<AuditChainVerificationOut>>,) => {
+      return customInstance<AuditChainVerificationOut>(
+      {url: `/api/v1/admin/audit-chain/verifications/${encodeURIComponent(String(verificationId))}`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Signed seals of this chain's head, newest first, each with its signature
+ * checked against the configured keys.
+ * @summary List Audit Checkpoints
+ */
+export const adminListAuditCheckpoints = (
+    params?: AdminListAuditCheckpointsParams,
+ options?: SecondParameter<typeof customInstance<AuditCheckpointPage>>,) => {
+      return customInstance<AuditCheckpointPage>(
+      {url: `/api/v1/admin/audit-chain/checkpoints`, method: 'GET',
         params
     },
       options);
@@ -2080,6 +2165,11 @@ export type AdminCreateTeamResult = NonNullable<Awaited<ReturnType<typeof adminC
 export type AdminGetTeamResult = NonNullable<Awaited<ReturnType<typeof adminGetTeam>>>
 export type AdminUpdateTeamResult = NonNullable<Awaited<ReturnType<typeof adminUpdateTeam>>>
 export type AdminListAuditEventsResult = NonNullable<Awaited<ReturnType<typeof adminListAuditEvents>>>
+export type AdminGetAuditChainResult = NonNullable<Awaited<ReturnType<typeof adminGetAuditChain>>>
+export type AdminStartAuditChainVerificationResult = NonNullable<Awaited<ReturnType<typeof adminStartAuditChainVerification>>>
+export type AdminListAuditChainVerificationsResult = NonNullable<Awaited<ReturnType<typeof adminListAuditChainVerifications>>>
+export type AdminGetAuditChainVerificationResult = NonNullable<Awaited<ReturnType<typeof adminGetAuditChainVerification>>>
+export type AdminListAuditCheckpointsResult = NonNullable<Awaited<ReturnType<typeof adminListAuditCheckpoints>>>
 export type PlatformListTenantsResult = NonNullable<Awaited<ReturnType<typeof platformListTenants>>>
 export type PlatformCreateTenantResult = NonNullable<Awaited<ReturnType<typeof platformCreateTenant>>>
 export type AdminListTransitionsResult = NonNullable<Awaited<ReturnType<typeof adminListTransitions>>>

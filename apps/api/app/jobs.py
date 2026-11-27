@@ -30,6 +30,7 @@ MATCH_REPORT = "civicpulse.matching.match_report"
 CLASSIFY = "civicpulse.ai.classify"
 ANALYZE_MEDIA = "civicpulse.ai.analyze_media"
 DELIVER_EVENT = "civicpulse.outbox.deliver_event"
+VERIFY_AUDIT_CHAIN = "civicpulse.audit.verify"
 
 # Give up on the broker quickly: a request must not hang on it.
 _RETRY_POLICY = {"max_retries": 2, "interval_start": 0, "interval_step": 0.2, "interval_max": 0.5}
@@ -48,6 +49,10 @@ class Jobs(Protocol):
 
     async def deliver_event(self, event_id: uuid.UUID) -> None:
         """Send one outbox event now rather than on the next dispatcher tick."""
+        ...
+
+    async def verify_audit_chain(self, verification_id: uuid.UUID) -> None:
+        """Run one queued audit-chain verification."""
         ...
 
 
@@ -79,6 +84,9 @@ class CeleryJobs:
 
     async def deliver_event(self, event_id: uuid.UUID) -> None:
         await self._send(DELIVER_EVENT, str(event_id))
+
+    async def verify_audit_chain(self, verification_id: uuid.UUID) -> None:
+        await self._send(VERIFY_AUDIT_CHAIN, str(verification_id))
 
 
 def get_jobs() -> Jobs:
