@@ -1,0 +1,367 @@
+{
+  "version": "v1",
+  "note": "Pins the canonical framing and hash of twenty sample rows. A diff here is either a bug in the framing or a deliberate new version -- never regenerate it to make a failing test pass.",
+  "rows": [
+    {
+      "inputs": {
+        "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "tenant_id": null,
+        "chain_seq": 1,
+        "occurred_at": "2026-01-01T00:00:00+00:00",
+        "actor_id": null,
+        "action": "platform.tenant_created",
+        "entity_type": "tenant",
+        "entity_id": null,
+        "before_text": null,
+        "after_text": null,
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:0000000000000000000000000000000000000000000000000000000000000000|tenant:~|seq:1|occurred_at_us:1767225600000000|actor:~|action:23:platform.tenant_created|entity_type:6:tenant|entity_id:~|before:~|after:~|request_id:~|ip:~|user_agent:~",
+      "hash": "9456ed71d7d667275777081e11820cace11b8849b8c6f7b16b756030e4882c02"
+    },
+    {
+      "inputs": {
+        "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "tenant_id": "11111111-1111-1111-1111-111111111111",
+        "chain_seq": 1,
+        "occurred_at": "2026-02-01T10:00:00.123456+00:00",
+        "actor_id": "22222222-2222-2222-2222-222222222222",
+        "action": "auth.login",
+        "entity_type": "user",
+        "entity_id": "22222222-2222-2222-2222-222222222222",
+        "before_text": null,
+        "after_text": "{\"via\": \"otp\", \"roles\": [\"citizen\"]}",
+        "request_id": "req-1",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0"
+      },
+      "framing": "civicpulse.audit.v1|prev:0000000000000000000000000000000000000000000000000000000000000000|tenant:11111111-1111-1111-1111-111111111111|seq:1|occurred_at_us:1769940000123456|actor:22222222-2222-2222-2222-222222222222|action:10:auth.login|entity_type:4:user|entity_id:36:22222222-2222-2222-2222-222222222222|before:~|after:36:{\"via\": \"otp\", \"roles\": [\"citizen\"]}|request_id:5:req-1|ip:9:127.0.0.1|user_agent:11:Mozilla/5.0",
+      "hash": "676366f378043b46c93a66960534f344732ef98fda38ffa6636c9f3953cb7e4d"
+    },
+    {
+      "inputs": {
+        "prev_hash": "abababababababababababababababababababababababababababababababab",
+        "tenant_id": "11111111-1111-1111-1111-111111111111",
+        "chain_seq": 2,
+        "occurred_at": "2026-02-01T10:00:01+00:00",
+        "actor_id": null,
+        "action": "",
+        "entity_type": "",
+        "entity_id": "",
+        "before_text": "\"\"",
+        "after_text": "\"\"",
+        "request_id": "",
+        "ip": "",
+        "user_agent": ""
+      },
+      "framing": "civicpulse.audit.v1|prev:abababababababababababababababababababababababababababababababab|tenant:11111111-1111-1111-1111-111111111111|seq:2|occurred_at_us:1769940001000000|actor:~|action:0:|entity_type:0:|entity_id:0:|before:2:\"\"|after:2:\"\"|request_id:0:|ip:0:|user_agent:0:",
+      "hash": "df6eea6769480f7d273747c2a96271e386eadb5c47b901702fa95e05d900ed0b"
+    },
+    {
+      "inputs": {
+        "prev_hash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "tenant_id": "11111111-1111-1111-1111-111111111111",
+        "chain_seq": 3,
+        "occurred_at": "2026-02-01T10:00:02+00:00",
+        "actor_id": "22222222-2222-2222-2222-222222222222",
+        "action": "issue.status_changed",
+        "entity_type": "issue",
+        "entity_id": "ISSUE-1",
+        "before_text": "{\"status\": \"open\"}",
+        "after_text": "{\"status\": \"assigned\"}",
+        "request_id": "req-2",
+        "ip": "10.0.0.1",
+        "user_agent": "curl/8"
+      },
+      "framing": "civicpulse.audit.v1|prev:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd|tenant:11111111-1111-1111-1111-111111111111|seq:3|occurred_at_us:1769940002000000|actor:22222222-2222-2222-2222-222222222222|action:20:issue.status_changed|entity_type:5:issue|entity_id:7:ISSUE-1|before:18:{\"status\": \"open\"}|after:22:{\"status\": \"assigned\"}|request_id:5:req-2|ip:8:10.0.0.1|user_agent:6:curl/8",
+      "hash": "46dd60855532b80c67c09e4e76766581ed3a36bf03e01edd8d9971bba1bd082b"
+    },
+    {
+      "inputs": {
+        "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "tenant_id": "11111111-1111-1111-1111-111111111111",
+        "chain_seq": 4,
+        "occurred_at": "2026-02-01T10:00:03+00:00",
+        "actor_id": null,
+        "action": "a|b",
+        "entity_type": "x",
+        "entity_id": "a",
+        "before_text": null,
+        "after_text": null,
+        "request_id": "b",
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:0000000000000000000000000000000000000000000000000000000000000000|tenant:11111111-1111-1111-1111-111111111111|seq:4|occurred_at_us:1769940003000000|actor:~|action:3:a|b|entity_type:1:x|entity_id:1:a|before:~|after:~|request_id:1:b|ip:~|user_agent:~",
+      "hash": "6ba75ba74162a7a035370d3dc00068c8ceac1af17793be7cd2a1ac597fdb0ae6"
+    },
+    {
+      "inputs": {
+        "prev_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "tenant_id": "11111111-1111-1111-1111-111111111111",
+        "chain_seq": 5,
+        "occurred_at": "2026-02-01T10:00:04+00:00",
+        "actor_id": null,
+        "action": "a",
+        "entity_type": "x",
+        "entity_id": "a|b",
+        "before_text": null,
+        "after_text": null,
+        "request_id": "b|c",
+        "ip": ":",
+        "user_agent": "|"
+      },
+      "framing": "civicpulse.audit.v1|prev:1111111111111111111111111111111111111111111111111111111111111111|tenant:11111111-1111-1111-1111-111111111111|seq:5|occurred_at_us:1769940004000000|actor:~|action:1:a|entity_type:1:x|entity_id:3:a|b|before:~|after:~|request_id:3:b|c|ip:1::|user_agent:1:|",
+      "hash": "f91201fe898750ad2fba8a89c89c0e484f6b24962ecbd33c353ee0466b02ec3e"
+    },
+    {
+      "inputs": {
+        "prev_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 1,
+        "occurred_at": "2026-02-01T10:00:05+00:00",
+        "actor_id": null,
+        "action": "मुम्बई",
+        "entity_type": "issue",
+        "entity_id": "मुम्बई",
+        "before_text": "{\"note\": \"मुम्बई\"}",
+        "after_text": "{\"note\": \"मुम्बई!\"}",
+        "request_id": "मुम्बई",
+        "ip": null,
+        "user_agent": "मुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बई"
+      },
+      "framing": "civicpulse.audit.v1|prev:2222222222222222222222222222222222222222222222222222222222222222|tenant:33333333-3333-3333-3333-333333333333|seq:1|occurred_at_us:1769940005000000|actor:~|action:18:मुम्बई|entity_type:5:issue|entity_id:18:मुम्बई|before:30:{\"note\": \"मुम्बई\"}|after:31:{\"note\": \"मुम्बई!\"}|request_id:18:मुम्बई|ip:~|user_agent:360:मुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बईमुम्बई",
+      "hash": "82c0e3d56921f9311c41ab74eda636b9a6a8ef825e06577b74df1844374550b8"
+    },
+    {
+      "inputs": {
+        "prev_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 2,
+        "occurred_at": "2026-02-01T10:00:06+00:00",
+        "actor_id": "44444444-4444-4444-4444-444444444444",
+        "action": "issue.merged",
+        "entity_type": "issue",
+        "entity_id": "5",
+        "before_text": "{\"a\": 2, \"m\": [1, {\"a\": null, \"b\": true}], \"z\": 1}",
+        "after_text": "{\"a\": 2, \"m\": [1, {\"a\": null, \"b\": true}], \"z\": 1}",
+        "request_id": null,
+        "ip": "2001:db8::1",
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:3333333333333333333333333333333333333333333333333333333333333333|tenant:33333333-3333-3333-3333-333333333333|seq:2|occurred_at_us:1769940006000000|actor:44444444-4444-4444-4444-444444444444|action:12:issue.merged|entity_type:5:issue|entity_id:1:5|before:50:{\"a\": 2, \"m\": [1, {\"a\": null, \"b\": true}], \"z\": 1}|after:50:{\"a\": 2, \"m\": [1, {\"a\": null, \"b\": true}], \"z\": 1}|request_id:~|ip:11:2001:db8::1|user_agent:~",
+      "hash": "40c277de25dc09adccebee5bc0396c9997446557679fe9ae34bfc3b10649b78d"
+    },
+    {
+      "inputs": {
+        "prev_hash": "4444444444444444444444444444444444444444444444444444444444444444",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 3,
+        "occurred_at": "2026-02-01T10:00:07+00:00",
+        "actor_id": null,
+        "action": "audit.exported",
+        "entity_type": "audit_event",
+        "entity_id": "0",
+        "before_text": "{\"b\": false, \"n\": 1.5, \"s\": \"0\"}",
+        "after_text": "{\"b\": false, \"n\": 1.5, \"s\": \"0\"}",
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:4444444444444444444444444444444444444444444444444444444444444444|tenant:33333333-3333-3333-3333-333333333333|seq:3|occurred_at_us:1769940007000000|actor:~|action:14:audit.exported|entity_type:11:audit_event|entity_id:1:0|before:32:{\"b\": false, \"n\": 1.5, \"s\": \"0\"}|after:32:{\"b\": false, \"n\": 1.5, \"s\": \"0\"}|request_id:~|ip:~|user_agent:~",
+      "hash": "aff390e6a1468b70d694a5376884af148c6a58bc2e6b325b071bf12dce8891df"
+    },
+    {
+      "inputs": {
+        "prev_hash": "5555555555555555555555555555555555555555555555555555555555555555",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 4,
+        "occurred_at": "2026-02-01T10:00:08+00:00",
+        "actor_id": null,
+        "action": "user.registered",
+        "entity_type": "user",
+        "entity_id": "6",
+        "before_text": "{\"nested\": {\"deep\": {\"deeper\": [[]]}}}",
+        "after_text": "{\"nested\": {\"deep\": {\"deeper\": [[{}]]}}}",
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:5555555555555555555555555555555555555555555555555555555555555555|tenant:33333333-3333-3333-3333-333333333333|seq:4|occurred_at_us:1769940008000000|actor:~|action:15:user.registered|entity_type:4:user|entity_id:1:6|before:38:{\"nested\": {\"deep\": {\"deeper\": [[]]}}}|after:40:{\"nested\": {\"deep\": {\"deeper\": [[{}]]}}}|request_id:~|ip:~|user_agent:~",
+      "hash": "bf5b41fb095cf0523eb628d292f435cc9df3044e7aaed7db9bc008e56d220a87"
+    },
+    {
+      "inputs": {
+        "prev_hash": "6666666666666666666666666666666666666666666666666666666666666666",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 5,
+        "occurred_at": "2026-02-01T10:00:09+00:00",
+        "actor_id": null,
+        "action": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "entity_type": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+        "entity_id": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        "before_text": null,
+        "after_text": null,
+        "request_id": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+        "ip": "1111111111111111111111111111111111111111111111111111111111111111",
+        "user_agent": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
+      },
+      "framing": "civicpulse.audit.v1|prev:6666666666666666666666666666666666666666666666666666666666666666|tenant:33333333-3333-3333-3333-333333333333|seq:5|occurred_at_us:1769940009000000|actor:~|action:100:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|entity_type:50:yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy|entity_id:100:zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz|before:~|after:~|request_id:128:rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr|ip:64:1111111111111111111111111111111111111111111111111111111111111111|user_agent:400:uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+      "hash": "e32bdd1d332acdbd848a8414989be8e1101bd52fc9d0ff6b88031c03c1d367de"
+    },
+    {
+      "inputs": {
+        "prev_hash": "7777777777777777777777777777777777777777777777777777777777777777",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 6,
+        "occurred_at": "1970-01-01T00:00:00+00:00",
+        "actor_id": null,
+        "action": "epoch.start",
+        "entity_type": "t",
+        "entity_id": null,
+        "before_text": null,
+        "after_text": null,
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:7777777777777777777777777777777777777777777777777777777777777777|tenant:33333333-3333-3333-3333-333333333333|seq:6|occurred_at_us:0|actor:~|action:11:epoch.start|entity_type:1:t|entity_id:~|before:~|after:~|request_id:~|ip:~|user_agent:~",
+      "hash": "ca7e0e8a55c57102680da724d5f1103bb45cf6c87e46e5d38b4f6b01d6553b69"
+    },
+    {
+      "inputs": {
+        "prev_hash": "8888888888888888888888888888888888888888888888888888888888888888",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 7,
+        "occurred_at": "1969-12-31T23:59:59.999999+00:00",
+        "actor_id": null,
+        "action": "epoch.before",
+        "entity_type": "t",
+        "entity_id": null,
+        "before_text": null,
+        "after_text": null,
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:8888888888888888888888888888888888888888888888888888888888888888|tenant:33333333-3333-3333-3333-333333333333|seq:7|occurred_at_us:-1|actor:~|action:12:epoch.before|entity_type:1:t|entity_id:~|before:~|after:~|request_id:~|ip:~|user_agent:~",
+      "hash": "87f35df6e02ec9829f6aaf4461a10a5ac257c178d7046ea60cb68fc5377ca354"
+    },
+    {
+      "inputs": {
+        "prev_hash": "9999999999999999999999999999999999999999999999999999999999999999",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 8,
+        "occurred_at": "2038-01-19T03:14:07.999999+00:00",
+        "actor_id": null,
+        "action": "epoch.after",
+        "entity_type": "t",
+        "entity_id": null,
+        "before_text": null,
+        "after_text": null,
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:9999999999999999999999999999999999999999999999999999999999999999|tenant:33333333-3333-3333-3333-333333333333|seq:8|occurred_at_us:2147483647999999|actor:~|action:11:epoch.after|entity_type:1:t|entity_id:~|before:~|after:~|request_id:~|ip:~|user_agent:~",
+      "hash": "87e6cb26d25c79f8083257f256418357b57d65d8a25ecf0640aa33fb1576cef4"
+    },
+    {
+      "inputs": {
+        "prev_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "tenant_id": "33333333-3333-3333-3333-333333333333",
+        "chain_seq": 999999,
+        "occurred_at": "2026-03-01T23:59:59+05:30",
+        "actor_id": null,
+        "action": "late.row",
+        "entity_type": "t",
+        "entity_id": null,
+        "before_text": null,
+        "after_text": null,
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|tenant:33333333-3333-3333-3333-333333333333|seq:999999|occurred_at_us:1772389799000000|actor:~|action:8:late.row|entity_type:1:t|entity_id:~|before:~|after:~|request_id:~|ip:~|user_agent:~",
+      "hash": "5b6af9cc2e6919e0a5b5341ba2b7c5cf660b6d65cefd224254914bd107b72807"
+    },
+    {
+      "inputs": {
+        "prev_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "tenant_id": null,
+        "chain_seq": 2,
+        "occurred_at": "2026-03-01T00:00:00+00:00",
+        "actor_id": null,
+        "action": "platform.tenant_suspended",
+        "entity_type": "tenant",
+        "entity_id": "11111111-1111-1111-1111-111111111111",
+        "before_text": "{\"state\": \"active\"}",
+        "after_text": "{\"state\": \"suspended\"}",
+        "request_id": "req-3",
+        "ip": "10.1.2.3",
+        "user_agent": "ops-cli"
+      },
+      "framing": "civicpulse.audit.v1|prev:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb|tenant:~|seq:2|occurred_at_us:1772323200000000|actor:~|action:25:platform.tenant_suspended|entity_type:6:tenant|entity_id:36:11111111-1111-1111-1111-111111111111|before:19:{\"state\": \"active\"}|after:22:{\"state\": \"suspended\"}|request_id:5:req-3|ip:8:10.1.2.3|user_agent:7:ops-cli",
+      "hash": "aee79101186395535f8ffe57eba80148ce91560b8ea66b7588b82855bf21996b"
+    },
+    {
+      "inputs": {
+        "prev_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "tenant_id": "55555555-5555-5555-5555-555555555555",
+        "chain_seq": 1,
+        "occurred_at": "2026-03-02T00:00:00+00:00",
+        "actor_id": null,
+        "action": "config.replaced",
+        "entity_type": "config",
+        "entity_id": "matching",
+        "before_text": "{\"weights\": {\"geo\": 0.4, \"time\": 0.2}, \"threshold\": 0.9}",
+        "after_text": "{\"weights\": {\"geo\": 0.4, \"time\": 0.25}, \"threshold\": 0.85}",
+        "request_id": "req-4",
+        "ip": "192.168.1.10",
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc|tenant:55555555-5555-5555-5555-555555555555|seq:1|occurred_at_us:1772409600000000|actor:~|action:15:config.replaced|entity_type:6:config|entity_id:8:matching|before:56:{\"weights\": {\"geo\": 0.4, \"time\": 0.2}, \"threshold\": 0.9}|after:58:{\"weights\": {\"geo\": 0.4, \"time\": 0.25}, \"threshold\": 0.85}|request_id:5:req-4|ip:12:192.168.1.10|user_agent:~",
+      "hash": "e090351b044e4220938794f00acc01f44fe9bbfe02037b982d6480504253ccb5"
+    },
+    {
+      "inputs": {
+        "prev_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "tenant_id": "55555555-5555-5555-5555-555555555555",
+        "chain_seq": 2,
+        "occurred_at": "2026-03-02T00:00:00.000001+00:00",
+        "actor_id": null,
+        "action": "sla.escalated",
+        "entity_type": "issue",
+        "entity_id": "17",
+        "before_text": "{\"level\": 1}",
+        "after_text": "{\"level\": 2}",
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd|tenant:55555555-5555-5555-5555-555555555555|seq:2|occurred_at_us:1772409600000001|actor:~|action:13:sla.escalated|entity_type:5:issue|entity_id:2:17|before:12:{\"level\": 1}|after:12:{\"level\": 2}|request_id:~|ip:~|user_agent:~",
+      "hash": "92b3b9177c152d7ab271ab8a5f3aa240eda476162e7bb76d0d610d826550f848"
+    },
+    {
+      "inputs": {
+        "prev_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "tenant_id": "55555555-5555-5555-5555-555555555555",
+        "chain_seq": 3,
+        "occurred_at": "2026-03-02T00:00:00.000002+00:00",
+        "actor_id": null,
+        "action": "issue.comment",
+        "entity_type": "comment",
+        "entity_id": "9",
+        "before_text": "{\"body\": \"quote \\\" backslash \\\\ tab \\t newline \\n\"}",
+        "after_text": "{\"body\": \"emoji 🚀 and delimiter | and ~ tilde\"}",
+        "request_id": null,
+        "ip": null,
+        "user_agent": null
+      },
+      "framing": "civicpulse.audit.v1|prev:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|tenant:55555555-5555-5555-5555-555555555555|seq:3|occurred_at_us:1772409600000002|actor:~|action:13:issue.comment|entity_type:7:comment|entity_id:1:9|before:51:{\"body\": \"quote \\\" backslash \\\\ tab \\t newline \\n\"}|after:50:{\"body\": \"emoji 🚀 and delimiter | and ~ tilde\"}|request_id:~|ip:~|user_agent:~",
+      "hash": "042660a3c3ebe9a9016d31780e4aaba10cbffdb900a41776e2c15b4b40616dd5"
+    }
+  ]
+}
