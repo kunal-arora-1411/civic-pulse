@@ -5,7 +5,12 @@ from app.core.idempotency import IdempotencyKey
 from app.domains.ai.models import Classification, MediaEmbedding, ModelRegistryEntry
 from app.domains.analytics.models import AnalyticsView
 from app.domains.announcements.models import Announcement
-from app.domains.audit.models import AuditEvent
+from app.domains.audit.models import (
+    AuditChainHead,
+    AuditChainVerification,
+    AuditCheckpoint,
+    AuditEvent,
+)
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.categories.models import Category
 from app.domains.community.models import CommentFlag, IssueComment, IssueSupport
@@ -44,6 +49,9 @@ from app.domains.workflow.models import StatusTransition
 __all__ = [
     "AnalyticsView",
     "Announcement",
+    "AuditChainHead",
+    "AuditChainVerification",
+    "AuditCheckpoint",
     "AuditEvent",
     "AuthSession",
     "Base",
