@@ -39,15 +39,18 @@ async def create_tenant(db: AsyncSession, actor: Principal, body: TenantCreate) 
         raise Conflict("A tenant with this slug already exists.", details={"slug": body.slug})
     tenant = Tenant(slug=body.slug, name=body.name)
     db.add(tenant)
-    try:
-        await db.flush()
-    except IntegrityError as exc:
-        raise Conflict("A tenant with this slug already exists.") from exc
-    await db.refresh(tenant)  # pick up server defaults (locales, flags)
-    # A tenant without transitions can't move any issue, so it starts with
-    # the defaults. The platform admin has no tenant context of its own.
+    # A tenant without transitions can't move any issue, so it starts with the
+    # defaults. The platform admin has no tenant context of its own -- and the
+    # new tenant's audit-chain head row is written by a trigger on this INSERT,
+    # which the head table's policy refuses without the bypass, so the flush has
+    # to happen in here too rather than before it.
     async with rls_bypass(db, reason="default workflow for a new tenant"):
+        try:
+            await db.flush()
+        except IntegrityError as exc:
+            raise Conflict("A tenant with this slug already exists.") from exc
         await install_default_transitions(db, tenant.id)
+    await db.refresh(tenant)  # pick up server defaults (locales, flags)
     out = PlatformTenant.model_validate(tenant)
     await audit.record(
         db,

@@ -16,6 +16,12 @@ Both are re-enabled before the migration finishes. Migrations run in one
 transaction, so a failure rolls the disable/backfill/enable back together and
 leaves no window where a running API could write an unchained row.
 
+It also creates a head row for every chain that has rows. 0017 only seeds the
+platform head and a trigger seeds new tenants, so every tenant that existed
+before this feature would otherwise have no head: its chain would read as empty
+and its next audited write would try chain_seq 1 against rows that already
+occupy it.
+
 The last statements re-verify every chain in SQL and refuse to commit a chain
 that does not verify. A migration must not be able to corrupt the audit trail.
 
@@ -26,6 +32,7 @@ Create Date: 2026-11-27
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -82,16 +89,17 @@ UPDATE audit_events t
 """
 
 ADVANCE_HEADS = """
-UPDATE audit_chain_heads h
-   SET next_seq = coalesce(tail.max_seq, 0) + 1,
-       last_hash = coalesce(tail.last_hash, h.last_hash),
-       updated_at = clock_timestamp()
+INSERT INTO audit_chain_heads (tenant_id, next_seq, last_hash)
+SELECT tail.tenant_id, tail.max_seq + 1, tail.head_hash
   FROM (SELECT tenant_id,
                max(chain_seq) AS max_seq,
-               (array_agg(hash ORDER BY chain_seq DESC))[1] AS last_hash
+               (array_agg(hash ORDER BY chain_seq DESC))[1] AS head_hash
           FROM audit_events
          GROUP BY tenant_id) tail
- WHERE h.tenant_id IS NOT DISTINCT FROM tail.tenant_id
+ON CONFLICT ON CONSTRAINT uq_audit_chain_heads_tenant DO UPDATE
+   SET next_seq = EXCLUDED.next_seq,
+       last_hash = EXCLUDED.last_hash,
+       updated_at = clock_timestamp()
 """
 
 # The same three questions the verifier asks, asked once in the database before
@@ -119,22 +127,36 @@ SELECT count(*)
         HAVING min(chain_seq) <> 1 OR max(chain_seq) <> count(*)) broken
 """
 
+# Asked of every chain that has rows, not of every head that exists. A tenant
+# created before 0017 has no head row at all (only the platform head and new
+# tenants get one), and a check that walked the heads table would call that
+# healthy while the chain read as empty and the next append collided on
+# chain_seq 1.
 HEAD_VIOLATIONS = """
 SELECT count(*)
-  FROM audit_chain_heads h
-  LEFT JOIN (SELECT tenant_id,
-                    max(chain_seq) AS max_seq,
-                    (array_agg(hash ORDER BY chain_seq DESC))[1] AS head_hash
-               FROM audit_events
-              GROUP BY tenant_id) tail ON tail.tenant_id IS NOT DISTINCT FROM h.tenant_id
- WHERE h.next_seq <> coalesce(tail.max_seq, 0) + 1
-    OR h.last_hash <> coalesce(tail.head_hash, h.last_hash)
+  FROM (SELECT tenant_id,
+               max(chain_seq) AS max_seq,
+               (array_agg(hash ORDER BY chain_seq DESC))[1] AS head_hash
+          FROM audit_events
+         GROUP BY tenant_id) tail
+  LEFT JOIN audit_chain_heads h ON h.tenant_id IS NOT DISTINCT FROM tail.tenant_id
+ WHERE h.id IS NULL
+    OR h.next_seq <> tail.max_seq + 1
+    OR h.last_hash <> tail.head_hash
 """
+
+# `audit_events` and `audit_chain_heads` both carry FORCE ROW LEVEL SECURITY, and
+# a migration owner need not be a superuser -- 0017 does its own head write under
+# the bypass for the same reason.
+BYPASS_ON = "SELECT set_config('app.bypass_rls', 'on', true)"
+BYPASS_OFF = "SELECT set_config('app.bypass_rls', 'off', true)"
 
 # Chaining is sequential, so the backfill holds row locks for its duration. It is
 # a migration-time cost on a pilot-sized table, but on a very large one it would
-# be an outage. Refuse rather than pretend.
-MAX_ROWS = 2_000_000
+# be an outage. Refuse rather than pretend. Overridable so an operator can raise
+# it deliberately for a known-large restore, and so the guard can be tested
+# without writing two million rows.
+MAX_ROWS = int(os.environ.get("AUDIT_BACKFILL_MAX_ROWS", "2000000"))
 
 
 def _scalar(statement: str) -> int:
@@ -153,6 +175,7 @@ def upgrade() -> None:
 
     op.execute("ALTER TABLE audit_events DISABLE TRIGGER audit_events_no_update_delete")
     op.execute("ALTER TABLE audit_events DISABLE TRIGGER audit_chain_assign")
+    op.execute(BYPASS_ON)
 
     op.execute(BACKFILL)
     op.execute(ADVANCE_HEADS)
@@ -170,6 +193,7 @@ def upgrade() -> None:
     op.execute("ALTER TABLE audit_events ALTER COLUMN prev_hash SET NOT NULL")
     op.execute("ALTER TABLE audit_events ALTER COLUMN hash SET NOT NULL")
 
+    op.execute(BYPASS_OFF)
     op.execute("ALTER TABLE audit_events ENABLE TRIGGER audit_chain_assign")
     op.execute("ALTER TABLE audit_events ENABLE TRIGGER audit_events_no_update_delete")
 
