@@ -17,6 +17,7 @@ from typing import Any, Literal
 
 from sqlalchemy import select, text
 from sqlalchemy.engine import Row
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -205,7 +206,7 @@ async def sweep(*, mode: Mode = "db") -> dict[str, int]:
         ]
         platform = await verification.verify_chain(db, tenant_id=None, mode=mode)
 
-    passed = failed = 0
+    passed = failed = skipped = 0
     for tenant_id in tenant_ids:
         async with get_session_factory()() as db:
             await set_tenant(db, tenant_id)
@@ -230,7 +231,19 @@ async def sweep(*, mode: Mode = "db") -> dict[str, int]:
                 started_at=datetime.now(UTC),
             )
             db.add(run)
-            await db.flush()
+            try:
+                await db.flush()
+            except IntegrityError:
+                # Somebody asked for a verification and it has not finished. One run
+                # in flight per tenant is the rule, and a stuck request must not stop
+                # the nightly sweep for everyone else.
+                await db.rollback()
+                skipped += 1
+                logger.info(
+                    "audit.chain.sweep_skipped_in_flight",
+                    extra={"audit": {"tenant_id": str(tenant_id)}},
+                )
+                continue
 
             report = await verification.verify_range(
                 db,
@@ -280,6 +293,7 @@ async def sweep(*, mode: Mode = "db") -> dict[str, int]:
         "tenants": len(tenant_ids),
         "passed": passed,
         "failed": failed,
+        "skipped": skipped,
         "full": int(full),
         "platform_passed": int(platform.passed),
     }

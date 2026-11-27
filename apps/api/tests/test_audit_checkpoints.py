@@ -439,6 +439,39 @@ async def test_runs_are_retained_for_a_window(owner_engine: AsyncEngine) -> None
     assert fresh_id in left
 
 
+async def test_the_sweep_skips_a_chain_with_a_run_in_flight(
+    owner_engine: AsyncEngine,
+) -> None:
+    """A stuck pending run must not break the sweep for every other tenant."""
+    blocked = await _tenant(owner_engine)
+    other = await _tenant(owner_engine)
+    await _events(owner_engine, blocked, 2)
+    await _events(owner_engine, other, 2)
+    async with system_session(reason="test run") as db:
+        await set_tenant(db, blocked)
+        await runs.start(db, tenant_id=blocked, requested_by=None)
+
+    result = await runs.sweep()
+    assert result["skipped"] >= 1
+    assert result["platform_passed"] == 1
+
+    async with system_session(reason="test sweep") as db:
+        statuses = (
+            (
+                await db.execute(
+                    text(
+                        "SELECT status FROM audit_chain_verifications "
+                        "WHERE tenant_id = :t ORDER BY started_at"
+                    ),
+                    {"t": other},
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert list(statuses) == ["passed"]
+
+
 async def test_the_sweep_verifies_each_tenant_and_the_platform_chain(
     owner_engine: AsyncEngine,
 ) -> None:
