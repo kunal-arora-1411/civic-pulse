@@ -82,6 +82,7 @@ Built; see [`api/phase-6-contract.md`](api/phase-6-contract.md) and [ADR 0006](a
 - **Observability (P6-10):** opt-in Sentry and OpenTelemetry (OTLP) for the API and worker, with PII scrubbing.
 - **Backups (P6-11):** `infra/backup/` backup, restore and drill scripts; RPO/RTO in [`runbooks/backup-restore.md`](runbooks/backup-restore.md).
 - **Retention (P6-12):** citizen self-service anonymization; original-photo purge after `MEDIA_ORIGINAL_RETENTION_DAYS` (off by default).
+- **Tamper-evident audit (A6.3, PRD §12.1):** every audit event is in a per-tenant SHA-256 hash chain (plus one for platform events), assigned by a `BEFORE INSERT` trigger so no write path can skip it. The head is sealed hourly into an HMAC-signed checkpoint, signed with a key held outside the database, so a truncated tail is detectable too. Verified by `GET /api/v1/admin/audit-chain`, a nightly task, and `scripts/verify_audit_chain.py`, in a fast database-side mode or an independent Python mode that does not trust the SQL function. See [ADR 0007](adr/0007-audit-hash-chain.md) and [`runbooks/audit-chain-recovery.md`](runbooks/audit-chain-recovery.md). `AUDIT_ANCHOR_KEY` is required in production; without it the checkpoint job skips rather than sealing unsigned.
 
 Still to do for P6:
 - [ ] Run the API suite, the web unit tests and e2e on the merged branch (not run where it was built: see the branch report).
@@ -112,5 +113,4 @@ Still to do for P6:
 - **Evaluation data:** small (187 images), mostly Flickr via Openverse (Commons rate-limited downloads), with few Indian scenes for some classes. Duplicate pairs are synthetic augmentations. These are baseline numbers, not real-world performance.
 - **SMS provider:** sign-in codes and notification texts now go through the outbox (A4.3, [notification-delivery.md](api/notification-delivery.md)), but only the `console` provider exists until MSG91/Gupshup is chosen and DLT templates are registered.
 - **Web Push:** needs a VAPID key pair in production (`scripts/vapid_keys.py`); without one the browser option says it is unavailable.
-- **Audit:** not hash-chained yet (A6.3).
 - **Signed URLs:** they change on every request, so browsers can't cache photos.

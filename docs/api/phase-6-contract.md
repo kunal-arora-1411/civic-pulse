@@ -80,3 +80,95 @@ room for branches built in parallel and follows `0014`.
   and `client_created_at`, and sent when the connection returns.
 - Voice input for the description through the browser's speech recognition.
 - "Delete my personal data" on the citizen profile.
+
+## 8. Tamper-evident audit chain (A6.3)
+
+Every `audit_events` row now carries `chain_seq`, `prev_hash` and `hash`,
+assigned by a `BEFORE INSERT` trigger — no caller supplies or sees them, and no
+application code changed. One chain per tenant, plus one for platform events
+(`tenant_id IS NULL`). `hash` is the SHA-256 of a length-prefixed canonical
+framing of the row including `prev_hash`; see
+[ADR 0007](../adr/0007-audit-hash-chain.md).
+
+All four endpoints require `audit:read` — held by `municipal_admin` only. No new
+permission was introduced.
+
+### `GET /api/v1/admin/audit-chain`
+
+`operation_id: admin_get_audit_chain`. Read-only status of the caller's chain.
+
+```json
+{
+  "scope": "tenant",
+  "events": 1284,
+  "head": {"seq": 1284, "hash": "9f2c4b0e…", "occurred_at": "2026-11-27T09:15:02.184312Z"},
+  "last_checkpoint": {
+    "id": "0b6f…", "up_to_seq": 1200, "head_hash": "…", "key_id": "k1",
+    "created_at": "2026-11-27T09:00:00.004120Z", "signature_valid": true
+  },
+  "unsealed_events": 84,
+  "last_verification": {
+    "id": "e2a1…", "status": "passed", "mode": "db", "from_seq": 1,
+    "to_seq": 1284, "checked_count": 1284, "first_bad_seq": null,
+    "failure_reason": null, "started_at": "…", "finished_at": "…"
+  },
+  "healthy": true
+}
+```
+
+`healthy` is false when the newest checkpoint's signature does not verify, the
+last verification failed, or the head has fallen behind a sealed checkpoint. It
+is **not** part of `/ready`: a broken chain is an incident, not an outage.
+`events` equals `head.seq` by construction.
+
+### `POST /api/v1/admin/audit-chain/verifications`
+
+`operation_id: admin_start_audit_chain_verification`. **202** with the queued run.
+
+```json
+{"from_seq": 1, "to_seq": 1284, "mode": "independent"}
+```
+
+All three fields are optional: `from_seq` defaults to `1`, `to_seq` to the head,
+`mode` to `"db"`. `mode` is `"db"` (Postgres recomputes, fast) or
+`"independent"` (Python recomputes and never trusts the SQL function).
+
+| Status | When |
+|---|---|
+| `422 validation_failed` | `from_seq < 1`, `to_seq < from_seq`, `to_seq` past the head, an unknown `mode`, or a range larger than `AUDIT_VERIFY_MAX_EVENTS` |
+| `409 conflict` | A `pending` or `running` run already exists for this tenant — one in flight per tenant, enforced by a partial unique index rather than a check-then-insert |
+| `503 service_unavailable` | The broker is unreachable; the `pending` row is deleted so the next attempt is not blocked |
+
+Starting a run is itself audited (`audit.chain.verification_requested`, chained
+like any other event).
+
+### `GET /api/v1/admin/audit-chain/verifications`
+
+`operation_id: admin_list_audit_chain_verifications`. A `Page` of runs, newest
+`started_at` first, with an optional `status` filter.
+
+### `GET /api/v1/admin/audit-chain/verifications/{id}`
+
+`operation_id: admin_get_audit_chain_verification`. **404** when the id is unknown
+*or belongs to another tenant* — RLS makes the row invisible, and a 404 is the
+right answer to both. No error leaks that a run exists.
+
+### `GET /api/v1/admin/audit-chain/checkpoints`
+
+`operation_id: admin_list_audit_checkpoints`. A `Page` of signed seals, newest
+`up_to_seq` first, default limit 50. Each item carries `signature_valid`,
+computed per row.
+
+### Not exposed over HTTP
+
+- The **platform chain** (`tenant_id IS NULL`): verifying it needs the RLS
+  bypass, which no tenant-scoped router may hold. CLI only
+  (`scripts/verify_audit_chain.py --platform`).
+- **External anchoring** (S3 Object Lock, RFC 3161): designed, not built.
+
+## 9. Schema (A6.3)
+
+Migrations `0017` (columns, framing functions, append trigger, three tables, RLS,
+grants) and `0018` (backfill, head seeding, self-check, `NOT NULL`). Both are
+reversible. `0018`'s downgrade removes only the `NOT NULL`s: the chain is evidence
+once written. Downgrading below `0017` drops the chain entirely.
