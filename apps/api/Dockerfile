@@ -1,6 +1,13 @@
 # CivicPulse API and worker image (one image, different commands).
 FROM python:3.12-slim-bookworm
 
+# The base image's OS packages lag Debian's security updates between its own
+# rebuilds; pull those in explicitly so a stale libpam/libzstd CVE doesn't
+# sit in the image until upstream happens to republish it.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
