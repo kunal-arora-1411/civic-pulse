@@ -170,14 +170,10 @@ class ClosureConfig(_Strict):
 class ReportLimitsConfig(_Strict):
     """How many reports one citizen may submit, per tenant (PRD §12.3).
 
-    The process-wide defaults (10/hour, 30/day) apply until a tenant sets
-    its own; a stricter or looser city doesn't need a code change."""
+    The two windows are independent (one city may want a low daily ceiling
+    with no particular hourly shape, say), so neither bounds the other. The
+    process-wide defaults (10/hour, 30/day) apply until a tenant sets its
+    own; a stricter or looser city doesn't need a code change."""
 
-    max_per_hour: int = Field(default=10, ge=1, le=1000)
-    max_per_day: int = Field(default=30, ge=1, le=10000)
-
-    @model_validator(mode="after")
-    def _day_not_below_hour(self) -> Self:
-        if self.max_per_day < self.max_per_hour:
-            raise ValueError("The daily limit can't be below the hourly limit.")
-        return self
+    max_per_hour: int = Field(default=10, ge=1)
+    max_per_day: int = Field(default=30, ge=1)

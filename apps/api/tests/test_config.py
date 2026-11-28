@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.core.config import get_settings
 from tests.phase1 import City, make_city
 
 MATCHING = "/api/v1/admin/matching-config"
@@ -34,6 +35,18 @@ DEFAULT_PRIORITY = {
 DEFAULT_REPORT_LIMITS = {"max_per_hour": 10, "max_per_day": 30}
 
 
+def _process_report_limits() -> dict[str, int]:
+    """The effective default for a tenant with no row of its own: unlike
+    the other three keys, this one falls back to REPORT_MAX_PER_HOUR/_DAY
+    (the test suite raises these so bulk-report tests aren't throttled),
+    not the schema's own literal default."""
+    settings = get_settings()
+    return {
+        "max_per_hour": settings.report_max_per_hour,
+        "max_per_day": settings.report_max_per_day,
+    }
+
+
 @pytest.fixture
 async def city(client: httpx.AsyncClient, sms: Any, owner_engine: AsyncEngine) -> City:
     return await make_city(client, sms, owner_engine)
@@ -46,7 +59,7 @@ async def test_defaults_until_a_tenant_sets_its_own(client: httpx.AsyncClient, c
     priority = await client.get(PRIORITY, headers=city.supervisor.headers)
     assert priority.json() == DEFAULT_PRIORITY
     report_limits = await client.get(REPORT_LIMITS, headers=city.supervisor.headers)
-    assert report_limits.json() == DEFAULT_REPORT_LIMITS
+    assert report_limits.json() == _process_report_limits()
 
 
 async def test_replacing_the_matching_config_is_validated_and_audited(
@@ -171,11 +184,11 @@ async def test_replacing_the_report_limits_config_is_validated_and_audited(
         (2, 10),
     ]
 
-    # Another tenant still has the defaults.
+    # Another tenant, with no row of its own, still has the process default.
     other = await make_city(client, sms, owner_engine)
     assert (
         await client.get(REPORT_LIMITS, headers=other.operator.headers)
-    ).json() == DEFAULT_REPORT_LIMITS
+    ).json() == _process_report_limits()
 
 
 @pytest.mark.parametrize(
@@ -183,7 +196,6 @@ async def test_replacing_the_report_limits_config_is_validated_and_audited(
     [
         {"max_per_hour": 0},
         {"max_per_day": 0},
-        {"max_per_hour": 10, "max_per_day": 5},
         {"surprise": True},
     ],
 )

@@ -24040,14 +24040,12 @@
         "properties": {
           "max_per_hour": {
             "type": "integer",
-            "maximum": 1000.0,
             "minimum": 1.0,
             "title": "Max Per Hour",
             "default": 10
           },
           "max_per_day": {
             "type": "integer",
-            "maximum": 10000.0,
             "minimum": 1.0,
             "title": "Max Per Day",
             "default": 30
@@ -24056,7 +24054,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ReportLimitsConfig",
-        "description": "How many reports one citizen may submit, per tenant (PRD §12.3).\n\nThe process-wide defaults (10/hour, 30/day) apply until a tenant sets\nits own; a stricter or looser city doesn't need a code change."
+        "description": "How many reports one citizen may submit, per tenant (PRD §12.3).\n\nThe two windows are independent (one city may want a low daily ceiling\nwith no particular hourly shape, say), so neither bounds the other. The\nprocess-wide defaults (10/hour, 30/day) apply until a tenant sets its\nown; a stricter or looser city doesn't need a code change."
       },
       "ReportOwnerView": {
         "properties": {

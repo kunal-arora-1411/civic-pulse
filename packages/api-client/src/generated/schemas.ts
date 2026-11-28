@@ -2725,17 +2725,15 @@ export type ReportIssue = zod.input<typeof ReportIssue>;
 export type ReportIssueOutput = zod.output<typeof ReportIssue>;
 
 export const reportLimitsConfigMaxPerHourDefault = 10;
-export const reportLimitsConfigMaxPerHourMax = 1000;
 
 export const reportLimitsConfigMaxPerDayDefault = 30;
-export const reportLimitsConfigMaxPerDayMax = 10000;
 
 
 
 export const ReportLimitsConfig = zod.object({
-  "max_per_hour": zod.int().min(1).max(reportLimitsConfigMaxPerHourMax).default(reportLimitsConfigMaxPerHourDefault),
-  "max_per_day": zod.int().min(1).max(reportLimitsConfigMaxPerDayMax).default(reportLimitsConfigMaxPerDayDefault)
-}).describe('How many reports one citizen may submit, per tenant (PRD §12.3).\n\nThe process-wide defaults (10/hour, 30/day) apply until a tenant sets\nits own; a stricter or looser city doesn\'t need a code change.');
+  "max_per_hour": zod.int().min(1).default(reportLimitsConfigMaxPerHourDefault),
+  "max_per_day": zod.int().min(1).default(reportLimitsConfigMaxPerDayDefault)
+}).describe('How many reports one citizen may submit, per tenant (PRD §12.3).\n\nThe two windows are independent (one city may want a low daily ceiling\nwith no particular hourly shape, say), so neither bounds the other. The\nprocess-wide defaults (10/hour, 30/day) apply until a tenant sets its\nown; a stricter or looser city doesn\'t need a code change.');
 
 export type ReportLimitsConfig = zod.input<typeof ReportLimitsConfig>;
 export type ReportLimitsConfigOutput = zod.output<typeof ReportLimitsConfig>;
