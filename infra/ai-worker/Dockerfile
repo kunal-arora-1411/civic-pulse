@@ -15,6 +15,12 @@
 # don't refetch it.
 FROM python:3.12-slim-bookworm
 
+# Same reasoning as apps/api/Dockerfile: patch OS packages explicitly rather
+# than waiting on the next upstream rebuild of this base image.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
