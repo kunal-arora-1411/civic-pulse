@@ -104,7 +104,7 @@ jobs:
         run: uv run pytest tests/ai --confcutdir=tests/ai -v
 
   web:
-    name: Web (lint, types, build)
+    name: Web (lint, types, tests, build)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -133,6 +133,9 @@ jobs:
 
       - name: Typecheck the e2e suite
         run: pnpm --filter @civicpulse/e2e typecheck
+
+      - name: Unit tests (Vitest)
+        run: pnpm --filter @civicpulse/web test
 
       - name: Build
         run: pnpm --filter @civicpulse/web build
