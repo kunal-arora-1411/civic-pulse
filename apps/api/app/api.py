@@ -9,6 +9,7 @@ from app.domains.ai.router import router as ai_router
 from app.domains.analytics.router import router as analytics_router
 from app.domains.analytics.views import router as analytics_views_router
 from app.domains.announcements.router import router as announcements_router
+from app.domains.audit.router import chain_router as audit_chain_router
 from app.domains.audit.router import router as audit_router
 from app.domains.auth.router import router as auth_router
 from app.domains.categories.router import router as categories_router
@@ -39,6 +40,7 @@ api_router.include_router(users_router)
 api_router.include_router(admin_users_router)
 api_router.include_router(org_router)
 api_router.include_router(audit_router)
+api_router.include_router(audit_chain_router)
 api_router.include_router(platform_router)
 api_router.include_router(workflow_router)
 api_router.include_router(categories_router)

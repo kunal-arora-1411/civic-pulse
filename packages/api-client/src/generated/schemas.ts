@@ -350,6 +350,92 @@ export const AuditActor = zod.object({
 export type AuditActor = zod.input<typeof AuditActor>;
 export type AuditActorOutput = zod.output<typeof AuditActor>;
 
+export const AuditChainHeadOut = zod.object({
+  "seq": zod.int(),
+  "hash": zod.string(),
+  "occurred_at": zod.union([zod.string(),zod.null()])
+}).describe('Where a chain currently ends.');
+
+export type AuditChainHeadOut = zod.input<typeof AuditChainHeadOut>;
+export type AuditChainHeadOutOutput = zod.output<typeof AuditChainHeadOut>;
+
+export const AuditCheckpointOut = zod.object({
+  "id": zod.string(),
+  "up_to_seq": zod.int(),
+  "head_hash": zod.string(),
+  "key_id": zod.string(),
+  "created_at": zod.string(),
+  "signature_valid": zod.boolean()
+});
+
+export type AuditCheckpointOut = zod.input<typeof AuditCheckpointOut>;
+export type AuditCheckpointOutOutput = zod.output<typeof AuditCheckpointOut>;
+
+export const AuditChainVerificationOut = zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['pending', 'running', 'passed', 'failed', 'error']),
+  "mode": zod.enum(['db', 'independent']),
+  "from_seq": zod.int(),
+  "to_seq": zod.int(),
+  "checked_count": zod.int(),
+  "first_bad_seq": zod.union([zod.int(),zod.null()]),
+  "failure_reason": zod.union([zod.string(),zod.null()]),
+  "started_at": zod.string(),
+  "finished_at": zod.union([zod.string(),zod.null()])
+});
+
+export type AuditChainVerificationOut = zod.input<typeof AuditChainVerificationOut>;
+export type AuditChainVerificationOutOutput = zod.output<typeof AuditChainVerificationOut>;
+
+export const auditChainStatusScopeDefault = `tenant`;
+
+export const AuditChainStatus = zod.object({
+  "scope": zod.literal("tenant").default(auditChainStatusScopeDefault).meta({ title: 'Scope' }),
+  "events": zod.int(),
+  "head": AuditChainHeadOut,
+  "last_checkpoint": zod.union([AuditCheckpointOut,zod.null()]),
+  "unsealed_events": zod.int(),
+  "last_verification": zod.union([AuditChainVerificationOut,zod.null()]),
+  "healthy": zod.boolean()
+}).describe('The single thing an operator or a monitor watches.\n\n`healthy` is false when the newest checkpoint\'s signature does not verify, the\nlast verification failed, or the head is behind a checkpoint that was signed --\neach of which means rows moved or vanished after they were sealed. It is\ndeliberately not part of `/ready`: a broken chain is an incident, not an outage.');
+
+export type AuditChainStatus = zod.input<typeof AuditChainStatus>;
+export type AuditChainStatusOutput = zod.output<typeof AuditChainStatus>;
+
+export const AuditChainVerificationPage = zod.object({
+  "items": zod.array(AuditChainVerificationOut),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+});
+
+export type AuditChainVerificationPage = zod.input<typeof AuditChainVerificationPage>;
+export type AuditChainVerificationPageOutput = zod.output<typeof AuditChainVerificationPage>;
+
+export const auditChainVerificationRequestFromSeqDefault = 1;
+
+
+export const auditChainVerificationRequestModeDefault = `db`;
+
+export const AuditChainVerificationRequest = zod.object({
+  "from_seq": zod.int().min(1).default(auditChainVerificationRequestFromSeqDefault),
+  "to_seq": zod.union([zod.int().min(1),zod.null()]).optional(),
+  "mode": zod.enum(['db', 'independent']).default(auditChainVerificationRequestModeDefault)
+}).describe('A window to verify. `to_seq` defaults to the head of the chain.');
+
+export type AuditChainVerificationRequest = zod.input<typeof AuditChainVerificationRequest>;
+export type AuditChainVerificationRequestOutput = zod.output<typeof AuditChainVerificationRequest>;
+
+export const AuditCheckpointPage = zod.object({
+  "items": zod.array(AuditCheckpointOut),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+});
+
+export type AuditCheckpointPage = zod.input<typeof AuditCheckpointPage>;
+export type AuditCheckpointPageOutput = zod.output<typeof AuditCheckpointPage>;
+
 export const AuditEventOut = zod.object({
   "id": zod.int(),
   "occurred_at": zod.string(),
@@ -3568,6 +3654,88 @@ export const AdminListAuditEventsHeaders = zod.object({
 
 export type AdminListAuditEventsHeaders = zod.input<typeof AdminListAuditEventsHeaders>;
 export type AdminListAuditEventsHeadersOutput = zod.output<typeof AdminListAuditEventsHeaders>;
+
+export const adminGetAuditChainHeadersXTenantOneMax = 63;
+
+
+export const AdminGetAuditChainHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminGetAuditChainHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminGetAuditChainHeaders = zod.input<typeof AdminGetAuditChainHeaders>;
+export type AdminGetAuditChainHeadersOutput = zod.output<typeof AdminGetAuditChainHeaders>;
+
+export const adminStartAuditChainVerificationHeadersXTenantOneMax = 63;
+
+
+export const AdminStartAuditChainVerificationHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminStartAuditChainVerificationHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminStartAuditChainVerificationHeaders = zod.input<typeof AdminStartAuditChainVerificationHeaders>;
+export type AdminStartAuditChainVerificationHeadersOutput = zod.output<typeof AdminStartAuditChainVerificationHeaders>;
+
+export const adminListAuditChainVerificationsParamsLimitDefault = 20;
+export const adminListAuditChainVerificationsParamsLimitMax = 100;
+
+export const adminListAuditChainVerificationsParamsOffsetDefault = 0;
+export const adminListAuditChainVerificationsParamsOffsetMin = 0;
+
+
+export const AdminListAuditChainVerificationsParams = zod.object({
+  "status": zod.union([zod.enum(['pending', 'running', 'passed', 'failed', 'error']),zod.null()]).optional(),
+  "sort": zod.union([zod.string(),zod.null()]).optional().describe('`started_at` or `-started_at` (default).'),
+  "limit": zod.int().min(1).max(adminListAuditChainVerificationsParamsLimitMax).default(adminListAuditChainVerificationsParamsLimitDefault).describe('Page size (1-100).'),
+  "offset": zod.int().min(adminListAuditChainVerificationsParamsOffsetMin).default(adminListAuditChainVerificationsParamsOffsetDefault).describe('Number of items to skip.')
+})
+
+export type AdminListAuditChainVerificationsParams = zod.input<typeof AdminListAuditChainVerificationsParams>;
+export type AdminListAuditChainVerificationsParamsOutput = zod.output<typeof AdminListAuditChainVerificationsParams>;
+
+export const adminListAuditChainVerificationsHeadersXTenantOneMax = 63;
+
+
+export const AdminListAuditChainVerificationsHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminListAuditChainVerificationsHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminListAuditChainVerificationsHeaders = zod.input<typeof AdminListAuditChainVerificationsHeaders>;
+export type AdminListAuditChainVerificationsHeadersOutput = zod.output<typeof AdminListAuditChainVerificationsHeaders>;
+
+export const adminGetAuditChainVerificationHeadersXTenantOneMax = 63;
+
+
+export const AdminGetAuditChainVerificationHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminGetAuditChainVerificationHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminGetAuditChainVerificationHeaders = zod.input<typeof AdminGetAuditChainVerificationHeaders>;
+export type AdminGetAuditChainVerificationHeadersOutput = zod.output<typeof AdminGetAuditChainVerificationHeaders>;
+
+export const adminListAuditCheckpointsParamsLimitDefault = 20;
+export const adminListAuditCheckpointsParamsLimitMax = 100;
+
+export const adminListAuditCheckpointsParamsOffsetDefault = 0;
+export const adminListAuditCheckpointsParamsOffsetMin = 0;
+
+
+export const AdminListAuditCheckpointsParams = zod.object({
+  "limit": zod.int().min(1).max(adminListAuditCheckpointsParamsLimitMax).default(adminListAuditCheckpointsParamsLimitDefault).describe('Page size (1-100).'),
+  "offset": zod.int().min(adminListAuditCheckpointsParamsOffsetMin).default(adminListAuditCheckpointsParamsOffsetDefault).describe('Number of items to skip.')
+})
+
+export type AdminListAuditCheckpointsParams = zod.input<typeof AdminListAuditCheckpointsParams>;
+export type AdminListAuditCheckpointsParamsOutput = zod.output<typeof AdminListAuditCheckpointsParams>;
+
+export const adminListAuditCheckpointsHeadersXTenantOneMax = 63;
+
+
+export const AdminListAuditCheckpointsHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminListAuditCheckpointsHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminListAuditCheckpointsHeaders = zod.input<typeof AdminListAuditCheckpointsHeaders>;
+export type AdminListAuditCheckpointsHeadersOutput = zod.output<typeof AdminListAuditCheckpointsHeaders>;
 
 export const platformListTenantsParamsLimitDefault = 20;
 export const platformListTenantsParamsLimitMax = 100;

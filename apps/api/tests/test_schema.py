@@ -75,6 +75,70 @@ async def test_app_role_privileges_on_audit_events(owner_engine: AsyncEngine) ->
     assert privileges == (True, False, False, False)
 
 
+async def test_app_role_privileges_on_the_chain_tables(owner_engine: AsyncEngine) -> None:
+    """`UPDATE` on a head is required: the append trigger writes it as the caller.
+
+    `DELETE` is not granted on either table. A head is never removed (the chain
+    must always have one), and a checkpoint is evidence.
+    """
+    async with owner_engine.connect() as conn:
+        privileges = (
+            await conn.execute(
+                text(
+                    "SELECT has_table_privilege('civicpulse_app', 'audit_chain_heads', 'SELECT'),"
+                    "       has_table_privilege('civicpulse_app', 'audit_chain_heads', 'INSERT'),"
+                    "       has_table_privilege('civicpulse_app', 'audit_chain_heads', 'UPDATE'),"
+                    "       has_table_privilege('civicpulse_app', 'audit_chain_heads', 'DELETE'),"
+                    "       has_table_privilege('civicpulse_app', 'audit_checkpoints', 'INSERT'),"
+                    "       has_table_privilege('civicpulse_app', 'audit_checkpoints', 'DELETE')"
+                )
+            )
+        ).one()
+    assert privileges == (True, True, True, False, True, False)
+
+
+async def test_app_role_cannot_delete_a_chain_head(owner_engine: AsyncEngine) -> None:
+    async with owner_engine.connect() as conn:
+        await conn.execute(text("SET ROLE civicpulse_app"))
+        with pytest.raises(DBAPIError, match="permission denied"):
+            await conn.execute(text("DELETE FROM audit_chain_heads WHERE true"))
+
+
+async def test_checkpoints_reject_update_and_delete_even_for_the_owner(
+    owner_engine: AsyncEngine,
+) -> None:
+    async with owner_engine.begin() as conn:
+        tenant_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenants (slug, name) VALUES ('checkpoint-city', 'Checkpoint') "
+                    "RETURNING id"
+                )
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO audit_checkpoints "
+                "(tenant_id, up_to_seq, head_hash, key_id, signature) "
+                "VALUES (:t, 1, decode(repeat('11', 32), 'hex'), 'k1', "
+                "        decode(repeat('22', 32), 'hex'))"
+            ),
+            {"t": tenant_id},
+        )
+
+    for statement in (
+        "UPDATE audit_checkpoints SET key_id = 'k2' WHERE tenant_id = :t",
+        "DELETE FROM audit_checkpoints WHERE tenant_id = :t",
+    ):
+        async with owner_engine.connect() as conn:
+            with pytest.raises(DBAPIError, match="append-only"):
+                await conn.execute(text(statement), {"t": tenant_id})
+
+    async with owner_engine.connect() as conn:
+        with pytest.raises(DBAPIError, match="append-only"):
+            await conn.execute(text("TRUNCATE audit_checkpoints"))
+
+
 def _include_object(
     obj: Any, name: str | None, type_: str, reflected: bool, compare_to: Any
 ) -> bool:

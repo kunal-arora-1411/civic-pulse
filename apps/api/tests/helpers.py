@@ -88,6 +88,13 @@ class InlineJobs:
         assert self.sms is not None
         await dispatch_event(event_id, channels=(SmsChannel(self.sms),))
 
+    async def verify_audit_chain(self, verification_id: uuid.UUID) -> None:
+        self.calls.append(("verify_audit_chain", (verification_id,)))
+        if self.inline:
+            from app.domains.audit.runs import execute
+
+            self.outcomes.append(await execute(verification_id))
+
     def called(self, name: str) -> list[tuple[Any, ...]]:
         return [args for job, args in self.calls if job == name]
 

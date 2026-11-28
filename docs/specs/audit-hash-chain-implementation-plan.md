@@ -10,7 +10,7 @@
 | Type | **Code only** — no screens, no design tokens, no copy changes |
 | Layer | Postgres schema + FastAPI admin API + Celery jobs + CLI |
 | Estimate | **6 engineering days** (see §20) |
-| Status | Proposed — not started |
+| Status | **Implemented** — see [ADR 0007](../adr/0007-audit-hash-chain.md) and the [recovery runbook](../runbooks/audit-chain-recovery.md) |
 | Author's note | Written against `main` at migration head `0016`, `apps/api/openapi.json` current |
 
 ---

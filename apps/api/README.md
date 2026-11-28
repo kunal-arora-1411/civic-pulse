@@ -154,12 +154,42 @@ uv run python scripts/export_openapi.py          # regenerate openapi.json (comm
 uv run python scripts/export_openapi.py --check  # what CI runs
 ```
 
+## Verifying the audit trail
+
+Every audit event is in a per-tenant SHA-256 hash chain (plus one for platform
+events), extended by a `BEFORE INSERT` trigger — nothing in the app writes
+`chain_seq`, `prev_hash` or `hash`, and an INSERT that supplies them is refused.
+That is why no call site changed and no future one can forget. Verify with:
+
+```sh
+uv run python -m scripts.verify_audit_chain --tenant demo-city
+uv run python -m scripts.verify_audit_chain --all-tenants --mode independent
+uv run python -m scripts.verify_audit_chain --platform --checkpoints --json
+```
+
+Exit `0` passed, `1` broken, `2` usage error or no database. `--mode
+independent` recomputes every hash in Python and never calls `audit_hash_v1`, so
+it still finds a break if the SQL function itself was rewritten; it is the CLI
+default, while the nightly job uses the cheaper `db` mode. `--platform` needs the
+RLS bypass and is CLI-only.
+
+What to do when it fails is in
+[`docs/runbooks/audit-chain-recovery.md`](../../docs/runbooks/audit-chain-recovery.md),
+and why it is built this way is [ADR 0007](../../docs/adr/0007-audit-hash-chain.md).
+`AUDIT_ANCHOR_KEY` (required in production) signs the hourly checkpoint and must
+never be stored in the database.
+
+The framing exists twice — `audit_framing_v1` in SQL and `app/domains/audit/chain.py`
+in Python — and must agree byte for byte. `tests/fixtures/audit_chain_v1.json`
+pins both. **If that fixture changes, read the diff line by line**: it is the tripwire
+for a real change to the format, and regenerating it blindly defeats the point.
+
 ## Conventions worth knowing
 
 - **One transaction per request.** `DbSession` commits before the response is sent and rolls back on error. Don't commit in services, except where an error response must persist a write; those spots are commented.
 - **Tenant context.** `set_tenant()`, `acting_as()` and `rls_bypass(reason=...)` in `app/core/tenancy.py`. Never bypass without a reason a reviewer would accept.
 - **Permissions.** Add them to `Permission` and `ROLE_PERMISSIONS` in `app/domains/rbac/permissions.py`, then guard routes with `Annotated[Principal, require(Permission.X)]`. Every permission check needs a "denied" test.
-- **Audit.** Call `audit.record(...)` in the same transaction as the change, with before/after snapshots for sensitive actions.
+- **Audit.** Call `audit.record(...)` in the same transaction as the change, with before/after snapshots for sensitive actions. The trigger chains the row; do not pass chain columns.
 - **Errors.** Raise `AppError` subclasses from `app/core/errors.py`. Never return ad-hoc error bodies.
 - **Storage.** Use the `Storage` dependency (`app/core/storage.py`). Server-side calls go to `S3_ENDPOINT`; URLs for browsers are signed for `S3_PUBLIC_ENDPOINT`, because the signature covers the host.
 - **Background jobs.** Tasks are thin sync wrappers around async functions run through `run_async()` (`app/worker.py`). Queue work from a request with `BackgroundTasks`, which run after the transaction has committed, and keep tasks idempotent (`acks_late` redelivers).

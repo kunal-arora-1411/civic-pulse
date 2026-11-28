@@ -19,6 +19,7 @@ from app.core.idempotency import IdempotencyKey
 from app.core.logging import log_fields
 from app.core.storage import ObjectStorage, StorageError, get_storage
 from app.core.tenancy import system_session
+from app.domains.audit import runs as audit_runs
 from app.domains.auth.models import AuthSession, OtpChallenge
 from app.domains.media.models import MediaAsset, MediaStatus
 from app.domains.outbox.service import purge_dispatched
@@ -43,6 +44,7 @@ class CleanupResult:
     idempotency_keys: int = 0
     uploads: int = 0
     outbox: int = 0
+    audit_verifications: int = 0
     purged_originals: int = 0
     stuck_processing: list[tuple[uuid.UUID, uuid.UUID]] = field(default_factory=list)
 
@@ -53,6 +55,7 @@ class CleanupResult:
             "idempotency_keys": self.idempotency_keys,
             "uploads": self.uploads,
             "outbox": self.outbox,
+            "audit_verifications": self.audit_verifications,
             "purged_originals": self.purged_originals,
             "stuck_processing": len(self.stuck_processing),
         }
@@ -182,6 +185,11 @@ async def cleanup(
     # Dispatched outbox events past retention, with their delivery rows.
     result.outbox = await purge_dispatched(
         older_than_days=get_settings().outbox_retention_days, now=now
+    )
+    # Only the verification runs: the audit log and its checkpoints are evidence
+    # and no job is allowed to delete either (A6.3, AC-12).
+    result.audit_verifications = await audit_runs.purge(
+        older_than_days=get_settings().audit_verification_retention_days, now=now
     )
 
     retention_days = get_settings().media_original_retention_days

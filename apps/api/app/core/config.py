@@ -225,6 +225,22 @@ class Settings(BaseSettings):
     # default until the retention periods are decided (P6-12).
     media_original_retention_days: int = 0
 
+    # --- Audit hash chain (A6.3) ---------------------------------------------------
+    # The HMAC key that signs audit checkpoints. It must not live in the database:
+    # the signature is what makes a deleted tail detectable even for somebody who can
+    # write to it. Required in production; without it the checkpoint job logs and
+    # skips rather than sealing unsigned.
+    audit_anchor_key: SecretStr | None = None
+    audit_anchor_key_id: str = "k1"
+    # Keys that signed older checkpoints, kept for verification after a rotation,
+    # as JSON: AUDIT_ANCHOR_PREVIOUS_KEYS='{"k0": "<secret>"}'.
+    audit_anchor_previous_keys: dict[str, SecretStr] = {}
+    audit_verify_batch_size: int = 5000
+    # A single verification range larger than this is refused, so a request cannot
+    # ask the database to hash several million rows in one go.
+    audit_verify_max_events: int = 2_000_000
+    audit_verification_retention_days: int = 90
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -253,6 +269,13 @@ class Settings(BaseSettings):
                 secret: SecretStr = getattr(self, name)
                 if len(secret.get_secret_value()) < 32:
                     raise ValueError(f"{name.upper()} must be at least 32 characters in production")
+            # Unlike the keys above this one has no development default: a checkpoint
+            # signed with a guessable key is worse than no checkpoint, because it looks
+            # like evidence.
+            if self.audit_anchor_key is None:
+                raise ValueError("AUDIT_ANCHOR_KEY must be set in production")
+            if len(self.audit_anchor_key.get_secret_value()) < 32:
+                raise ValueError("AUDIT_ANCHOR_KEY must be at least 32 characters in production")
         return self
 
     @property
