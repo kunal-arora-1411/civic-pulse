@@ -70,6 +70,33 @@ async def test_new_tenant_is_usable_right_away(
     assert current.json()["name"] == "Fresh"
 
 
+async def test_a_new_tenant_starts_with_a_genesis_chain_head(
+    client: httpx.AsyncClient, platform_admin: Session, owner_engine: AsyncEngine
+) -> None:
+    """The head row is written by a trigger on this INSERT (A6.3).
+
+    That insert needs the RLS bypass: a platform admin has no tenant context of
+    its own, and the head table's policy refuses a row it cannot see. Without it
+    provisioning a municipality fails outright, so this is worth pinning.
+    """
+    slug = unique_slug("chain")
+    created = await client.post(
+        TENANTS, headers=platform_admin.headers, json={"slug": slug, "name": "Chain City"}
+    )
+    assert created.status_code == 201, created.text
+    tenant_id = created.json()["id"]
+
+    async with owner_engine.connect() as conn:
+        head = (
+            await conn.execute(
+                text("SELECT next_seq, last_hash FROM audit_chain_heads WHERE tenant_id = :t"),
+                {"t": tenant_id},
+            )
+        ).one()
+    assert head.next_seq == 1
+    assert bytes(head.last_hash) == bytes(32)
+
+
 async def test_duplicate_and_invalid_slugs(
     client: httpx.AsyncClient, platform_admin: Session, owner_engine: AsyncEngine
 ) -> None:
