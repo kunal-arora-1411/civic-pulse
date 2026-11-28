@@ -139,6 +139,7 @@ import type {
   RelatedRequest,
   ReopenRequest,
   ReportCreate,
+  ReportLimitsConfig,
   ReportOwnerView,
   ReportStaffView,
   ReportsListMineParams,
@@ -1098,6 +1099,35 @@ export const adminUpdateClosureConfig = (
       {url: `/api/v1/admin/closure-config`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: closureConfig
+    },
+      options);
+    }
+
+/**
+ * Citizen report submission limits in effect (defaults if never set).
+ * @summary Get Report Limits Config
+ */
+export const adminGetReportLimitsConfig = (
+
+ options?: SecondParameter<typeof customInstance<ReportLimitsConfig>>,) => {
+      return customInstance<ReportLimitsConfig>(
+      {url: `/api/v1/admin/report-limits-config`, method: 'GET'
+    },
+      options);
+    }
+
+/**
+ * Replace the whole document; a field left out goes back to its default.
+ * The daily limit can't be below the hourly one. Audited.
+ * @summary Update Report Limits Config
+ */
+export const adminUpdateReportLimitsConfig = (
+    reportLimitsConfig: ReportLimitsConfig,
+ options?: SecondParameter<typeof customInstance<ReportLimitsConfig>>,) => {
+      return customInstance<ReportLimitsConfig>(
+      {url: `/api/v1/admin/report-limits-config`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: reportLimitsConfig
     },
       options);
     }
@@ -2201,6 +2231,8 @@ export type AdminGetPriorityConfigResult = NonNullable<Awaited<ReturnType<typeof
 export type AdminUpdatePriorityConfigResult = NonNullable<Awaited<ReturnType<typeof adminUpdatePriorityConfig>>>
 export type AdminGetClosureConfigResult = NonNullable<Awaited<ReturnType<typeof adminGetClosureConfig>>>
 export type AdminUpdateClosureConfigResult = NonNullable<Awaited<ReturnType<typeof adminUpdateClosureConfig>>>
+export type AdminGetReportLimitsConfigResult = NonNullable<Awaited<ReturnType<typeof adminGetReportLimitsConfig>>>
+export type AdminUpdateReportLimitsConfigResult = NonNullable<Awaited<ReturnType<typeof adminUpdateReportLimitsConfig>>>
 export type AdminGetSlaTargetsResult = NonNullable<Awaited<ReturnType<typeof adminGetSlaTargets>>>
 export type AdminUpdateSlaTargetsResult = NonNullable<Awaited<ReturnType<typeof adminUpdateSlaTargets>>>
 export type AiCreateClassificationResult = NonNullable<Awaited<ReturnType<typeof aiCreateClassification>>>

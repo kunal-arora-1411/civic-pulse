@@ -13,6 +13,7 @@ from tests.phase1 import City, make_city
 
 MATCHING = "/api/v1/admin/matching-config"
 PRIORITY = "/api/v1/admin/priority-config"
+REPORT_LIMITS = "/api/v1/admin/report-limits-config"
 
 DEFAULT_MATCHING = {
     "auto_link_enabled": True,
@@ -30,6 +31,7 @@ DEFAULT_PRIORITY = {
     "recurrence": {"radius_m": 50, "lookback_days": 180, "saturation": 3},
     "bands": {"critical": 80, "high": 60, "medium": 35},
 }
+DEFAULT_REPORT_LIMITS = {"max_per_hour": 10, "max_per_day": 30}
 
 
 @pytest.fixture
@@ -43,6 +45,8 @@ async def test_defaults_until_a_tenant_sets_its_own(client: httpx.AsyncClient, c
     assert matching.json() == DEFAULT_MATCHING
     priority = await client.get(PRIORITY, headers=city.supervisor.headers)
     assert priority.json() == DEFAULT_PRIORITY
+    report_limits = await client.get(REPORT_LIMITS, headers=city.supervisor.headers)
+    assert report_limits.json() == DEFAULT_REPORT_LIMITS
 
 
 async def test_replacing_the_matching_config_is_validated_and_audited(
@@ -139,8 +143,61 @@ async def test_priority_config_round_trips(client: httpx.AsyncClient, city: City
     assert (await client.get(PRIORITY, headers=city.admin.headers)).json() == body
 
 
+async def test_replacing_the_report_limits_config_is_validated_and_audited(
+    client: httpx.AsyncClient, sms: Any, owner_engine: AsyncEngine, city: City
+) -> None:
+    body = {"max_per_hour": 2, "max_per_day": 5}
+    saved = await client.put(REPORT_LIMITS, headers=city.admin.headers, json=body)
+    assert saved.status_code == 200, saved.text
+    assert saved.json() == body
+    assert (await client.get(REPORT_LIMITS, headers=city.operator.headers)).json() == body
+
+    # A field left out goes back to its default.
+    reset = await client.put(REPORT_LIMITS, headers=city.admin.headers, json={"max_per_hour": 10})
+    assert reset.json() == DEFAULT_REPORT_LIMITS
+
+    async with owner_engine.connect() as conn:
+        rows = (
+            await conn.execute(
+                text(
+                    "SELECT before, after FROM audit_events WHERE tenant_id = :t "
+                    "AND action = 'config.report_limits_updated' ORDER BY id"
+                ),
+                {"t": city.tenant.id},
+            )
+        ).all()
+    assert [(r.before["max_per_hour"], r.after["max_per_hour"]) for r in rows] == [
+        (10, 2),
+        (2, 10),
+    ]
+
+    # Another tenant still has the defaults.
+    other = await make_city(client, sms, owner_engine)
+    assert (
+        await client.get(REPORT_LIMITS, headers=other.operator.headers)
+    ).json() == DEFAULT_REPORT_LIMITS
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"max_per_hour": 0},
+        {"max_per_day": 0},
+        {"max_per_hour": 10, "max_per_day": 5},
+        {"surprise": True},
+    ],
+)
+async def test_invalid_report_limits_configs_are_rejected(
+    client: httpx.AsyncClient, city: City, change: dict[str, Any]
+) -> None:
+    response = await client.put(
+        REPORT_LIMITS, headers=city.admin.headers, json={**DEFAULT_REPORT_LIMITS, **change}
+    )
+    assert response.status_code == 422, response.text
+
+
 async def test_config_permissions(client: httpx.AsyncClient, city: City) -> None:
-    for path in (MATCHING, PRIORITY):
+    for path in (MATCHING, PRIORITY, REPORT_LIMITS):
         assert (await client.get(path, headers=city.citizen.headers)).status_code == 403
         assert (await client.get(path)).status_code == 401
         denied = await client.put(path, headers=city.operator.headers, json={})

@@ -18,6 +18,7 @@ class ConfigKey(StrEnum):
     MATCHING = "matching"
     PRIORITY = "priority"
     CLOSURE = "closure"
+    REPORT_LIMITS = "report_limits"
 
 
 class TenantConfig(TimestampMixin, Base):

@@ -2724,6 +2724,22 @@ export const ReportIssue = zod.object({
 export type ReportIssue = zod.input<typeof ReportIssue>;
 export type ReportIssueOutput = zod.output<typeof ReportIssue>;
 
+export const reportLimitsConfigMaxPerHourDefault = 10;
+export const reportLimitsConfigMaxPerHourMax = 1000;
+
+export const reportLimitsConfigMaxPerDayDefault = 30;
+export const reportLimitsConfigMaxPerDayMax = 10000;
+
+
+
+export const ReportLimitsConfig = zod.object({
+  "max_per_hour": zod.int().min(1).max(reportLimitsConfigMaxPerHourMax).default(reportLimitsConfigMaxPerHourDefault),
+  "max_per_day": zod.int().min(1).max(reportLimitsConfigMaxPerDayMax).default(reportLimitsConfigMaxPerDayDefault)
+}).describe('How many reports one citizen may submit, per tenant (PRD §12.3).\n\nThe process-wide defaults (10/hour, 30/day) apply until a tenant sets\nits own; a stricter or looser city doesn\'t need a code change.');
+
+export type ReportLimitsConfig = zod.input<typeof ReportLimitsConfig>;
+export type ReportLimitsConfigOutput = zod.output<typeof ReportLimitsConfig>;
+
 export const reportOwnerViewViewDefault = `owner`;
 
 export const ReportOwnerView = zod.object({
@@ -4177,6 +4193,26 @@ export const AdminUpdateClosureConfigHeaders = zod.object({
 
 export type AdminUpdateClosureConfigHeaders = zod.input<typeof AdminUpdateClosureConfigHeaders>;
 export type AdminUpdateClosureConfigHeadersOutput = zod.output<typeof AdminUpdateClosureConfigHeaders>;
+
+export const adminGetReportLimitsConfigHeadersXTenantOneMax = 63;
+
+
+export const AdminGetReportLimitsConfigHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminGetReportLimitsConfigHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminGetReportLimitsConfigHeaders = zod.input<typeof AdminGetReportLimitsConfigHeaders>;
+export type AdminGetReportLimitsConfigHeadersOutput = zod.output<typeof AdminGetReportLimitsConfigHeaders>;
+
+export const adminUpdateReportLimitsConfigHeadersXTenantOneMax = 63;
+
+
+export const AdminUpdateReportLimitsConfigHeaders = zod.object({
+  "X-Tenant": zod.union([zod.string().max(adminUpdateReportLimitsConfigHeadersXTenantOneMax),zod.null()]).optional().describe('Optional. If sent with a tenant user\'s token it must match the token\'s tenant (403 tenant_mismatch). Ignored for platform administrators.')
+})
+
+export type AdminUpdateReportLimitsConfigHeaders = zod.input<typeof AdminUpdateReportLimitsConfigHeaders>;
+export type AdminUpdateReportLimitsConfigHeadersOutput = zod.output<typeof AdminUpdateReportLimitsConfigHeaders>;
 
 export const adminGetSlaTargetsHeadersXTenantOneMax = 63;
 

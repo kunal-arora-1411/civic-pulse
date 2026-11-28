@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import log_fields
 from app.domains.audit import service as audit
 from app.domains.config.models import ConfigKey, TenantConfig
-from app.domains.config.schemas import ClosureConfig, MatchingConfig, PriorityConfig
+from app.domains.config.schemas import (
+    ClosureConfig,
+    MatchingConfig,
+    PriorityConfig,
+    ReportLimitsConfig,
+)
 from app.domains.rbac.principal import Principal
 
 logger = logging.getLogger(__name__)
@@ -48,6 +53,10 @@ async def priority_config(db: AsyncSession) -> PriorityConfig:
 
 async def closure_config(db: AsyncSession) -> ClosureConfig:
     return await _load(db, ConfigKey.CLOSURE, ClosureConfig)
+
+
+async def report_limits_config(db: AsyncSession) -> ReportLimitsConfig:
+    return await _load(db, ConfigKey.REPORT_LIMITS, ReportLimitsConfig)
 
 
 async def replace[C: BaseModel](db: AsyncSession, actor: Principal, key: ConfigKey, body: C) -> C:
