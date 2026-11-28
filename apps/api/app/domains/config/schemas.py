@@ -165,3 +165,15 @@ class ClosureConfig(_Strict):
         description="Distinct citizens confirming resolution, for categories that don't "
         "require approval (FR-073).",
     )
+
+
+class ReportLimitsConfig(_Strict):
+    """How many reports one citizen may submit, per tenant (PRD §12.3).
+
+    The two windows are independent (one city may want a low daily ceiling
+    with no particular hourly shape, say), so neither bounds the other. The
+    process-wide defaults (10/hour, 30/day) apply until a tenant sets its
+    own; a stricter or looser city doesn't need a code change."""
+
+    max_per_hour: int = Field(default=10, ge=1)
+    max_per_day: int = Field(default=30, ge=1)

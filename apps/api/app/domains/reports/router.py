@@ -9,7 +9,6 @@ from fastapi import APIRouter, BackgroundTasks, Header, Query, Response, status
 from fastapi.responses import JSONResponse
 
 from app.core import idempotency
-from app.core.config import get_settings
 from app.core.db import DbSession
 from app.core.errors import ServiceUnavailable, error_responses
 from app.core.pagination import PageParamsDep
@@ -17,6 +16,7 @@ from app.core.ratelimit import enforce_window
 from app.core.redis import get_redis
 from app.core.storage import Storage
 from app.domains.auth.dependencies import CurrentPrincipal
+from app.domains.config import service as config_service
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
@@ -47,14 +47,15 @@ RequiredIdempotencyKey = Annotated[
 ]
 
 
-async def _enforce_report_limits(principal: Principal) -> None:
-    """Per-user submission limits. Unlike the OTP limits these fail open:
-    an unreachable Redis must not stop citizens reporting problems."""
-    settings = get_settings()
+async def _enforce_report_limits(db: DbSession, principal: Principal) -> None:
+    """Per-user submission limits, from the tenant's own configuration (or
+    its defaults). Unlike the OTP limits these fail open: an unreachable
+    Redis must not stop citizens reporting problems."""
+    limits = await config_service.report_limits_config(db)
     key = f"ratelimit:reports:{principal.tenant_id}:{principal.user_id}"
     try:
-        await enforce_window(get_redis(), f"{key}:hour", settings.report_max_per_hour, 3600)
-        await enforce_window(get_redis(), f"{key}:day", settings.report_max_per_day, 86400)
+        await enforce_window(get_redis(), f"{key}:hour", limits.max_per_hour, 3600)
+        await enforce_window(get_redis(), f"{key}:day", limits.max_per_day, 86400)
     except ServiceUnavailable:
         logger.warning("report rate limit skipped: limiter unavailable")
 
@@ -89,7 +90,7 @@ async def create_report(
     if isinstance(claim, Response):
         return await _replay(db, storage, claim)
 
-    await _enforce_report_limits(principal)
+    await _enforce_report_limits(db, principal)
     report_id = await service.create_report(db, principal, body)
     view = await service.get_owner_view(db, storage, report_id)
     assert view is not None

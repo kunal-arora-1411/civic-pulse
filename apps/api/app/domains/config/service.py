@@ -9,10 +9,16 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.logging import log_fields
 from app.domains.audit import service as audit
 from app.domains.config.models import ConfigKey, TenantConfig
-from app.domains.config.schemas import ClosureConfig, MatchingConfig, PriorityConfig
+from app.domains.config.schemas import (
+    ClosureConfig,
+    MatchingConfig,
+    PriorityConfig,
+    ReportLimitsConfig,
+)
 from app.domains.rbac.principal import Principal
 
 logger = logging.getLogger(__name__)
@@ -48,6 +54,32 @@ async def priority_config(db: AsyncSession) -> PriorityConfig:
 
 async def closure_config(db: AsyncSession) -> ClosureConfig:
     return await _load(db, ConfigKey.CLOSURE, ClosureConfig)
+
+
+async def report_limits_config(db: AsyncSession) -> ReportLimitsConfig:
+    """The tenant's own document, or the process-wide default when it has
+    none. Unlike the other three keys, that default isn't the schema's own
+    literal: `REPORT_MAX_PER_HOUR`/`_DAY` are how ops sets the city-wide
+    number without a deploy (and how the test suite raises it for bulk
+    submissions), and a tenant's own row only overrides that, never
+    replaces it with something unrelated."""
+    value = await db.scalar(
+        select(TenantConfig.value).where(TenantConfig.key == ConfigKey.REPORT_LIMITS)
+    )
+    settings = get_settings()
+    fallback = ReportLimitsConfig(
+        max_per_hour=settings.report_max_per_hour, max_per_day=settings.report_max_per_day
+    )
+    if value is None:
+        return fallback
+    try:
+        return ReportLimitsConfig.model_validate(value)
+    except ValidationError as exc:
+        logger.error(
+            "stored tenant config is invalid; using defaults",
+            extra=log_fields(config_key=ConfigKey.REPORT_LIMITS.value, error=str(exc)),
+        )
+        return fallback
 
 
 async def replace[C: BaseModel](db: AsyncSession, actor: Principal, key: ConfigKey, body: C) -> C:

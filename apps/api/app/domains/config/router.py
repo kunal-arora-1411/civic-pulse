@@ -8,7 +8,12 @@ from app.core.db import DbSession
 from app.core.errors import error_responses
 from app.domains.config import service
 from app.domains.config.models import ConfigKey
-from app.domains.config.schemas import ClosureConfig, MatchingConfig, PriorityConfig
+from app.domains.config.schemas import (
+    ClosureConfig,
+    MatchingConfig,
+    PriorityConfig,
+    ReportLimitsConfig,
+)
 from app.domains.rbac.dependencies import require
 from app.domains.rbac.permissions import Permission
 from app.domains.rbac.principal import Principal
@@ -100,3 +105,28 @@ async def update_closure_config(
 ) -> ClosureConfig:
     """Replace the whole document; a field left out goes back to its default. Audited."""
     return await service.replace(db, principal, ConfigKey.CLOSURE, body)
+
+
+@router.get(
+    "/report-limits-config",
+    operation_id="admin_get_report_limits_config",
+    response_model=ReportLimitsConfig,
+    responses=error_responses(401, 403),
+)
+async def get_report_limits_config(_: ConfigReader, db: DbSession) -> ReportLimitsConfig:
+    """Citizen report submission limits in effect (defaults if never set)."""
+    return await service.report_limits_config(db)
+
+
+@router.put(
+    "/report-limits-config",
+    operation_id="admin_update_report_limits_config",
+    response_model=ReportLimitsConfig,
+    responses=error_responses(401, 403, 422),
+)
+async def update_report_limits_config(
+    principal: ConfigManager, db: DbSession, body: ReportLimitsConfig
+) -> ReportLimitsConfig:
+    """Replace the whole document; a field left out goes back to its default.
+    The daily limit can't be below the hourly one. Audited."""
+    return await service.replace(db, principal, ConfigKey.REPORT_LIMITS, body)

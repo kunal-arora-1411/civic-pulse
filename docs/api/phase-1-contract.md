@@ -28,7 +28,7 @@ Anything outside a caller's scope answers `404 not_found`, exactly like somethin
 |---|---|---|
 | `unsupported_media_type` | 422 | Upload content type isn't JPEG, PNG or WebP |
 | `file_too_large` | 422 | Upload is over the size limit |
-| `rate_limited` | 429 | `POST /reports`: the citizen has filed too many reports, by default 10 an hour or 30 a day (settings `REPORT_MAX_PER_HOUR`, `REPORT_MAX_PER_DAY`). `Retry-After` and `details.retry_after` give the seconds to wait. Idempotent replays don't count, and if the limiter's store is down submissions are allowed rather than refused. |
+| `rate_limited` | 429 | `POST /reports`: the citizen has filed too many reports, by default 10 an hour or 30 a day (settings `REPORT_MAX_PER_HOUR`, `REPORT_MAX_PER_DAY`, overridable per tenant — see [Report limits](#report-limits)). `Retry-After` and `details.retry_after` give the seconds to wait. Idempotent replays don't count, and if the limiter's store is down submissions are allowed rather than refused. |
 | `too_many_uploads` | 429 | The caller already holds 20 unexpired, incomplete uploads (`details.limit`; no `Retry-After`) |
 | `upload_verification_failed` | 422 | The uploaded object doesn't match what was declared (`details.reason`) |
 | `out_of_jurisdiction` | 422 | The report's point is outside the city |
@@ -40,8 +40,15 @@ Anything outside a caller's scope answers `404 not_found`, exactly like somethin
 
 Field-level problems are `422 validation_error` with `details.errors`, each with a `loc` such as `["body", "details", "size"]`.
 
+### Report limits
+| Method | Path | Permission |
+|---|---|---|
+| GET / PUT | `/api/v1/admin/report-limits-config` | `config:read` / `config:manage` |
+
+`{ max_per_hour, max_per_day }`, both whole numbers of at least 1. A tenant with no document uses `REPORT_MAX_PER_HOUR`/`REPORT_MAX_PER_DAY` (10 and 30 by default); PUT replaces the whole document, a field left out goes back to its own schema default (10/30, not necessarily the settings value), and every PUT is audited as `config.report_limits_updated`.
+
 ### Audit actions
-`category.created`, `category.updated`, `report.created`, `issue.created`, `issue.status_changed`, each written in the same transaction as the change.
+`category.created`, `category.updated`, `report.created`, `issue.created`, `issue.status_changed`, `config.report_limits_updated`, each written in the same transaction as the change.
 
 ---
 

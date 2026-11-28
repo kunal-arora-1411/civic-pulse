@@ -388,11 +388,13 @@ async def test_submissions_are_rate_limited_per_user(
     sms: Any,
     owner_engine: AsyncEngine,
     city: City,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.core.config import get_settings
-
-    monkeypatch.setattr(get_settings(), "report_max_per_hour", 2)
+    limits = await client.put(
+        "/api/v1/admin/report-limits-config",
+        headers=city.admin.headers,
+        json={"max_per_hour": 2, "max_per_day": 30},
+    )
+    assert limits.status_code == 200, limits.text
     key = uuid.uuid4().hex
     assert (await submit(client, city.citizen, waste_body(city), key)).status_code == 201
     assert (await submit(client, city.citizen, waste_body(city))).status_code == 201
@@ -416,12 +418,31 @@ async def test_submissions_are_rate_limited_per_user(
     assert (await submit(client, other, waste_body(city))).status_code == 201
 
 
-async def test_daily_report_limit(
-    client: httpx.AsyncClient, city: City, monkeypatch: pytest.MonkeyPatch
+async def test_report_limit_is_per_tenant(
+    client: httpx.AsyncClient, sms: Any, owner_engine: AsyncEngine, city: City
 ) -> None:
-    from app.core.config import get_settings
+    tightened = await client.put(
+        "/api/v1/admin/report-limits-config",
+        headers=city.admin.headers,
+        json={"max_per_hour": 1, "max_per_day": 30},
+    )
+    assert tightened.status_code == 200, tightened.text
+    assert (await submit(client, city.citizen, waste_body(city))).status_code == 201
+    assert (await submit(client, city.citizen, waste_body(city))).status_code == 429
 
-    monkeypatch.setattr(get_settings(), "report_max_per_day", 1)
+    # A second tenant, with no config of its own, keeps the default limit.
+    other_city = await make_city(client, sms, owner_engine)
+    assert (await submit(client, other_city.citizen, waste_body(other_city))).status_code == 201
+    assert (await submit(client, other_city.citizen, waste_body(other_city))).status_code == 201
+
+
+async def test_daily_report_limit(client: httpx.AsyncClient, city: City) -> None:
+    limits = await client.put(
+        "/api/v1/admin/report-limits-config",
+        headers=city.admin.headers,
+        json={"max_per_hour": 10, "max_per_day": 1},
+    )
+    assert limits.status_code == 200, limits.text
     assert (await submit(client, city.citizen, waste_body(city))).status_code == 201
     refused = await submit(client, city.citizen, waste_body(city))
     assert refused.status_code == 429
